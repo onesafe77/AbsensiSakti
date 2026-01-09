@@ -1,0 +1,108 @@
+[2026-01-04T16:51:09.580Z] Error creating Sidak Rambu session: column "activity_photos" of relation "sidak_rambu_sessions" does not exist
+Stack: NeonDbError: column "activity_photos" of relation "sidak_rambu_sessions" does not exist
+    at execute (file:///C:/OneTalent/node_modules/@neondatabase/serverless/index.mjs:1556:55)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async NeonHttpPreparedQuery.execute (C:\OneTalent\node_modules\src\neon-http\session.ts:68:18)
+    at async DrizzleStorage.createSidakRambuSession (C:\OneTalent\server\storage.ts:2736:22)
+    at async <anonymous> (C:\OneTalent\server\routes.ts:6823:23)
+Input: {"tanggal":"2026-01-04","shift":"Shift 1","waktuMulai":"00:50","waktuSelesai":"01:51","lokasi":"Rom A3","totalSampel":"10"}
+
+[2026-01-04T16:51:14.563Z] Error creating Sidak Rambu session: column "activity_photos" of relation "sidak_rambu_sessions" does not exist
+Stack: NeonDbError: column "activity_photos" of relation "sidak_rambu_sessions" does not exist
+    at execute (file:///C:/OneTalent/node_modules/@neondatabase/serverless/index.mjs:1556:55)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async NeonHttpPreparedQuery.execute (C:\OneTalent\node_modules\src\neon-http\session.ts:68:18)
+    at async DrizzleStorage.createSidakRambuSession (C:\OneTalent\server\storage.ts:2736:22)
+    at async <anonymous> (C:\OneTalent\server\routes.ts:6823:23)
+Input: {"tanggal":"2026-01-04","shift":"Shift 1","waktuMulai":"00:50","waktuSelesai":"01:51","lokasi":"Rom A3","totalSampel":"10"}
+
+[2026-01-04T16:51:14.815Z] Error creating Sidak Rambu session: column "activity_photos" of relation "sidak_rambu_sessions" does not exist
+Stack: NeonDbError: column "activity_photos" of relation "sidak_rambu_sessions" does not exist
+    at execute (file:///C:/OneTalent/node_modules/@neondatabase/serverless/index.mjs:1556:55)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async NeonHttpPreparedQuery.execute (C:\OneTalent\node_modules\src\neon-http\session.ts:68:18)
+    at async DrizzleStorage.createSidakRambuSession (C:\OneTalent\server\storage.ts:2736:22)
+    at async <anonymous> (C:\OneTalent\server\routes.ts:6823:23)
+Input: {"tanggal":"2026-01-04","shift":"Shift 1","waktuMulai":"00:50","waktuSelesai":"01:51","lokasi":"Rom A3","totalSampel":"10"}
+
+[2026-01-04T16:51:15.068Z] Error creating Sidak Rambu session: column "activity_photos" of relation "sidak_rambu_sessions" does not exist
+Stack: NeonDbError: column "activity_photos" of relation "sidak_rambu_sessions" does not exist
+    at execute (file:///C:/OneTalent/node_modules/@neondatabase/serverless/index.mjs:1556:55)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async NeonHttpPreparedQuery.execute (C:\OneTalent\node_modules\src\neon-http\session.ts:68:18)
+    at async DrizzleStorage.createSidakRambuSession (C:\OneTalent\server\storage.ts:2736:22)
+    at async <anonymous> (C:\OneTalent\server\routes.ts:6823:23)
+Input: {"tanggal":"2026-01-04","shift":"Shift 1","waktuMulai":"00:50","waktuSelesai":"01:51","lokasi":"Rom A3","totalSampel":"10"}
+
+[2026-01-04T16:51:15.133Z] Error creating Sidak Rambu session: column "activity_photos" of relation "sidak_rambu_sessions" does not exist
+Stack: NeonDbError: column "activity_photos" of relation "sidak_rambu_sessions" does not exist
+    at execute (file:///C:/OneTalent/node_modules/@neondatabase/serverless/index.mjs:1556:55)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async NeonHttpPreparedQuery.execute (C:\OneTalent\node_modules\src\neon-http\session.ts:68:18)
+    at async DrizzleStorage.createSidakRambuSession (C:\OneTalent\server\storage.ts:2736:22)
+    at async <anonymous> (C:\OneTalent\server\routes.ts:6823:23)
+Input: {"tanggal":"2026-01-04","shift":"Shift 1","waktuMulai":"00:50","waktuSelesai":"01:51","lokasi":"Rom A3","totalSampel":"10"}
+
+[2026-01-04T16:51:15.309Z] Error creating Sidak Rambu session: column "activity_photos" of relation "sidak_rambu_sessions" does not exist
+Stack: NeonDbError: column "activity_photos" of relation "sidak_rambu_sessions" does not exist
+    at execute (file:///C:/OneTalent/node_modules/@neondatabase/serverless/index.mjs:1556:55)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async NeonHttpPreparedQuery.execute (C:\OneTalent\node_modules\src\neon-http\session.ts:68:18)
+    at async DrizzleStorage.createSidakRambuSession (C:\OneTalent\server\storage.ts:2736:22)
+    at async <anonymous> (C:\OneTalent\server\routes.ts:6823:23)
+Input: {"tanggal":"2026-01-04","shift":"Shift 1","waktuMulai":"00:50","waktuSelesai":"01:51","lokasi":"Rom A3","totalSampel":"10"}
+
+[2026-01-04T16:51:15.430Z] Error creating Sidak Rambu session: column "activity_photos" of relation "sidak_rambu_sessions" does not exist
+Stack: NeonDbError: column "activity_photos" of relation "sidak_rambu_sessions" does not exist
+    at execute (file:///C:/OneTalent/node_modules/@neondatabase/serverless/index.mjs:1556:55)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async NeonHttpPreparedQuery.execute (C:\OneTalent\node_modules\src\neon-http\session.ts:68:18)
+    at async DrizzleStorage.createSidakRambuSession (C:\OneTalent\server\storage.ts:2736:22)
+    at async <anonymous> (C:\OneTalent\server\routes.ts:6823:23)
+Input: {"tanggal":"2026-01-04","shift":"Shift 1","waktuMulai":"00:50","waktuSelesai":"01:51","lokasi":"Rom A3","totalSampel":"10"}
+
+[2026-01-04T16:51:15.452Z] Error creating Sidak Rambu session: column "activity_photos" of relation "sidak_rambu_sessions" does not exist
+Stack: NeonDbError: column "activity_photos" of relation "sidak_rambu_sessions" does not exist
+    at execute (file:///C:/OneTalent/node_modules/@neondatabase/serverless/index.mjs:1556:55)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async NeonHttpPreparedQuery.execute (C:\OneTalent\node_modules\src\neon-http\session.ts:68:18)
+    at async DrizzleStorage.createSidakRambuSession (C:\OneTalent\server\storage.ts:2736:22)
+    at async <anonymous> (C:\OneTalent\server\routes.ts:6823:23)
+Input: {"tanggal":"2026-01-04","shift":"Shift 1","waktuMulai":"00:50","waktuSelesai":"01:51","lokasi":"Rom A3","totalSampel":"10"}
+
+[2026-01-04T16:51:15.609Z] Error creating Sidak Rambu session: column "activity_photos" of relation "sidak_rambu_sessions" does not exist
+Stack: NeonDbError: column "activity_photos" of relation "sidak_rambu_sessions" does not exist
+    at execute (file:///C:/OneTalent/node_modules/@neondatabase/serverless/index.mjs:1556:55)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async NeonHttpPreparedQuery.execute (C:\OneTalent\node_modules\src\neon-http\session.ts:68:18)
+    at async DrizzleStorage.createSidakRambuSession (C:\OneTalent\server\storage.ts:2736:22)
+    at async <anonymous> (C:\OneTalent\server\routes.ts:6823:23)
+Input: {"tanggal":"2026-01-04","shift":"Shift 1","waktuMulai":"00:50","waktuSelesai":"01:51","lokasi":"Rom A3","totalSampel":"10"}
+
+[2026-01-04T16:51:15.675Z] Error creating Sidak Rambu session: column "activity_photos" of relation "sidak_rambu_sessions" does not exist
+Stack: NeonDbError: column "activity_photos" of relation "sidak_rambu_sessions" does not exist
+    at execute (file:///C:/OneTalent/node_modules/@neondatabase/serverless/index.mjs:1556:55)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async NeonHttpPreparedQuery.execute (C:\OneTalent\node_modules\src\neon-http\session.ts:68:18)
+    at async DrizzleStorage.createSidakRambuSession (C:\OneTalent\server\storage.ts:2736:22)
+    at async <anonymous> (C:\OneTalent\server\routes.ts:6823:23)
+Input: {"tanggal":"2026-01-04","shift":"Shift 1","waktuMulai":"00:50","waktuSelesai":"01:51","lokasi":"Rom A3","totalSampel":"10"}
+
+[2026-01-04T16:51:16.306Z] Error creating Sidak Rambu session: column "activity_photos" of relation "sidak_rambu_sessions" does not exist
+Stack: NeonDbError: column "activity_photos" of relation "sidak_rambu_sessions" does not exist
+    at execute (file:///C:/OneTalent/node_modules/@neondatabase/serverless/index.mjs:1556:55)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async NeonHttpPreparedQuery.execute (C:\OneTalent\node_modules\src\neon-http\session.ts:68:18)
+    at async DrizzleStorage.createSidakRambuSession (C:\OneTalent\server\storage.ts:2736:22)
+    at async <anonymous> (C:\OneTalent\server\routes.ts:6823:23)
+Input: {"tanggal":"2026-01-04","shift":"Shift 1","waktuMulai":"00:50","waktuSelesai":"01:51","lokasi":"Rom A3","totalSampel":"10"}
+
+[2026-01-04T16:51:50.963Z] Error creating Sidak Rambu session: column "activity_photos" of relation "sidak_rambu_sessions" does not exist
+Stack: NeonDbError: column "activity_photos" of relation "sidak_rambu_sessions" does not exist
+    at execute (file:///C:/OneTalent/node_modules/@neondatabase/serverless/index.mjs:1556:55)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async NeonHttpPreparedQuery.execute (C:\OneTalent\node_modules\src\neon-http\session.ts:68:18)
+    at async DrizzleStorage.createSidakRambuSession (C:\OneTalent\server\storage.ts:2736:22)
+    at async <anonymous> (C:\OneTalent\server\routes.ts:6823:23)
+Input: {"tanggal":"2026-01-04","shift":"Shift 1","waktuMulai":"00:50","waktuSelesai":"01:51","lokasi":"Rom A3","totalSampel":"10"}
+

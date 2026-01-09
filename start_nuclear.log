@@ -1,0 +1,2011 @@
+
+> rest-express@1.0.0 dev
+> tsx server/index.ts
+
+✅ Database connection initialized successfully
+⚠️ Push notification service: VAPID keys not configured
+SERVER RESTARTING... UPDATED ROUTES LOADING...
+Skipping Replit Auth setup (REPLIT_DOMAINS or REPL_ID not set)
+⚠️ Email credentials not configured. Email notifications disabled.
+Cron jobs initialized for leave monitoring
+⚠️ SIMPER notification email service: INACTIVE (credentials not configured)
+DEBUG: process.env.PORT is: undefined
+9:48:24 PM [express] serving on port 5003
+9:48:25 PM [express] GET /api/auth/session 304 in 3ms :: {"authenticated":false,"user":null}
+Browserslist: browsers data (caniuse-lite) is 15 months old. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+9:58:04 PM [express] GET /api/auth/session 304 in 1ms :: {"authenticated":false,"user":null}
+9:58:05 PM [express] GET /api/auth/session 200 in 1ms :: {"authenticated":false,"user":null}
+🔐 Login attempt - Content-Type: application/json
+🔐 Login attempt - Request body: {"nik":"C-075768","password":"12345678"}
+🔐 Login attempt - Body type: object
+🔐 Looking up user with NIK: C-075768
+🔐 Attempting database lookup for NIK: C-075768
+🔐 DATABASE_URL exists: true
+🔐 Auth user lookup result: found
+🔐 Comparing password...
+🔐 Password comparison result: true
+🔐 Employee lookup result: found
+🔐 Session saved successfully
+🔐 Login success for: C-075768
+9:58:12 PM [express] POST /api/auth/login 200 in 5458ms :: {"message":"Login berhasil","user":{"nik"…
+9:58:18 PM [express] GET /api/dashboard/stats/2026-01-06 200 in 2853ms :: {"totalEmployees":323,"sch…
+9:58:20 PM [express] GET /api/dashboard/recent-activities/2026-01-06 304 in 5069ms :: []
+9:58:43 PM [express] POST /api/sidak-jarak/21ec5225-df95-4577-9894-f8f777a8b3b3/records 201 in 3084m…
+9:59:35 PM [express] POST /api/sidak-jarak/21ec5225-df95-4577-9894-f8f777a8b3b3/records 201 in 6214m…
+9:59:50 PM [express] POST /api/sidak-jarak/21ec5225-df95-4577-9894-f8f777a8b3b3/records 201 in 4912m…
+10:00:27 PM [express] POST /api/sidak-jarak/21ec5225-df95-4577-9894-f8f777a8b3b3/observers 201 in 276…
+10:00:29 PM [express] GET /api/sidak-jarak/sessions 200 in 301ms :: [{"id":"21ec5225-df95-4577-9894-f…
+10:03:29 PM [express] GET /api/auth/session 304 in 1ms :: {"authenticated":false,"user":null}
+🔐 Login attempt - Content-Type: application/json
+🔐 Login attempt - Request body: {"nik":"C-075768","password":"12345678"}
+🔐 Login attempt - Body type: object
+🔐 Looking up user with NIK: C-075768
+🔐 Attempting database lookup for NIK: C-075768
+🔐 DATABASE_URL exists: true
+🔐 Auth user lookup result: found
+🔐 Comparing password...
+🔐 Password comparison result: true
+🔐 Employee lookup result: found
+🔐 Session saved successfully
+🔐 Login success for: C-075768
+10:03:38 PM [express] POST /api/auth/login 200 in 5232ms :: {"message":"Login berhasil","user":{"nik"…
+10:03:40 PM [express] GET /api/dashboard/stats/2026-01-06 304 in 1801ms :: {"totalEmployees":323,"sch…
+10:03:40 PM [express] GET /api/dashboard/recent-activities/2026-01-06 304 in 2030ms :: []
+10:03:52 PM [express] GET /api/sidak-jarak/sessions 304 in 1095ms :: [{"id":"21ec5225-df95-4577-9894-…
+[2m22.06.36[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/sidak-jarak-history.tsx, /src/index.css?v=lu09df_J0DODmQiN-FK3S[22m
+[2m22.06.56[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/sidak-jarak-history.tsx, /src/index.css?v=lu09df_J0DODmQiN-FK3S[22m
+10:08:02 PM [express] GET /api/sidak-jarak/21ec5225-df95-4577-9894-f8f777a8b3b3 200 in 3501ms :: {"se…
+10:08:35 PM [express] POST /api/sidak-jarak/21ec5225-df95-4577-9894-f8f777a8b3b3/upload-photos 200 in…
+10:08:35 PM [express] GET /api/sidak-jarak/sessions 200 in 270ms :: [{"id":"21ec5225-df95-4577-9894-f…
+10:09:15 PM [express] POST /api/sidak-kecepatan 200 in 1482ms :: {"id":"f3460e13-4b10-4826-97a1-e1fd2…
+Error adding record: ZodError: [
+  {
+    "code": "invalid_type",
+    "expected": "number",
+    "received": "undefined",
+    "path": [
+      "ordinal"
+    ],
+    "message": "Required"
+  }
+]
+    at get error [as error] (file:///C:/OneTalent/node_modules/zod/v3/types.js:39:31)
+    at ZodObject.parse (file:///C:/OneTalent/node_modules/zod/v3/types.js:114:22)
+    at <anonymous> (C:\OneTalent\server\routes.ts:4834:62)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at next (C:\OneTalent\node_modules\express\lib\router\route.js:149:13)
+    at Route.dispatch (C:\OneTalent\node_modules\express\lib\router\route.js:119:3)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:284:15
+    at param (C:\OneTalent\node_modules\express\lib\router\index.js:365:14)
+    at param (C:\OneTalent\node_modules\express\lib\router\index.js:376:14)
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:421:3)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at strategy.pass (C:\OneTalent\node_modules\passport\lib\middleware\authenticate.js:355:9)
+    at SessionStrategy.authenticate (C:\OneTalent\node_modules\passport\lib\strategies\session.js:126:10)
+    at attempt (C:\OneTalent\node_modules\passport\lib\middleware\authenticate.js:378:16)
+    at authenticate (C:\OneTalent\node_modules\passport\lib\middleware\authenticate.js:379:7)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\OneTalent\node_modules\express\lib\router\index.js:328:13)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:286:9
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at initialize (C:\OneTalent\node_modules\passport\lib\middleware\initialize.js:98:5)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\OneTalent\node_modules\express\lib\router\index.js:328:13)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:286:9
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at session (C:\OneTalent\node_modules\express-session\index.js:487:7)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\OneTalent\node_modules\express\lib\router\index.js:328:13)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:286:9
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at <anonymous> (C:\OneTalent\server\index.ts:53:3)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\OneTalent\node_modules\express\lib\router\index.js:328:13)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:286:9
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at urlencodedParser (C:\OneTalent\node_modules\body-parser\lib\types\urlencoded.js:85:7)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\OneTalent\node_modules\express\lib\router\index.js:328:13)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:286:9
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at C:\OneTalent\node_modules\body-parser\lib\read.js:137:5
+    at AsyncResource.runInAsyncScope (node:async_hooks:206:9)
+    at invokeCallback (C:\OneTalent\node_modules\raw-body\index.js:238:16)
+    at done (C:\OneTalent\node_modules\raw-body\index.js:227:7)
+    at IncomingMessage.onEnd (C:\OneTalent\node_modules\raw-body\index.js:287:7) {
+  issues: [
+    {
+      code: 'invalid_type',
+      expected: 'number',
+      received: 'undefined',
+      path: [Array],
+      message: 'Required'
+    }
+  ],
+  addIssue: [Function (anonymous)],
+  addIssues: [Function (anonymous)],
+  errors: [
+    {
+      code: 'invalid_type',
+      expected: 'number',
+      received: 'undefined',
+      path: [Array],
+      message: 'Required'
+    }
+  ]
+}
+10:09:30 PM [express] POST /api/sidak-kecepatan/f3460e13-4b10-4826-97a1-e1fd281620b2/records 400 in 3…
+Error adding record: ZodError: [
+  {
+    "code": "invalid_type",
+    "expected": "number",
+    "received": "undefined",
+    "path": [
+      "ordinal"
+    ],
+    "message": "Required"
+  }
+]
+    at get error [as error] (file:///C:/OneTalent/node_modules/zod/v3/types.js:39:31)
+    at ZodObject.parse (file:///C:/OneTalent/node_modules/zod/v3/types.js:114:22)
+    at <anonymous> (C:\OneTalent\server\routes.ts:4834:62)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at next (C:\OneTalent\node_modules\express\lib\router\route.js:149:13)
+    at Route.dispatch (C:\OneTalent\node_modules\express\lib\router\route.js:119:3)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:284:15
+    at param (C:\OneTalent\node_modules\express\lib\router\index.js:365:14)
+    at param (C:\OneTalent\node_modules\express\lib\router\index.js:376:14)
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:421:3)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at strategy.pass (C:\OneTalent\node_modules\passport\lib\middleware\authenticate.js:355:9)
+    at SessionStrategy.authenticate (C:\OneTalent\node_modules\passport\lib\strategies\session.js:126:10)
+    at attempt (C:\OneTalent\node_modules\passport\lib\middleware\authenticate.js:378:16)
+    at authenticate (C:\OneTalent\node_modules\passport\lib\middleware\authenticate.js:379:7)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\OneTalent\node_modules\express\lib\router\index.js:328:13)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:286:9
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at initialize (C:\OneTalent\node_modules\passport\lib\middleware\initialize.js:98:5)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\OneTalent\node_modules\express\lib\router\index.js:328:13)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:286:9
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at session (C:\OneTalent\node_modules\express-session\index.js:487:7)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\OneTalent\node_modules\express\lib\router\index.js:328:13)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:286:9
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at <anonymous> (C:\OneTalent\server\index.ts:53:3)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\OneTalent\node_modules\express\lib\router\index.js:328:13)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:286:9
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at urlencodedParser (C:\OneTalent\node_modules\body-parser\lib\types\urlencoded.js:85:7)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\OneTalent\node_modules\express\lib\router\index.js:328:13)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:286:9
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at C:\OneTalent\node_modules\body-parser\lib\read.js:137:5
+    at AsyncResource.runInAsyncScope (node:async_hooks:206:9)
+    at invokeCallback (C:\OneTalent\node_modules\raw-body\index.js:238:16)
+    at done (C:\OneTalent\node_modules\raw-body\index.js:227:7)
+    at IncomingMessage.onEnd (C:\OneTalent\node_modules\raw-body\index.js:287:7) {
+  issues: [
+    {
+      code: 'invalid_type',
+      expected: 'number',
+      received: 'undefined',
+      path: [Array],
+      message: 'Required'
+    }
+  ],
+  addIssue: [Function (anonymous)],
+  addIssues: [Function (anonymous)],
+  errors: [
+    {
+      code: 'invalid_type',
+      expected: 'number',
+      received: 'undefined',
+      path: [Array],
+      message: 'Required'
+    }
+  ]
+}
+10:09:31 PM [express] POST /api/sidak-kecepatan/f3460e13-4b10-4826-97a1-e1fd281620b2/records 400 in 2…
+Error adding record: ZodError: [
+  {
+    "code": "invalid_type",
+    "expected": "number",
+    "received": "undefined",
+    "path": [
+      "ordinal"
+    ],
+    "message": "Required"
+  }
+]
+    at get error [as error] (file:///C:/OneTalent/node_modules/zod/v3/types.js:39:31)
+    at ZodObject.parse (file:///C:/OneTalent/node_modules/zod/v3/types.js:114:22)
+    at <anonymous> (C:\OneTalent\server\routes.ts:4834:62)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at next (C:\OneTalent\node_modules\express\lib\router\route.js:149:13)
+    at Route.dispatch (C:\OneTalent\node_modules\express\lib\router\route.js:119:3)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:284:15
+    at param (C:\OneTalent\node_modules\express\lib\router\index.js:365:14)
+    at param (C:\OneTalent\node_modules\express\lib\router\index.js:376:14)
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:421:3)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at strategy.pass (C:\OneTalent\node_modules\passport\lib\middleware\authenticate.js:355:9)
+    at SessionStrategy.authenticate (C:\OneTalent\node_modules\passport\lib\strategies\session.js:126:10)
+    at attempt (C:\OneTalent\node_modules\passport\lib\middleware\authenticate.js:378:16)
+    at authenticate (C:\OneTalent\node_modules\passport\lib\middleware\authenticate.js:379:7)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\OneTalent\node_modules\express\lib\router\index.js:328:13)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:286:9
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at initialize (C:\OneTalent\node_modules\passport\lib\middleware\initialize.js:98:5)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\OneTalent\node_modules\express\lib\router\index.js:328:13)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:286:9
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at session (C:\OneTalent\node_modules\express-session\index.js:487:7)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\OneTalent\node_modules\express\lib\router\index.js:328:13)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:286:9
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at <anonymous> (C:\OneTalent\server\index.ts:53:3)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\OneTalent\node_modules\express\lib\router\index.js:328:13)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:286:9
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at urlencodedParser (C:\OneTalent\node_modules\body-parser\lib\types\urlencoded.js:85:7)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\OneTalent\node_modules\express\lib\router\index.js:328:13)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:286:9
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at C:\OneTalent\node_modules\body-parser\lib\read.js:137:5
+    at AsyncResource.runInAsyncScope (node:async_hooks:206:9)
+    at invokeCallback (C:\OneTalent\node_modules\raw-body\index.js:238:16)
+    at done (C:\OneTalent\node_modules\raw-body\index.js:227:7)
+    at IncomingMessage.onEnd (C:\OneTalent\node_modules\raw-body\index.js:287:7) {
+  issues: [
+    {
+      code: 'invalid_type',
+      expected: 'number',
+      received: 'undefined',
+      path: [Array],
+      message: 'Required'
+    }
+  ],
+  addIssue: [Function (anonymous)],
+  addIssues: [Function (anonymous)],
+  errors: [
+    {
+      code: 'invalid_type',
+      expected: 'number',
+      received: 'undefined',
+      path: [Array],
+      message: 'Required'
+    }
+  ]
+}
+10:09:32 PM [express] POST /api/sidak-kecepatan/f3460e13-4b10-4826-97a1-e1fd281620b2/records 400 in 2…
+Error adding record: ZodError: [
+  {
+    "code": "invalid_type",
+    "expected": "number",
+    "received": "undefined",
+    "path": [
+      "ordinal"
+    ],
+    "message": "Required"
+  }
+]
+    at get error [as error] (file:///C:/OneTalent/node_modules/zod/v3/types.js:39:31)
+    at ZodObject.parse (file:///C:/OneTalent/node_modules/zod/v3/types.js:114:22)
+    at <anonymous> (C:\OneTalent\server\routes.ts:4834:62)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at next (C:\OneTalent\node_modules\express\lib\router\route.js:149:13)
+    at Route.dispatch (C:\OneTalent\node_modules\express\lib\router\route.js:119:3)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:284:15
+    at param (C:\OneTalent\node_modules\express\lib\router\index.js:365:14)
+    at param (C:\OneTalent\node_modules\express\lib\router\index.js:376:14)
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:421:3)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at strategy.pass (C:\OneTalent\node_modules\passport\lib\middleware\authenticate.js:355:9)
+    at SessionStrategy.authenticate (C:\OneTalent\node_modules\passport\lib\strategies\session.js:126:10)
+    at attempt (C:\OneTalent\node_modules\passport\lib\middleware\authenticate.js:378:16)
+    at authenticate (C:\OneTalent\node_modules\passport\lib\middleware\authenticate.js:379:7)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\OneTalent\node_modules\express\lib\router\index.js:328:13)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:286:9
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at initialize (C:\OneTalent\node_modules\passport\lib\middleware\initialize.js:98:5)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\OneTalent\node_modules\express\lib\router\index.js:328:13)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:286:9
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at session (C:\OneTalent\node_modules\express-session\index.js:487:7)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\OneTalent\node_modules\express\lib\router\index.js:328:13)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:286:9
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at <anonymous> (C:\OneTalent\server\index.ts:53:3)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\OneTalent\node_modules\express\lib\router\index.js:328:13)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:286:9
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at urlencodedParser (C:\OneTalent\node_modules\body-parser\lib\types\urlencoded.js:85:7)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\OneTalent\node_modules\express\lib\router\index.js:328:13)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:286:9
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at C:\OneTalent\node_modules\body-parser\lib\read.js:137:5
+    at AsyncResource.runInAsyncScope (node:async_hooks:206:9)
+    at invokeCallback (C:\OneTalent\node_modules\raw-body\index.js:238:16)
+    at done (C:\OneTalent\node_modules\raw-body\index.js:227:7)
+    at IncomingMessage.onEnd (C:\OneTalent\node_modules\raw-body\index.js:287:7) {
+  issues: [
+    {
+      code: 'invalid_type',
+      expected: 'number',
+      received: 'undefined',
+      path: [Array],
+      message: 'Required'
+    }
+  ],
+  addIssue: [Function (anonymous)],
+  addIssues: [Function (anonymous)],
+  errors: [
+    {
+      code: 'invalid_type',
+      expected: 'number',
+      received: 'undefined',
+      path: [Array],
+      message: 'Required'
+    }
+  ]
+}
+10:09:32 PM [express] POST /api/sidak-kecepatan/f3460e13-4b10-4826-97a1-e1fd281620b2/records 400 in 2…
+Error adding record: ZodError: [
+  {
+    "code": "invalid_type",
+    "expected": "number",
+    "received": "undefined",
+    "path": [
+      "ordinal"
+    ],
+    "message": "Required"
+  }
+]
+    at get error [as error] (file:///C:/OneTalent/node_modules/zod/v3/types.js:39:31)
+    at ZodObject.parse (file:///C:/OneTalent/node_modules/zod/v3/types.js:114:22)
+    at <anonymous> (C:\OneTalent\server\routes.ts:4834:62)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at next (C:\OneTalent\node_modules\express\lib\router\route.js:149:13)
+    at Route.dispatch (C:\OneTalent\node_modules\express\lib\router\route.js:119:3)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:284:15
+    at param (C:\OneTalent\node_modules\express\lib\router\index.js:365:14)
+    at param (C:\OneTalent\node_modules\express\lib\router\index.js:376:14)
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:421:3)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at strategy.pass (C:\OneTalent\node_modules\passport\lib\middleware\authenticate.js:355:9)
+    at SessionStrategy.authenticate (C:\OneTalent\node_modules\passport\lib\strategies\session.js:126:10)
+    at attempt (C:\OneTalent\node_modules\passport\lib\middleware\authenticate.js:378:16)
+    at authenticate (C:\OneTalent\node_modules\passport\lib\middleware\authenticate.js:379:7)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\OneTalent\node_modules\express\lib\router\index.js:328:13)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:286:9
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at initialize (C:\OneTalent\node_modules\passport\lib\middleware\initialize.js:98:5)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\OneTalent\node_modules\express\lib\router\index.js:328:13)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:286:9
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at session (C:\OneTalent\node_modules\express-session\index.js:487:7)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\OneTalent\node_modules\express\lib\router\index.js:328:13)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:286:9
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at <anonymous> (C:\OneTalent\server\index.ts:53:3)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\OneTalent\node_modules\express\lib\router\index.js:328:13)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:286:9
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at urlencodedParser (C:\OneTalent\node_modules\body-parser\lib\types\urlencoded.js:85:7)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\OneTalent\node_modules\express\lib\router\index.js:328:13)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:286:9
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at C:\OneTalent\node_modules\body-parser\lib\read.js:137:5
+    at AsyncResource.runInAsyncScope (node:async_hooks:206:9)
+    at invokeCallback (C:\OneTalent\node_modules\raw-body\index.js:238:16)
+    at done (C:\OneTalent\node_modules\raw-body\index.js:227:7)
+    at IncomingMessage.onEnd (C:\OneTalent\node_modules\raw-body\index.js:287:7) {
+  issues: [
+    {
+      code: 'invalid_type',
+      expected: 'number',
+      received: 'undefined',
+      path: [Array],
+      message: 'Required'
+    }
+  ],
+  addIssue: [Function (anonymous)],
+  addIssues: [Function (anonymous)],
+  errors: [
+    {
+      code: 'invalid_type',
+      expected: 'number',
+      received: 'undefined',
+      path: [Array],
+      message: 'Required'
+    }
+  ]
+}
+10:09:32 PM [express] POST /api/sidak-kecepatan/f3460e13-4b10-4826-97a1-e1fd281620b2/records 400 in 1…
+Error adding record: ZodError: [
+  {
+    "code": "invalid_type",
+    "expected": "number",
+    "received": "undefined",
+    "path": [
+      "ordinal"
+    ],
+    "message": "Required"
+  }
+]
+    at get error [as error] (file:///C:/OneTalent/node_modules/zod/v3/types.js:39:31)
+    at ZodObject.parse (file:///C:/OneTalent/node_modules/zod/v3/types.js:114:22)
+    at <anonymous> (C:\OneTalent\server\routes.ts:4834:62)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at next (C:\OneTalent\node_modules\express\lib\router\route.js:149:13)
+    at Route.dispatch (C:\OneTalent\node_modules\express\lib\router\route.js:119:3)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:284:15
+    at param (C:\OneTalent\node_modules\express\lib\router\index.js:365:14)
+    at param (C:\OneTalent\node_modules\express\lib\router\index.js:376:14)
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:421:3)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at strategy.pass (C:\OneTalent\node_modules\passport\lib\middleware\authenticate.js:355:9)
+    at SessionStrategy.authenticate (C:\OneTalent\node_modules\passport\lib\strategies\session.js:126:10)
+    at attempt (C:\OneTalent\node_modules\passport\lib\middleware\authenticate.js:378:16)
+    at authenticate (C:\OneTalent\node_modules\passport\lib\middleware\authenticate.js:379:7)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\OneTalent\node_modules\express\lib\router\index.js:328:13)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:286:9
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at initialize (C:\OneTalent\node_modules\passport\lib\middleware\initialize.js:98:5)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\OneTalent\node_modules\express\lib\router\index.js:328:13)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:286:9
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at session (C:\OneTalent\node_modules\express-session\index.js:487:7)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\OneTalent\node_modules\express\lib\router\index.js:328:13)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:286:9
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at <anonymous> (C:\OneTalent\server\index.ts:53:3)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\OneTalent\node_modules\express\lib\router\index.js:328:13)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:286:9
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at urlencodedParser (C:\OneTalent\node_modules\body-parser\lib\types\urlencoded.js:85:7)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\OneTalent\node_modules\express\lib\router\index.js:328:13)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:286:9
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at C:\OneTalent\node_modules\body-parser\lib\read.js:137:5
+    at AsyncResource.runInAsyncScope (node:async_hooks:206:9)
+    at invokeCallback (C:\OneTalent\node_modules\raw-body\index.js:238:16)
+    at done (C:\OneTalent\node_modules\raw-body\index.js:227:7)
+    at IncomingMessage.onEnd (C:\OneTalent\node_modules\raw-body\index.js:287:7) {
+  issues: [
+    {
+      code: 'invalid_type',
+      expected: 'number',
+      received: 'undefined',
+      path: [Array],
+      message: 'Required'
+    }
+  ],
+  addIssue: [Function (anonymous)],
+  addIssues: [Function (anonymous)],
+  errors: [
+    {
+      code: 'invalid_type',
+      expected: 'number',
+      received: 'undefined',
+      path: [Array],
+      message: 'Required'
+    }
+  ]
+}
+10:09:33 PM [express] POST /api/sidak-kecepatan/f3460e13-4b10-4826-97a1-e1fd281620b2/records 400 in 2…
+Error adding record: ZodError: [
+  {
+    "code": "invalid_type",
+    "expected": "number",
+    "received": "undefined",
+    "path": [
+      "ordinal"
+    ],
+    "message": "Required"
+  }
+]
+    at get error [as error] (file:///C:/OneTalent/node_modules/zod/v3/types.js:39:31)
+    at ZodObject.parse (file:///C:/OneTalent/node_modules/zod/v3/types.js:114:22)
+    at <anonymous> (C:\OneTalent\server\routes.ts:4834:62)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at next (C:\OneTalent\node_modules\express\lib\router\route.js:149:13)
+    at Route.dispatch (C:\OneTalent\node_modules\express\lib\router\route.js:119:3)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:284:15
+    at param (C:\OneTalent\node_modules\express\lib\router\index.js:365:14)
+    at param (C:\OneTalent\node_modules\express\lib\router\index.js:376:14)
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:421:3)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at strategy.pass (C:\OneTalent\node_modules\passport\lib\middleware\authenticate.js:355:9)
+    at SessionStrategy.authenticate (C:\OneTalent\node_modules\passport\lib\strategies\session.js:126:10)
+    at attempt (C:\OneTalent\node_modules\passport\lib\middleware\authenticate.js:378:16)
+    at authenticate (C:\OneTalent\node_modules\passport\lib\middleware\authenticate.js:379:7)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\OneTalent\node_modules\express\lib\router\index.js:328:13)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:286:9
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at initialize (C:\OneTalent\node_modules\passport\lib\middleware\initialize.js:98:5)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\OneTalent\node_modules\express\lib\router\index.js:328:13)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:286:9
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at session (C:\OneTalent\node_modules\express-session\index.js:487:7)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\OneTalent\node_modules\express\lib\router\index.js:328:13)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:286:9
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at <anonymous> (C:\OneTalent\server\index.ts:53:3)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\OneTalent\node_modules\express\lib\router\index.js:328:13)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:286:9
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at urlencodedParser (C:\OneTalent\node_modules\body-parser\lib\types\urlencoded.js:85:7)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\OneTalent\node_modules\express\lib\router\index.js:328:13)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:286:9
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at C:\OneTalent\node_modules\body-parser\lib\read.js:137:5
+    at AsyncResource.runInAsyncScope (node:async_hooks:206:9)
+    at invokeCallback (C:\OneTalent\node_modules\raw-body\index.js:238:16)
+    at done (C:\OneTalent\node_modules\raw-body\index.js:227:7)
+    at IncomingMessage.onEnd (C:\OneTalent\node_modules\raw-body\index.js:287:7) {
+  issues: [
+    {
+      code: 'invalid_type',
+      expected: 'number',
+      received: 'undefined',
+      path: [Array],
+      message: 'Required'
+    }
+  ],
+  addIssue: [Function (anonymous)],
+  addIssues: [Function (anonymous)],
+  errors: [
+    {
+      code: 'invalid_type',
+      expected: 'number',
+      received: 'undefined',
+      path: [Array],
+      message: 'Required'
+    }
+  ]
+}
+10:09:33 PM [express] POST /api/sidak-kecepatan/f3460e13-4b10-4826-97a1-e1fd281620b2/records 400 in 1…
+Error adding record: ZodError: [
+  {
+    "code": "invalid_type",
+    "expected": "number",
+    "received": "undefined",
+    "path": [
+      "ordinal"
+    ],
+    "message": "Required"
+  }
+]
+    at get error [as error] (file:///C:/OneTalent/node_modules/zod/v3/types.js:39:31)
+    at ZodObject.parse (file:///C:/OneTalent/node_modules/zod/v3/types.js:114:22)
+    at <anonymous> (C:\OneTalent\server\routes.ts:4834:62)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at next (C:\OneTalent\node_modules\express\lib\router\route.js:149:13)
+    at Route.dispatch (C:\OneTalent\node_modules\express\lib\router\route.js:119:3)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:284:15
+    at param (C:\OneTalent\node_modules\express\lib\router\index.js:365:14)
+    at param (C:\OneTalent\node_modules\express\lib\router\index.js:376:14)
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:421:3)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at strategy.pass (C:\OneTalent\node_modules\passport\lib\middleware\authenticate.js:355:9)
+    at SessionStrategy.authenticate (C:\OneTalent\node_modules\passport\lib\strategies\session.js:126:10)
+    at attempt (C:\OneTalent\node_modules\passport\lib\middleware\authenticate.js:378:16)
+    at authenticate (C:\OneTalent\node_modules\passport\lib\middleware\authenticate.js:379:7)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\OneTalent\node_modules\express\lib\router\index.js:328:13)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:286:9
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at initialize (C:\OneTalent\node_modules\passport\lib\middleware\initialize.js:98:5)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\OneTalent\node_modules\express\lib\router\index.js:328:13)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:286:9
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at session (C:\OneTalent\node_modules\express-session\index.js:487:7)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\OneTalent\node_modules\express\lib\router\index.js:328:13)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:286:9
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at <anonymous> (C:\OneTalent\server\index.ts:53:3)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\OneTalent\node_modules\express\lib\router\index.js:328:13)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:286:9
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at urlencodedParser (C:\OneTalent\node_modules\body-parser\lib\types\urlencoded.js:85:7)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\OneTalent\node_modules\express\lib\router\index.js:328:13)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:286:9
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at C:\OneTalent\node_modules\body-parser\lib\read.js:137:5
+    at AsyncResource.runInAsyncScope (node:async_hooks:206:9)
+    at invokeCallback (C:\OneTalent\node_modules\raw-body\index.js:238:16)
+    at done (C:\OneTalent\node_modules\raw-body\index.js:227:7)
+    at IncomingMessage.onEnd (C:\OneTalent\node_modules\raw-body\index.js:287:7) {
+  issues: [
+    {
+      code: 'invalid_type',
+      expected: 'number',
+      received: 'undefined',
+      path: [Array],
+      message: 'Required'
+    }
+  ],
+  addIssue: [Function (anonymous)],
+  addIssues: [Function (anonymous)],
+  errors: [
+    {
+      code: 'invalid_type',
+      expected: 'number',
+      received: 'undefined',
+      path: [Array],
+      message: 'Required'
+    }
+  ]
+}
+10:09:33 PM [express] POST /api/sidak-kecepatan/f3460e13-4b10-4826-97a1-e1fd281620b2/records 400 in 1…
+Error adding record: ZodError: [
+  {
+    "code": "invalid_type",
+    "expected": "number",
+    "received": "undefined",
+    "path": [
+      "ordinal"
+    ],
+    "message": "Required"
+  }
+]
+    at get error [as error] (file:///C:/OneTalent/node_modules/zod/v3/types.js:39:31)
+    at ZodObject.parse (file:///C:/OneTalent/node_modules/zod/v3/types.js:114:22)
+    at <anonymous> (C:\OneTalent\server\routes.ts:4834:62)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at next (C:\OneTalent\node_modules\express\lib\router\route.js:149:13)
+    at Route.dispatch (C:\OneTalent\node_modules\express\lib\router\route.js:119:3)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:284:15
+    at param (C:\OneTalent\node_modules\express\lib\router\index.js:365:14)
+    at param (C:\OneTalent\node_modules\express\lib\router\index.js:376:14)
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:421:3)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at strategy.pass (C:\OneTalent\node_modules\passport\lib\middleware\authenticate.js:355:9)
+    at SessionStrategy.authenticate (C:\OneTalent\node_modules\passport\lib\strategies\session.js:126:10)
+    at attempt (C:\OneTalent\node_modules\passport\lib\middleware\authenticate.js:378:16)
+    at authenticate (C:\OneTalent\node_modules\passport\lib\middleware\authenticate.js:379:7)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\OneTalent\node_modules\express\lib\router\index.js:328:13)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:286:9
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at initialize (C:\OneTalent\node_modules\passport\lib\middleware\initialize.js:98:5)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\OneTalent\node_modules\express\lib\router\index.js:328:13)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:286:9
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at session (C:\OneTalent\node_modules\express-session\index.js:487:7)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\OneTalent\node_modules\express\lib\router\index.js:328:13)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:286:9
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at <anonymous> (C:\OneTalent\server\index.ts:53:3)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\OneTalent\node_modules\express\lib\router\index.js:328:13)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:286:9
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at urlencodedParser (C:\OneTalent\node_modules\body-parser\lib\types\urlencoded.js:85:7)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\OneTalent\node_modules\express\lib\router\index.js:328:13)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:286:9
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at C:\OneTalent\node_modules\body-parser\lib\read.js:137:5
+    at AsyncResource.runInAsyncScope (node:async_hooks:206:9)
+    at invokeCallback (C:\OneTalent\node_modules\raw-body\index.js:238:16)
+    at done (C:\OneTalent\node_modules\raw-body\index.js:227:7)
+    at IncomingMessage.onEnd (C:\OneTalent\node_modules\raw-body\index.js:287:7) {
+  issues: [
+    {
+      code: 'invalid_type',
+      expected: 'number',
+      received: 'undefined',
+      path: [Array],
+      message: 'Required'
+    }
+  ],
+  addIssue: [Function (anonymous)],
+  addIssues: [Function (anonymous)],
+  errors: [
+    {
+      code: 'invalid_type',
+      expected: 'number',
+      received: 'undefined',
+      path: [Array],
+      message: 'Required'
+    }
+  ]
+}
+10:09:33 PM [express] POST /api/sidak-kecepatan/f3460e13-4b10-4826-97a1-e1fd281620b2/records 400 in 3…
+10:38:54 PM [express] GET /api/auth/session 304 in 1ms :: {"authenticated":false,"user":null}
+🔐 Login attempt - Content-Type: application/json
+🔐 Login attempt - Request body: {"nik":"C-075768","password":"12345678"}
+🔐 Login attempt - Body type: object
+🔐 Looking up user with NIK: C-075768
+🔐 Attempting database lookup for NIK: C-075768
+🔐 DATABASE_URL exists: true
+🔐 Auth user lookup result: found
+🔐 Comparing password...
+🔐 Password comparison result: true
+🔐 Employee lookup result: found
+🔐 Session saved successfully
+🔐 Login success for: C-075768
+10:39:03 PM [express] POST /api/auth/login 200 in 4716ms :: {"message":"Login berhasil","user":{"nik"…
+10:39:06 PM [express] GET /api/dashboard/stats/2026-01-06 304 in 1641ms :: {"totalEmployees":323,"sch…
+10:39:06 PM [express] GET /api/dashboard/recent-activities/2026-01-06 304 in 1831ms :: []
+Error adding record: ZodError: [
+  {
+    "code": "invalid_type",
+    "expected": "number",
+    "received": "undefined",
+    "path": [
+      "ordinal"
+    ],
+    "message": "Required"
+  }
+]
+    at get error [as error] (file:///C:/OneTalent/node_modules/zod/v3/types.js:39:31)
+    at ZodObject.parse (file:///C:/OneTalent/node_modules/zod/v3/types.js:114:22)
+    at <anonymous> (C:\OneTalent\server\routes.ts:4834:62)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at next (C:\OneTalent\node_modules\express\lib\router\route.js:149:13)
+    at Route.dispatch (C:\OneTalent\node_modules\express\lib\router\route.js:119:3)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:284:15
+    at param (C:\OneTalent\node_modules\express\lib\router\index.js:365:14)
+    at param (C:\OneTalent\node_modules\express\lib\router\index.js:376:14)
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:421:3)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at strategy.pass (C:\OneTalent\node_modules\passport\lib\middleware\authenticate.js:355:9)
+    at SessionStrategy.authenticate (C:\OneTalent\node_modules\passport\lib\strategies\session.js:126:10)
+    at attempt (C:\OneTalent\node_modules\passport\lib\middleware\authenticate.js:378:16)
+    at authenticate (C:\OneTalent\node_modules\passport\lib\middleware\authenticate.js:379:7)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\OneTalent\node_modules\express\lib\router\index.js:328:13)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:286:9
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at initialize (C:\OneTalent\node_modules\passport\lib\middleware\initialize.js:98:5)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\OneTalent\node_modules\express\lib\router\index.js:328:13)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:286:9
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at session (C:\OneTalent\node_modules\express-session\index.js:487:7)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\OneTalent\node_modules\express\lib\router\index.js:328:13)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:286:9
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at <anonymous> (C:\OneTalent\server\index.ts:53:3)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\OneTalent\node_modules\express\lib\router\index.js:328:13)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:286:9
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at urlencodedParser (C:\OneTalent\node_modules\body-parser\lib\types\urlencoded.js:85:7)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\OneTalent\node_modules\express\lib\router\index.js:328:13)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:286:9
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at C:\OneTalent\node_modules\body-parser\lib\read.js:137:5
+    at AsyncResource.runInAsyncScope (node:async_hooks:206:9)
+    at invokeCallback (C:\OneTalent\node_modules\raw-body\index.js:238:16)
+    at done (C:\OneTalent\node_modules\raw-body\index.js:227:7)
+    at IncomingMessage.onEnd (C:\OneTalent\node_modules\raw-body\index.js:287:7) {
+  issues: [
+    {
+      code: 'invalid_type',
+      expected: 'number',
+      received: 'undefined',
+      path: [Array],
+      message: 'Required'
+    }
+  ],
+  addIssue: [Function (anonymous)],
+  addIssues: [Function (anonymous)],
+  errors: [
+    {
+      code: 'invalid_type',
+      expected: 'number',
+      received: 'undefined',
+      path: [Array],
+      message: 'Required'
+    }
+  ]
+}
+10:39:31 PM [express] POST /api/sidak-kecepatan/f3460e13-4b10-4826-97a1-e1fd281620b2/records 400 in 2…
+Error adding record: ZodError: [
+  {
+    "code": "invalid_type",
+    "expected": "number",
+    "received": "undefined",
+    "path": [
+      "ordinal"
+    ],
+    "message": "Required"
+  }
+]
+    at get error [as error] (file:///C:/OneTalent/node_modules/zod/v3/types.js:39:31)
+    at ZodObject.parse (file:///C:/OneTalent/node_modules/zod/v3/types.js:114:22)
+    at <anonymous> (C:\OneTalent\server\routes.ts:4834:62)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at next (C:\OneTalent\node_modules\express\lib\router\route.js:149:13)
+    at Route.dispatch (C:\OneTalent\node_modules\express\lib\router\route.js:119:3)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:284:15
+    at param (C:\OneTalent\node_modules\express\lib\router\index.js:365:14)
+    at param (C:\OneTalent\node_modules\express\lib\router\index.js:376:14)
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:421:3)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at strategy.pass (C:\OneTalent\node_modules\passport\lib\middleware\authenticate.js:355:9)
+    at SessionStrategy.authenticate (C:\OneTalent\node_modules\passport\lib\strategies\session.js:126:10)
+    at attempt (C:\OneTalent\node_modules\passport\lib\middleware\authenticate.js:378:16)
+    at authenticate (C:\OneTalent\node_modules\passport\lib\middleware\authenticate.js:379:7)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\OneTalent\node_modules\express\lib\router\index.js:328:13)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:286:9
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at initialize (C:\OneTalent\node_modules\passport\lib\middleware\initialize.js:98:5)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\OneTalent\node_modules\express\lib\router\index.js:328:13)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:286:9
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at session (C:\OneTalent\node_modules\express-session\index.js:487:7)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\OneTalent\node_modules\express\lib\router\index.js:328:13)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:286:9
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at <anonymous> (C:\OneTalent\server\index.ts:53:3)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\OneTalent\node_modules\express\lib\router\index.js:328:13)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:286:9
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at urlencodedParser (C:\OneTalent\node_modules\body-parser\lib\types\urlencoded.js:85:7)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\OneTalent\node_modules\express\lib\router\index.js:328:13)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:286:9
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at C:\OneTalent\node_modules\body-parser\lib\read.js:137:5
+    at AsyncResource.runInAsyncScope (node:async_hooks:206:9)
+    at invokeCallback (C:\OneTalent\node_modules\raw-body\index.js:238:16)
+    at done (C:\OneTalent\node_modules\raw-body\index.js:227:7)
+    at IncomingMessage.onEnd (C:\OneTalent\node_modules\raw-body\index.js:287:7) {
+  issues: [
+    {
+      code: 'invalid_type',
+      expected: 'number',
+      received: 'undefined',
+      path: [Array],
+      message: 'Required'
+    }
+  ],
+  addIssue: [Function (anonymous)],
+  addIssues: [Function (anonymous)],
+  errors: [
+    {
+      code: 'invalid_type',
+      expected: 'number',
+      received: 'undefined',
+      path: [Array],
+      message: 'Required'
+    }
+  ]
+}
+10:39:33 PM [express] POST /api/sidak-kecepatan/f3460e13-4b10-4826-97a1-e1fd281620b2/records 400 in 1…
+Error adding record: ZodError: [
+  {
+    "code": "invalid_type",
+    "expected": "number",
+    "received": "undefined",
+    "path": [
+      "ordinal"
+    ],
+    "message": "Required"
+  }
+]
+    at get error [as error] (file:///C:/OneTalent/node_modules/zod/v3/types.js:39:31)
+    at ZodObject.parse (file:///C:/OneTalent/node_modules/zod/v3/types.js:114:22)
+    at <anonymous> (C:\OneTalent\server\routes.ts:4834:62)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at next (C:\OneTalent\node_modules\express\lib\router\route.js:149:13)
+    at Route.dispatch (C:\OneTalent\node_modules\express\lib\router\route.js:119:3)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:284:15
+    at param (C:\OneTalent\node_modules\express\lib\router\index.js:365:14)
+    at param (C:\OneTalent\node_modules\express\lib\router\index.js:376:14)
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:421:3)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at strategy.pass (C:\OneTalent\node_modules\passport\lib\middleware\authenticate.js:355:9)
+    at SessionStrategy.authenticate (C:\OneTalent\node_modules\passport\lib\strategies\session.js:126:10)
+    at attempt (C:\OneTalent\node_modules\passport\lib\middleware\authenticate.js:378:16)
+    at authenticate (C:\OneTalent\node_modules\passport\lib\middleware\authenticate.js:379:7)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\OneTalent\node_modules\express\lib\router\index.js:328:13)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:286:9
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at initialize (C:\OneTalent\node_modules\passport\lib\middleware\initialize.js:98:5)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\OneTalent\node_modules\express\lib\router\index.js:328:13)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:286:9
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at session (C:\OneTalent\node_modules\express-session\index.js:487:7)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\OneTalent\node_modules\express\lib\router\index.js:328:13)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:286:9
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at <anonymous> (C:\OneTalent\server\index.ts:53:3)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\OneTalent\node_modules\express\lib\router\index.js:328:13)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:286:9
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at urlencodedParser (C:\OneTalent\node_modules\body-parser\lib\types\urlencoded.js:85:7)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\OneTalent\node_modules\express\lib\router\index.js:328:13)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:286:9
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at C:\OneTalent\node_modules\body-parser\lib\read.js:137:5
+    at AsyncResource.runInAsyncScope (node:async_hooks:206:9)
+    at invokeCallback (C:\OneTalent\node_modules\raw-body\index.js:238:16)
+    at done (C:\OneTalent\node_modules\raw-body\index.js:227:7)
+    at IncomingMessage.onEnd (C:\OneTalent\node_modules\raw-body\index.js:287:7) {
+  issues: [
+    {
+      code: 'invalid_type',
+      expected: 'number',
+      received: 'undefined',
+      path: [Array],
+      message: 'Required'
+    }
+  ],
+  addIssue: [Function (anonymous)],
+  addIssues: [Function (anonymous)],
+  errors: [
+    {
+      code: 'invalid_type',
+      expected: 'number',
+      received: 'undefined',
+      path: [Array],
+      message: 'Required'
+    }
+  ]
+}
+10:39:33 PM [express] POST /api/sidak-kecepatan/f3460e13-4b10-4826-97a1-e1fd281620b2/records 400 in 1…
+Error adding record: ZodError: [
+  {
+    "code": "invalid_type",
+    "expected": "number",
+    "received": "undefined",
+    "path": [
+      "ordinal"
+    ],
+    "message": "Required"
+  }
+]
+    at get error [as error] (file:///C:/OneTalent/node_modules/zod/v3/types.js:39:31)
+    at ZodObject.parse (file:///C:/OneTalent/node_modules/zod/v3/types.js:114:22)
+    at <anonymous> (C:\OneTalent\server\routes.ts:4834:62)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at next (C:\OneTalent\node_modules\express\lib\router\route.js:149:13)
+    at Route.dispatch (C:\OneTalent\node_modules\express\lib\router\route.js:119:3)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:284:15
+    at param (C:\OneTalent\node_modules\express\lib\router\index.js:365:14)
+    at param (C:\OneTalent\node_modules\express\lib\router\index.js:376:14)
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:421:3)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at strategy.pass (C:\OneTalent\node_modules\passport\lib\middleware\authenticate.js:355:9)
+    at SessionStrategy.authenticate (C:\OneTalent\node_modules\passport\lib\strategies\session.js:126:10)
+    at attempt (C:\OneTalent\node_modules\passport\lib\middleware\authenticate.js:378:16)
+    at authenticate (C:\OneTalent\node_modules\passport\lib\middleware\authenticate.js:379:7)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\OneTalent\node_modules\express\lib\router\index.js:328:13)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:286:9
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at initialize (C:\OneTalent\node_modules\passport\lib\middleware\initialize.js:98:5)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\OneTalent\node_modules\express\lib\router\index.js:328:13)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:286:9
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at session (C:\OneTalent\node_modules\express-session\index.js:487:7)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\OneTalent\node_modules\express\lib\router\index.js:328:13)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:286:9
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at <anonymous> (C:\OneTalent\server\index.ts:53:3)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\OneTalent\node_modules\express\lib\router\index.js:328:13)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:286:9
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at urlencodedParser (C:\OneTalent\node_modules\body-parser\lib\types\urlencoded.js:85:7)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\OneTalent\node_modules\express\lib\router\index.js:328:13)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:286:9
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at C:\OneTalent\node_modules\body-parser\lib\read.js:137:5
+    at AsyncResource.runInAsyncScope (node:async_hooks:206:9)
+    at invokeCallback (C:\OneTalent\node_modules\raw-body\index.js:238:16)
+    at done (C:\OneTalent\node_modules\raw-body\index.js:227:7)
+    at IncomingMessage.onEnd (C:\OneTalent\node_modules\raw-body\index.js:287:7) {
+  issues: [
+    {
+      code: 'invalid_type',
+      expected: 'number',
+      received: 'undefined',
+      path: [Array],
+      message: 'Required'
+    }
+  ],
+  addIssue: [Function (anonymous)],
+  addIssues: [Function (anonymous)],
+  errors: [
+    {
+      code: 'invalid_type',
+      expected: 'number',
+      received: 'undefined',
+      path: [Array],
+      message: 'Required'
+    }
+  ]
+}
+10:39:34 PM [express] POST /api/sidak-kecepatan/f3460e13-4b10-4826-97a1-e1fd281620b2/records 400 in 1…
+Error adding record: ZodError: [
+  {
+    "code": "invalid_type",
+    "expected": "number",
+    "received": "undefined",
+    "path": [
+      "ordinal"
+    ],
+    "message": "Required"
+  }
+]
+    at get error [as error] (file:///C:/OneTalent/node_modules/zod/v3/types.js:39:31)
+    at ZodObject.parse (file:///C:/OneTalent/node_modules/zod/v3/types.js:114:22)
+    at <anonymous> (C:\OneTalent\server\routes.ts:4834:62)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at next (C:\OneTalent\node_modules\express\lib\router\route.js:149:13)
+    at Route.dispatch (C:\OneTalent\node_modules\express\lib\router\route.js:119:3)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:284:15
+    at param (C:\OneTalent\node_modules\express\lib\router\index.js:365:14)
+    at param (C:\OneTalent\node_modules\express\lib\router\index.js:376:14)
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:421:3)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at strategy.pass (C:\OneTalent\node_modules\passport\lib\middleware\authenticate.js:355:9)
+    at SessionStrategy.authenticate (C:\OneTalent\node_modules\passport\lib\strategies\session.js:126:10)
+    at attempt (C:\OneTalent\node_modules\passport\lib\middleware\authenticate.js:378:16)
+    at authenticate (C:\OneTalent\node_modules\passport\lib\middleware\authenticate.js:379:7)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\OneTalent\node_modules\express\lib\router\index.js:328:13)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:286:9
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at initialize (C:\OneTalent\node_modules\passport\lib\middleware\initialize.js:98:5)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\OneTalent\node_modules\express\lib\router\index.js:328:13)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:286:9
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at session (C:\OneTalent\node_modules\express-session\index.js:487:7)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\OneTalent\node_modules\express\lib\router\index.js:328:13)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:286:9
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at <anonymous> (C:\OneTalent\server\index.ts:53:3)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\OneTalent\node_modules\express\lib\router\index.js:328:13)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:286:9
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at urlencodedParser (C:\OneTalent\node_modules\body-parser\lib\types\urlencoded.js:85:7)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\OneTalent\node_modules\express\lib\router\index.js:328:13)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:286:9
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at C:\OneTalent\node_modules\body-parser\lib\read.js:137:5
+    at AsyncResource.runInAsyncScope (node:async_hooks:206:9)
+    at invokeCallback (C:\OneTalent\node_modules\raw-body\index.js:238:16)
+    at done (C:\OneTalent\node_modules\raw-body\index.js:227:7)
+    at IncomingMessage.onEnd (C:\OneTalent\node_modules\raw-body\index.js:287:7) {
+  issues: [
+    {
+      code: 'invalid_type',
+      expected: 'number',
+      received: 'undefined',
+      path: [Array],
+      message: 'Required'
+    }
+  ],
+  addIssue: [Function (anonymous)],
+  addIssues: [Function (anonymous)],
+  errors: [
+    {
+      code: 'invalid_type',
+      expected: 'number',
+      received: 'undefined',
+      path: [Array],
+      message: 'Required'
+    }
+  ]
+}
+10:39:34 PM [express] POST /api/sidak-kecepatan/f3460e13-4b10-4826-97a1-e1fd281620b2/records 400 in 2…
+Error adding record: ZodError: [
+  {
+    "code": "invalid_type",
+    "expected": "number",
+    "received": "undefined",
+    "path": [
+      "ordinal"
+    ],
+    "message": "Required"
+  }
+]
+    at get error [as error] (file:///C:/OneTalent/node_modules/zod/v3/types.js:39:31)
+    at ZodObject.parse (file:///C:/OneTalent/node_modules/zod/v3/types.js:114:22)
+    at <anonymous> (C:\OneTalent\server\routes.ts:4834:62)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at next (C:\OneTalent\node_modules\express\lib\router\route.js:149:13)
+    at Route.dispatch (C:\OneTalent\node_modules\express\lib\router\route.js:119:3)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:284:15
+    at param (C:\OneTalent\node_modules\express\lib\router\index.js:365:14)
+    at param (C:\OneTalent\node_modules\express\lib\router\index.js:376:14)
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:421:3)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at strategy.pass (C:\OneTalent\node_modules\passport\lib\middleware\authenticate.js:355:9)
+    at SessionStrategy.authenticate (C:\OneTalent\node_modules\passport\lib\strategies\session.js:126:10)
+    at attempt (C:\OneTalent\node_modules\passport\lib\middleware\authenticate.js:378:16)
+    at authenticate (C:\OneTalent\node_modules\passport\lib\middleware\authenticate.js:379:7)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\OneTalent\node_modules\express\lib\router\index.js:328:13)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:286:9
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at initialize (C:\OneTalent\node_modules\passport\lib\middleware\initialize.js:98:5)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\OneTalent\node_modules\express\lib\router\index.js:328:13)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:286:9
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at session (C:\OneTalent\node_modules\express-session\index.js:487:7)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\OneTalent\node_modules\express\lib\router\index.js:328:13)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:286:9
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at <anonymous> (C:\OneTalent\server\index.ts:53:3)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\OneTalent\node_modules\express\lib\router\index.js:328:13)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:286:9
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at urlencodedParser (C:\OneTalent\node_modules\body-parser\lib\types\urlencoded.js:85:7)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\OneTalent\node_modules\express\lib\router\index.js:328:13)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:286:9
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at C:\OneTalent\node_modules\body-parser\lib\read.js:137:5
+    at AsyncResource.runInAsyncScope (node:async_hooks:206:9)
+    at invokeCallback (C:\OneTalent\node_modules\raw-body\index.js:238:16)
+    at done (C:\OneTalent\node_modules\raw-body\index.js:227:7)
+    at IncomingMessage.onEnd (C:\OneTalent\node_modules\raw-body\index.js:287:7) {
+  issues: [
+    {
+      code: 'invalid_type',
+      expected: 'number',
+      received: 'undefined',
+      path: [Array],
+      message: 'Required'
+    }
+  ],
+  addIssue: [Function (anonymous)],
+  addIssues: [Function (anonymous)],
+  errors: [
+    {
+      code: 'invalid_type',
+      expected: 'number',
+      received: 'undefined',
+      path: [Array],
+      message: 'Required'
+    }
+  ]
+}
+10:39:34 PM [express] POST /api/sidak-kecepatan/f3460e13-4b10-4826-97a1-e1fd281620b2/records 400 in 1…
+Error adding record: ZodError: [
+  {
+    "code": "invalid_type",
+    "expected": "number",
+    "received": "undefined",
+    "path": [
+      "ordinal"
+    ],
+    "message": "Required"
+  }
+]
+    at get error [as error] (file:///C:/OneTalent/node_modules/zod/v3/types.js:39:31)
+    at ZodObject.parse (file:///C:/OneTalent/node_modules/zod/v3/types.js:114:22)
+    at <anonymous> (C:\OneTalent\server\routes.ts:4834:62)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at next (C:\OneTalent\node_modules\express\lib\router\route.js:149:13)
+    at Route.dispatch (C:\OneTalent\node_modules\express\lib\router\route.js:119:3)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:284:15
+    at param (C:\OneTalent\node_modules\express\lib\router\index.js:365:14)
+    at param (C:\OneTalent\node_modules\express\lib\router\index.js:376:14)
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:421:3)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at strategy.pass (C:\OneTalent\node_modules\passport\lib\middleware\authenticate.js:355:9)
+    at SessionStrategy.authenticate (C:\OneTalent\node_modules\passport\lib\strategies\session.js:126:10)
+    at attempt (C:\OneTalent\node_modules\passport\lib\middleware\authenticate.js:378:16)
+    at authenticate (C:\OneTalent\node_modules\passport\lib\middleware\authenticate.js:379:7)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\OneTalent\node_modules\express\lib\router\index.js:328:13)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:286:9
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at initialize (C:\OneTalent\node_modules\passport\lib\middleware\initialize.js:98:5)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\OneTalent\node_modules\express\lib\router\index.js:328:13)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:286:9
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at session (C:\OneTalent\node_modules\express-session\index.js:487:7)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\OneTalent\node_modules\express\lib\router\index.js:328:13)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:286:9
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at <anonymous> (C:\OneTalent\server\index.ts:53:3)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\OneTalent\node_modules\express\lib\router\index.js:328:13)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:286:9
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at urlencodedParser (C:\OneTalent\node_modules\body-parser\lib\types\urlencoded.js:85:7)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\OneTalent\node_modules\express\lib\router\index.js:328:13)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:286:9
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at C:\OneTalent\node_modules\body-parser\lib\read.js:137:5
+    at AsyncResource.runInAsyncScope (node:async_hooks:206:9)
+    at invokeCallback (C:\OneTalent\node_modules\raw-body\index.js:238:16)
+    at done (C:\OneTalent\node_modules\raw-body\index.js:227:7)
+    at IncomingMessage.onEnd (C:\OneTalent\node_modules\raw-body\index.js:287:7) {
+  issues: [
+    {
+      code: 'invalid_type',
+      expected: 'number',
+      received: 'undefined',
+      path: [Array],
+      message: 'Required'
+    }
+  ],
+  addIssue: [Function (anonymous)],
+  addIssues: [Function (anonymous)],
+  errors: [
+    {
+      code: 'invalid_type',
+      expected: 'number',
+      received: 'undefined',
+      path: [Array],
+      message: 'Required'
+    }
+  ]
+}
+10:39:34 PM [express] POST /api/sidak-kecepatan/f3460e13-4b10-4826-97a1-e1fd281620b2/records 400 in 2…
+Error adding record: ZodError: [
+  {
+    "code": "invalid_type",
+    "expected": "number",
+    "received": "undefined",
+    "path": [
+      "ordinal"
+    ],
+    "message": "Required"
+  }
+]
+    at get error [as error] (file:///C:/OneTalent/node_modules/zod/v3/types.js:39:31)
+    at ZodObject.parse (file:///C:/OneTalent/node_modules/zod/v3/types.js:114:22)
+    at <anonymous> (C:\OneTalent\server\routes.ts:4834:62)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at next (C:\OneTalent\node_modules\express\lib\router\route.js:149:13)
+    at Route.dispatch (C:\OneTalent\node_modules\express\lib\router\route.js:119:3)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:284:15
+    at param (C:\OneTalent\node_modules\express\lib\router\index.js:365:14)
+    at param (C:\OneTalent\node_modules\express\lib\router\index.js:376:14)
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:421:3)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at strategy.pass (C:\OneTalent\node_modules\passport\lib\middleware\authenticate.js:355:9)
+    at SessionStrategy.authenticate (C:\OneTalent\node_modules\passport\lib\strategies\session.js:126:10)
+    at attempt (C:\OneTalent\node_modules\passport\lib\middleware\authenticate.js:378:16)
+    at authenticate (C:\OneTalent\node_modules\passport\lib\middleware\authenticate.js:379:7)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\OneTalent\node_modules\express\lib\router\index.js:328:13)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:286:9
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at initialize (C:\OneTalent\node_modules\passport\lib\middleware\initialize.js:98:5)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\OneTalent\node_modules\express\lib\router\index.js:328:13)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:286:9
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at session (C:\OneTalent\node_modules\express-session\index.js:487:7)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\OneTalent\node_modules\express\lib\router\index.js:328:13)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:286:9
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at <anonymous> (C:\OneTalent\server\index.ts:53:3)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\OneTalent\node_modules\express\lib\router\index.js:328:13)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:286:9
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at urlencodedParser (C:\OneTalent\node_modules\body-parser\lib\types\urlencoded.js:85:7)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\OneTalent\node_modules\express\lib\router\index.js:328:13)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:286:9
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at C:\OneTalent\node_modules\body-parser\lib\read.js:137:5
+    at AsyncResource.runInAsyncScope (node:async_hooks:206:9)
+    at invokeCallback (C:\OneTalent\node_modules\raw-body\index.js:238:16)
+    at done (C:\OneTalent\node_modules\raw-body\index.js:227:7)
+    at IncomingMessage.onEnd (C:\OneTalent\node_modules\raw-body\index.js:287:7) {
+  issues: [
+    {
+      code: 'invalid_type',
+      expected: 'number',
+      received: 'undefined',
+      path: [Array],
+      message: 'Required'
+    }
+  ],
+  addIssue: [Function (anonymous)],
+  addIssues: [Function (anonymous)],
+  errors: [
+    {
+      code: 'invalid_type',
+      expected: 'number',
+      received: 'undefined',
+      path: [Array],
+      message: 'Required'
+    }
+  ]
+}
+10:39:34 PM [express] POST /api/sidak-kecepatan/f3460e13-4b10-4826-97a1-e1fd281620b2/records 400 in 2…
+Error adding record: ZodError: [
+  {
+    "code": "invalid_type",
+    "expected": "number",
+    "received": "undefined",
+    "path": [
+      "ordinal"
+    ],
+    "message": "Required"
+  }
+]
+    at get error [as error] (file:///C:/OneTalent/node_modules/zod/v3/types.js:39:31)
+    at ZodObject.parse (file:///C:/OneTalent/node_modules/zod/v3/types.js:114:22)
+    at <anonymous> (C:\OneTalent\server\routes.ts:4834:62)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at next (C:\OneTalent\node_modules\express\lib\router\route.js:149:13)
+    at Route.dispatch (C:\OneTalent\node_modules\express\lib\router\route.js:119:3)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:284:15
+    at param (C:\OneTalent\node_modules\express\lib\router\index.js:365:14)
+    at param (C:\OneTalent\node_modules\express\lib\router\index.js:376:14)
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:421:3)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at strategy.pass (C:\OneTalent\node_modules\passport\lib\middleware\authenticate.js:355:9)
+    at SessionStrategy.authenticate (C:\OneTalent\node_modules\passport\lib\strategies\session.js:126:10)
+    at attempt (C:\OneTalent\node_modules\passport\lib\middleware\authenticate.js:378:16)
+    at authenticate (C:\OneTalent\node_modules\passport\lib\middleware\authenticate.js:379:7)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\OneTalent\node_modules\express\lib\router\index.js:328:13)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:286:9
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at initialize (C:\OneTalent\node_modules\passport\lib\middleware\initialize.js:98:5)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\OneTalent\node_modules\express\lib\router\index.js:328:13)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:286:9
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at session (C:\OneTalent\node_modules\express-session\index.js:487:7)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\OneTalent\node_modules\express\lib\router\index.js:328:13)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:286:9
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at <anonymous> (C:\OneTalent\server\index.ts:53:3)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\OneTalent\node_modules\express\lib\router\index.js:328:13)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:286:9
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at urlencodedParser (C:\OneTalent\node_modules\body-parser\lib\types\urlencoded.js:85:7)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\OneTalent\node_modules\express\lib\router\index.js:328:13)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:286:9
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at C:\OneTalent\node_modules\body-parser\lib\read.js:137:5
+    at AsyncResource.runInAsyncScope (node:async_hooks:206:9)
+    at invokeCallback (C:\OneTalent\node_modules\raw-body\index.js:238:16)
+    at done (C:\OneTalent\node_modules\raw-body\index.js:227:7)
+    at IncomingMessage.onEnd (C:\OneTalent\node_modules\raw-body\index.js:287:7) {
+  issues: [
+    {
+      code: 'invalid_type',
+      expected: 'number',
+      received: 'undefined',
+      path: [Array],
+      message: 'Required'
+    }
+  ],
+  addIssue: [Function (anonymous)],
+  addIssues: [Function (anonymous)],
+  errors: [
+    {
+      code: 'invalid_type',
+      expected: 'number',
+      received: 'undefined',
+      path: [Array],
+      message: 'Required'
+    }
+  ]
+}
+10:39:35 PM [express] POST /api/sidak-kecepatan/f3460e13-4b10-4826-97a1-e1fd281620b2/records 400 in 2…
+Error adding record: ZodError: [
+  {
+    "code": "invalid_type",
+    "expected": "number",
+    "received": "undefined",
+    "path": [
+      "ordinal"
+    ],
+    "message": "Required"
+  }
+]
+    at get error [as error] (file:///C:/OneTalent/node_modules/zod/v3/types.js:39:31)
+    at ZodObject.parse (file:///C:/OneTalent/node_modules/zod/v3/types.js:114:22)
+    at <anonymous> (C:\OneTalent\server\routes.ts:4834:62)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at next (C:\OneTalent\node_modules\express\lib\router\route.js:149:13)
+    at Route.dispatch (C:\OneTalent\node_modules\express\lib\router\route.js:119:3)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:284:15
+    at param (C:\OneTalent\node_modules\express\lib\router\index.js:365:14)
+    at param (C:\OneTalent\node_modules\express\lib\router\index.js:376:14)
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:421:3)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at strategy.pass (C:\OneTalent\node_modules\passport\lib\middleware\authenticate.js:355:9)
+    at SessionStrategy.authenticate (C:\OneTalent\node_modules\passport\lib\strategies\session.js:126:10)
+    at attempt (C:\OneTalent\node_modules\passport\lib\middleware\authenticate.js:378:16)
+    at authenticate (C:\OneTalent\node_modules\passport\lib\middleware\authenticate.js:379:7)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\OneTalent\node_modules\express\lib\router\index.js:328:13)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:286:9
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at initialize (C:\OneTalent\node_modules\passport\lib\middleware\initialize.js:98:5)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\OneTalent\node_modules\express\lib\router\index.js:328:13)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:286:9
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at session (C:\OneTalent\node_modules\express-session\index.js:487:7)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\OneTalent\node_modules\express\lib\router\index.js:328:13)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:286:9
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at <anonymous> (C:\OneTalent\server\index.ts:53:3)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\OneTalent\node_modules\express\lib\router\index.js:328:13)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:286:9
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at urlencodedParser (C:\OneTalent\node_modules\body-parser\lib\types\urlencoded.js:85:7)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\OneTalent\node_modules\express\lib\router\index.js:328:13)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:286:9
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at C:\OneTalent\node_modules\body-parser\lib\read.js:137:5
+    at AsyncResource.runInAsyncScope (node:async_hooks:206:9)
+    at invokeCallback (C:\OneTalent\node_modules\raw-body\index.js:238:16)
+    at done (C:\OneTalent\node_modules\raw-body\index.js:227:7)
+    at IncomingMessage.onEnd (C:\OneTalent\node_modules\raw-body\index.js:287:7) {
+  issues: [
+    {
+      code: 'invalid_type',
+      expected: 'number',
+      received: 'undefined',
+      path: [Array],
+      message: 'Required'
+    }
+  ],
+  addIssue: [Function (anonymous)],
+  addIssues: [Function (anonymous)],
+  errors: [
+    {
+      code: 'invalid_type',
+      expected: 'number',
+      received: 'undefined',
+      path: [Array],
+      message: 'Required'
+    }
+  ]
+}
+10:39:35 PM [express] POST /api/sidak-kecepatan/f3460e13-4b10-4826-97a1-e1fd281620b2/records 400 in 2…
+Error adding record: ZodError: [
+  {
+    "code": "invalid_type",
+    "expected": "number",
+    "received": "undefined",
+    "path": [
+      "ordinal"
+    ],
+    "message": "Required"
+  }
+]
+    at get error [as error] (file:///C:/OneTalent/node_modules/zod/v3/types.js:39:31)
+    at ZodObject.parse (file:///C:/OneTalent/node_modules/zod/v3/types.js:114:22)
+    at <anonymous> (C:\OneTalent\server\routes.ts:4834:62)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at next (C:\OneTalent\node_modules\express\lib\router\route.js:149:13)
+    at Route.dispatch (C:\OneTalent\node_modules\express\lib\router\route.js:119:3)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:284:15
+    at param (C:\OneTalent\node_modules\express\lib\router\index.js:365:14)
+    at param (C:\OneTalent\node_modules\express\lib\router\index.js:376:14)
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:421:3)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at strategy.pass (C:\OneTalent\node_modules\passport\lib\middleware\authenticate.js:355:9)
+    at SessionStrategy.authenticate (C:\OneTalent\node_modules\passport\lib\strategies\session.js:126:10)
+    at attempt (C:\OneTalent\node_modules\passport\lib\middleware\authenticate.js:378:16)
+    at authenticate (C:\OneTalent\node_modules\passport\lib\middleware\authenticate.js:379:7)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\OneTalent\node_modules\express\lib\router\index.js:328:13)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:286:9
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at initialize (C:\OneTalent\node_modules\passport\lib\middleware\initialize.js:98:5)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\OneTalent\node_modules\express\lib\router\index.js:328:13)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:286:9
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at session (C:\OneTalent\node_modules\express-session\index.js:487:7)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\OneTalent\node_modules\express\lib\router\index.js:328:13)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:286:9
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at <anonymous> (C:\OneTalent\server\index.ts:53:3)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\OneTalent\node_modules\express\lib\router\index.js:328:13)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:286:9
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at urlencodedParser (C:\OneTalent\node_modules\body-parser\lib\types\urlencoded.js:85:7)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\OneTalent\node_modules\express\lib\router\index.js:328:13)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:286:9
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at C:\OneTalent\node_modules\body-parser\lib\read.js:137:5
+    at AsyncResource.runInAsyncScope (node:async_hooks:206:9)
+    at invokeCallback (C:\OneTalent\node_modules\raw-body\index.js:238:16)
+    at done (C:\OneTalent\node_modules\raw-body\index.js:227:7)
+    at IncomingMessage.onEnd (C:\OneTalent\node_modules\raw-body\index.js:287:7) {
+  issues: [
+    {
+      code: 'invalid_type',
+      expected: 'number',
+      received: 'undefined',
+      path: [Array],
+      message: 'Required'
+    }
+  ],
+  addIssue: [Function (anonymous)],
+  addIssues: [Function (anonymous)],
+  errors: [
+    {
+      code: 'invalid_type',
+      expected: 'number',
+      received: 'undefined',
+      path: [Array],
+      message: 'Required'
+    }
+  ]
+}
+10:39:35 PM [express] POST /api/sidak-kecepatan/f3460e13-4b10-4826-97a1-e1fd281620b2/records 400 in 1…
+Error adding record: ZodError: [
+  {
+    "code": "invalid_type",
+    "expected": "number",
+    "received": "undefined",
+    "path": [
+      "ordinal"
+    ],
+    "message": "Required"
+  }
+]
+    at get error [as error] (file:///C:/OneTalent/node_modules/zod/v3/types.js:39:31)
+    at ZodObject.parse (file:///C:/OneTalent/node_modules/zod/v3/types.js:114:22)
+    at <anonymous> (C:\OneTalent\server\routes.ts:4834:62)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at next (C:\OneTalent\node_modules\express\lib\router\route.js:149:13)
+    at Route.dispatch (C:\OneTalent\node_modules\express\lib\router\route.js:119:3)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:284:15
+    at param (C:\OneTalent\node_modules\express\lib\router\index.js:365:14)
+    at param (C:\OneTalent\node_modules\express\lib\router\index.js:376:14)
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:421:3)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at strategy.pass (C:\OneTalent\node_modules\passport\lib\middleware\authenticate.js:355:9)
+    at SessionStrategy.authenticate (C:\OneTalent\node_modules\passport\lib\strategies\session.js:126:10)
+    at attempt (C:\OneTalent\node_modules\passport\lib\middleware\authenticate.js:378:16)
+    at authenticate (C:\OneTalent\node_modules\passport\lib\middleware\authenticate.js:379:7)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\OneTalent\node_modules\express\lib\router\index.js:328:13)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:286:9
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at initialize (C:\OneTalent\node_modules\passport\lib\middleware\initialize.js:98:5)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\OneTalent\node_modules\express\lib\router\index.js:328:13)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:286:9
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at session (C:\OneTalent\node_modules\express-session\index.js:487:7)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\OneTalent\node_modules\express\lib\router\index.js:328:13)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:286:9
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at <anonymous> (C:\OneTalent\server\index.ts:53:3)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\OneTalent\node_modules\express\lib\router\index.js:328:13)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:286:9
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at urlencodedParser (C:\OneTalent\node_modules\body-parser\lib\types\urlencoded.js:85:7)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\OneTalent\node_modules\express\lib\router\index.js:328:13)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:286:9
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at C:\OneTalent\node_modules\body-parser\lib\read.js:137:5
+    at AsyncResource.runInAsyncScope (node:async_hooks:206:9)
+    at invokeCallback (C:\OneTalent\node_modules\raw-body\index.js:238:16)
+    at done (C:\OneTalent\node_modules\raw-body\index.js:227:7)
+    at IncomingMessage.onEnd (C:\OneTalent\node_modules\raw-body\index.js:287:7) {
+  issues: [
+    {
+      code: 'invalid_type',
+      expected: 'number',
+      received: 'undefined',
+      path: [Array],
+      message: 'Required'
+    }
+  ],
+  addIssue: [Function (anonymous)],
+  addIssues: [Function (anonymous)],
+  errors: [
+    {
+      code: 'invalid_type',
+      expected: 'number',
+      received: 'undefined',
+      path: [Array],
+      message: 'Required'
+    }
+  ]
+}
+10:39:35 PM [express] POST /api/sidak-kecepatan/f3460e13-4b10-4826-97a1-e1fd281620b2/records 400 in 2…
+Error adding record: ZodError: [
+  {
+    "code": "invalid_type",
+    "expected": "number",
+    "received": "undefined",
+    "path": [
+      "ordinal"
+    ],
+    "message": "Required"
+  }
+]
+    at get error [as error] (file:///C:/OneTalent/node_modules/zod/v3/types.js:39:31)
+    at ZodObject.parse (file:///C:/OneTalent/node_modules/zod/v3/types.js:114:22)
+    at <anonymous> (C:\OneTalent\server\routes.ts:4834:62)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at next (C:\OneTalent\node_modules\express\lib\router\route.js:149:13)
+    at Route.dispatch (C:\OneTalent\node_modules\express\lib\router\route.js:119:3)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:284:15
+    at param (C:\OneTalent\node_modules\express\lib\router\index.js:365:14)
+    at param (C:\OneTalent\node_modules\express\lib\router\index.js:376:14)
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:421:3)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at strategy.pass (C:\OneTalent\node_modules\passport\lib\middleware\authenticate.js:355:9)
+    at SessionStrategy.authenticate (C:\OneTalent\node_modules\passport\lib\strategies\session.js:126:10)
+    at attempt (C:\OneTalent\node_modules\passport\lib\middleware\authenticate.js:378:16)
+    at authenticate (C:\OneTalent\node_modules\passport\lib\middleware\authenticate.js:379:7)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\OneTalent\node_modules\express\lib\router\index.js:328:13)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:286:9
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at initialize (C:\OneTalent\node_modules\passport\lib\middleware\initialize.js:98:5)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\OneTalent\node_modules\express\lib\router\index.js:328:13)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:286:9
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at session (C:\OneTalent\node_modules\express-session\index.js:487:7)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\OneTalent\node_modules\express\lib\router\index.js:328:13)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:286:9
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at <anonymous> (C:\OneTalent\server\index.ts:53:3)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\OneTalent\node_modules\express\lib\router\index.js:328:13)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:286:9
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at urlencodedParser (C:\OneTalent\node_modules\body-parser\lib\types\urlencoded.js:85:7)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\OneTalent\node_modules\express\lib\router\index.js:328:13)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:286:9
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at C:\OneTalent\node_modules\body-parser\lib\read.js:137:5
+    at AsyncResource.runInAsyncScope (node:async_hooks:206:9)
+    at invokeCallback (C:\OneTalent\node_modules\raw-body\index.js:238:16)
+    at done (C:\OneTalent\node_modules\raw-body\index.js:227:7)
+    at IncomingMessage.onEnd (C:\OneTalent\node_modules\raw-body\index.js:287:7) {
+  issues: [
+    {
+      code: 'invalid_type',
+      expected: 'number',
+      received: 'undefined',
+      path: [Array],
+      message: 'Required'
+    }
+  ],
+  addIssue: [Function (anonymous)],
+  addIssues: [Function (anonymous)],
+  errors: [
+    {
+      code: 'invalid_type',
+      expected: 'number',
+      received: 'undefined',
+      path: [Array],
+      message: 'Required'
+    }
+  ]
+}
+10:39:35 PM [express] POST /api/sidak-kecepatan/f3460e13-4b10-4826-97a1-e1fd281620b2/records 400 in 1…
+Error adding record: ZodError: [
+  {
+    "code": "invalid_type",
+    "expected": "number",
+    "received": "undefined",
+    "path": [
+      "ordinal"
+    ],
+    "message": "Required"
+  }
+]
+    at get error [as error] (file:///C:/OneTalent/node_modules/zod/v3/types.js:39:31)
+    at ZodObject.parse (file:///C:/OneTalent/node_modules/zod/v3/types.js:114:22)
+    at <anonymous> (C:\OneTalent\server\routes.ts:4834:62)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at next (C:\OneTalent\node_modules\express\lib\router\route.js:149:13)
+    at Route.dispatch (C:\OneTalent\node_modules\express\lib\router\route.js:119:3)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:284:15
+    at param (C:\OneTalent\node_modules\express\lib\router\index.js:365:14)
+    at param (C:\OneTalent\node_modules\express\lib\router\index.js:376:14)
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:421:3)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at strategy.pass (C:\OneTalent\node_modules\passport\lib\middleware\authenticate.js:355:9)
+    at SessionStrategy.authenticate (C:\OneTalent\node_modules\passport\lib\strategies\session.js:126:10)
+    at attempt (C:\OneTalent\node_modules\passport\lib\middleware\authenticate.js:378:16)
+    at authenticate (C:\OneTalent\node_modules\passport\lib\middleware\authenticate.js:379:7)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\OneTalent\node_modules\express\lib\router\index.js:328:13)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:286:9
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at initialize (C:\OneTalent\node_modules\passport\lib\middleware\initialize.js:98:5)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\OneTalent\node_modules\express\lib\router\index.js:328:13)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:286:9
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at session (C:\OneTalent\node_modules\express-session\index.js:487:7)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\OneTalent\node_modules\express\lib\router\index.js:328:13)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:286:9
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at <anonymous> (C:\OneTalent\server\index.ts:53:3)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\OneTalent\node_modules\express\lib\router\index.js:328:13)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:286:9
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at urlencodedParser (C:\OneTalent\node_modules\body-parser\lib\types\urlencoded.js:85:7)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\OneTalent\node_modules\express\lib\router\index.js:328:13)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:286:9
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at C:\OneTalent\node_modules\body-parser\lib\read.js:137:5
+    at AsyncResource.runInAsyncScope (node:async_hooks:206:9)
+    at invokeCallback (C:\OneTalent\node_modules\raw-body\index.js:238:16)
+    at done (C:\OneTalent\node_modules\raw-body\index.js:227:7)
+    at IncomingMessage.onEnd (C:\OneTalent\node_modules\raw-body\index.js:287:7) {
+  issues: [
+    {
+      code: 'invalid_type',
+      expected: 'number',
+      received: 'undefined',
+      path: [Array],
+      message: 'Required'
+    }
+  ],
+  addIssue: [Function (anonymous)],
+  addIssues: [Function (anonymous)],
+  errors: [
+    {
+      code: 'invalid_type',
+      expected: 'number',
+      received: 'undefined',
+      path: [Array],
+      message: 'Required'
+    }
+  ]
+}
+10:39:35 PM [express] POST /api/sidak-kecepatan/f3460e13-4b10-4826-97a1-e1fd281620b2/records 400 in 2…
+10:39:37 PM [express] GET /api/auth/session 200 in 1ms :: {"authenticated":false,"user":null}
+🔐 Login attempt - Content-Type: application/json
+🔐 Login attempt - Request body: {"nik":"C-075768","password":"12345678"}
+🔐 Login attempt - Body type: object
+🔐 Looking up user with NIK: C-075768
+🔐 Attempting database lookup for NIK: C-075768
+🔐 DATABASE_URL exists: true
+🔐 Auth user lookup result: found
+🔐 Comparing password...
+🔐 Password comparison result: true
+🔐 Employee lookup result: found
+🔐 Session saved successfully
+🔐 Login success for: C-075768
+10:39:42 PM [express] POST /api/auth/login 200 in 4025ms :: {"message":"Login berhasil","user":{"nik"…
+10:39:44 PM [express] GET /api/dashboard/stats/2026-01-06 304 in 1567ms :: {"totalEmployees":323,"sch…
+10:39:44 PM [express] GET /api/dashboard/recent-activities/2026-01-06 304 in 1843ms :: []
+[2m22.40.47[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/employees.tsx, /src/index.css?v=lu09df_J0DODmQiN-FK3S, /src/pages/leave.tsx, /src/pages/documents.tsx, /src/pages/roster.tsx, /src/pages/simper-monitoring.tsx[22m
+[2m22.40.48[22m [31m[1m[vite][22m[39m Pre-transform error: Transform failed with 12 errors:
+C:/OneTalent/shared/schema.ts:1324:13: ERROR: Multiple exports with the same name "sidakKecepatanSessions"
+C:/OneTalent/shared/schema.ts:1324:13: ERROR: The symbol "sidakKecepatanSessions" has already been declared
+C:/OneTalent/shared/schema.ts:1340:13: ERROR: Multiple exports with the same name "sidakKecepatanRecords"
+C:/OneTalent/shared/schema.ts:1340:13: ERROR: The symbol "sidakKecepatanRecords" has already been declared
+C:/OneTalent/shared/schema.ts:1356:13: ERROR: Multiple exports with the same name "sidakKecepatanObservers"
+...

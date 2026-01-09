@@ -1,0 +1,32 @@
+
+> rest-express@1.0.0 dev
+> tsx server/index.ts
+
+✅ Database connection initialized successfully
+⚠️ Push notification service: VAPID keys not configured
+SERVER RESTARTING... UPDATED ROUTES LOADING...
+Skipping Replit Auth setup (REPLIT_DOMAINS or REPL_ID not set)
+⚠️ Email credentials not configured. Email notifications disabled.
+Cron jobs initialized for leave monitoring
+⚠️ SIMPER notification email service: INACTIVE (credentials not configured)
+DEBUG: process.env.PORT is: undefined
+node:events:496
+      throw er; // Unhandled 'error' event
+      ^
+
+Error: listen EADDRINUSE: address already in use 0.0.0.0:5003
+    at Server.setupListenHandle [as _listen2] (node:net:1908:16)
+    at listenInCluster (node:net:1965:12)
+    at doListen (node:net:2139:7)
+    at process.processTicksAndRejections (node:internal/process/task_queues:83:21)
+Emitted 'error' event on Server instance at:
+    at emitErrorNT (node:net:1944:8)
+    at process.processTicksAndRejections (node:internal/process/task_queues:82:21) {
+  code: 'EADDRINUSE',
+  errno: -4091,
+  syscall: 'listen',
+  address: '0.0.0.0',
+  port: 5003
+}
+
+Node.js v20.18.1

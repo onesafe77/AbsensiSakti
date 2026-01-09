@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Monitoring Kecepatan Validasi Alert Fatigue FMS Tahun 2026</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#D32F2F',
+                        dark: '#8E0000',
+                        bg: '#f3f4f6'
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Libraries -->
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+
+<body class="bg-bg text-gray-800 font-sans min-h-screen">
+
+    <!-- Header -->
+    <header class="bg-primary text-white p-4 shadow-lg sticky top-0 z-50">
+        <div class="container mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+            <div class="flex items-center gap-3">
+                <i data-lucide="activity" class="w-8 h-8"></i>
+                <div>
+                    <h1 class="text-xl font-bold uppercase tracking-wide">Dashboard Monitoring Kecepatan Validasi Alert
+                        Fatigue FMS 2026</h1>
+                    <p class="text-xs text-red-100 opacity-90">Timezone: WITA (Asia/Makassar) | Theme: Data Analysis</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-3">
+                <label for="fileInput"
+                    class="cursor-pointer bg-white text-primary px-4 py-2 rounded-lg font-bold hover:bg-red-50 transition flex items-center gap-2 shadow-sm">
+                    <i data-lucide="upload" class="w-4 h-4"></i> Upload Excel Data Mentah
+                </label>
+                <input type="file" id="fileInput" accept=".xlsx, .xls, .csv" class="hidden">
+                <button onclick="app.clearCache()"
+                    class="bg-dark text-white px-3 py-2 rounded-lg text-sm hover:bg-black/20 transition"
+                    title="Clear Roster & Cache">
+                    <i data-lucide="trash-2" class="w-4 h-4"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Progress Bar -->
+    <div id="progressContainer" class="hidden h-1 bg-gray-200">
+        <div id="progressBar" class="h-full bg-green-500 transition-all duration-300" style="width: 0%"></div>
+    </div>
+
+    <main class="container mx-auto p-4 space-y-6">
+
+        <!-- Controls & Filters -->
+        <section class="bg-white rounded-xl shadow p-4 grid grid-cols-1 md:grid-cols-4 lg:grid-cols-6 gap-4 items-end">
+            <div>
+                <label class="text-xs font-bold text-gray-500 uppercase">Input Roster Pengawas</label>
+                <button onclick="ui.toggleRosterModal()"
+                    class="w-full mt-1 bg-gray-100 hover:bg-gray-200 text-gray-700 py-2 rounded border border-gray-300 flex justify-center items-center gap-2 text-sm">
+                    <i data-lucide="users" class="w-4 h-4"></i> Kelola Roster
+                </button>
+            </div>
+            <!-- Filters populated by JS -->
+            <div>
+                <label class="text-xs font-bold text-gray-500 uppercase">Week</label>
+                <select id="filterWeek" class="w-full mt-1 border-gray-300 rounded text-sm p-2 bg-gray-50">
+                    <option value="all">Semua Week</option>
+                </select>
+            </div>
+            <div>
+                <label class="text-xs font-bold text-gray-500 uppercase">Shift</label>
+                <select id="filterShift" class="w-full mt-1 border-gray-300 rounded text-sm p-2 bg-gray-50">
+                    <option value="all">Semua Shift</option>
+                </select>
+            </div>
+            <div>
+                <label class="text-xs font-bold text-gray-500 uppercase">Pengawas FMS</label>
+                <select id="filterSupervisor" class="w-full mt-1 border-gray-300 rounded text-sm p-2 bg-gray-50">
+                    <option value="all">Semua Pengawas</option>
+                </select>
+            </div>
+            <div>
+                <label class="text-xs font-bold text-gray-500 uppercase">Kategori Validasi</label>
+                <select id="filterCategory" class="w-full mt-1 border-gray-300 rounded text-sm p-2 bg-gray-50">
+                    <option value="all">Semua Kategori</option>
+                </select>
+            </div>
+            <div>
+                <button onclick="app.applyFilters()"
+                    class="w-full bg-primary hover:bg-red-700 text-white py-2 rounded shadow font-bold flex justify-center items-center gap-2">
+                    <i data-lucide="filter" class="w-4 h-4"></i> Terapkan Filter
+                </button>
+            </div>
+        </section>
+
+        <!-- KPI Cards -->
+        <section class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div class="bg-white rounded-xl shadow p-4 border-l-4 border-red-600">
+                <div class="text-gray-500 text-xs font-bold uppercase mb-1">Total Alerts</div>
+                <div class="text-3xl font-extrabold text-gray-800" id="kpiTotal">0</div>
+            </div>
+            <div class="bg-white rounded-xl shadow p-4 border-l-4 border-green-500">
+                <div class="text-gray-500 text-xs font-bold uppercase mb-1">Sudah Validasi</div>
+                <div class="text-3xl font-extrabold text-green-600" id="kpiValidated">0</div>
+            </div>
+            <div class="bg-white rounded-xl shadow p-4 border-l-4 border-gray-400">
+                <div class="text-gray-500 text-xs font-bold uppercase mb-1">Belum Validasi</div>
+                <div class="text-3xl font-extrabold text-gray-600" id="kpiUnvalidated">0</div>
+            </div>
+            <div class="bg-white rounded-xl shadow p-4 border-l-4 border-primary">
+                <div class="text-gray-500 text-xs font-bold uppercase mb-1">Temuan Slow (>5 Menit)</div>
+                <div class="text-3xl font-extrabold text-primary" id="kpiSlow">0</div>
+                <div class="text-xs text-red-400 mt-1" id="kpiSlowPct">(0%)</div>
+            </div>
+        </section>
+
+        <!-- Main Content Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Left Column: Charts -->
+            <div class="lg:col-span-2 space-y-6">
+                <!-- Trend Harian -->
+                <div class="bg-white rounded-xl shadow p-4">
+                    <h3 class="font-bold text-gray-700 mb-4 flex items-center gap-2"><i data-lucide="bar-chart-2"
+                            class="w-5 h-5 text-primary"></i> Trend Jam Validasi (0-23)</h3>
+                    <div class="h-64">
+                        <canvas id="chartHourly"></canvas>
+                    </div>
+                </div>
+
+                <!-- Breakdown Charts -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="bg-white rounded-xl shadow p-4">
+                        <h3 class="font-bold text-gray-700 mb-4 text-sm">Status Validasi</h3>
+                        <div class="h-48">
+                            <canvas id="chartStatus"></canvas>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-xl shadow p-4">
+                        <h3 class="font-bold text-gray-700 mb-4 text-sm">Top 5 Pengawas (Slow)</h3>
+                        <div class="h-48">
+                            <canvas id="chartSupervisor"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column: AI Notes & Roster Info -->
+            <div class="space-y-6">
+                <!-- AI Notes -->
+                <div class="bg-white rounded-xl shadow-lg border border-red-100 overflow-hidden flex flex-col h-full">
+                    <div class="bg-primary text-white p-4 flex justify-between items-center">
+                        <h3 class="font-bold flex items-center gap-2">
+                            <i data-lucide="bot" class="w-5 h-5"></i> AI Notes (Analisis Otomatis)
+                        </h3>
+                        <button onclick="ai.generate()"
+                            class="text-xs bg-white/20 hover:bg-white/30 px-2 py-1 rounded transition">Regenerate</button>
+                    </div>
+                    <div class="p-6 bg-red-50 flex-1 overflow-y-auto max-h-[600px] text-sm text-gray-800 leading-relaxed"
+                        id="aiContent">
+                        <div class="text-center text-gray-400 py-10 italic">
+                            Data belum diupload. Silakan upload Excel untuk melihat analisis otomatis.
+                        </div>
+                    </div>
+                    <div class="p-2 bg-gray-50 text-xs text-gray-400 text-center border-t" id="aiTimestamp">
+                        Last generated: -
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Roster Modal -->
+    <div id="rosterModal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-[100]">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg p-6 m-4 animate-[fadeIn_0.2s_ease-out]">
+            <div class="flex justify-between items-center mb-4 border-b pb-2">
+                <h3 class="font-bold text-lg">Kelola Roster Pengawas</h3>
+                <button onclick="ui.toggleRosterModal()" class="text-gray-400 hover:text-gray-600"><i data-lucide="x"
+                        class="w-6 h-6"></i></button>
+            </div>
+
+            <div class="mb-4">
+                <label class="block text-sm font-bold text-gray-700 mb-1">Pilih Week</label>
+                <select id="rosterWeekSelect" class="w-full border p-2 rounded" onchange="roster.loadForm()">
+                    <!-- Populated dynamically -->
+                </select>
+            </div>
+
+            <div class="space-y-3 mb-6">
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Pengawas Shift 1</label>
+                    <input type="text" id="rosterShift1" class="w-full border p-2 rounded"
+                        placeholder="Nama Pengawas Shift 1">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Pengawas Shift 2</label>
+                    <input type="text" id="rosterShift2" class="w-full border p-2 rounded"
+                        placeholder="Nama Pengawas Shift 2">
+                </div>
+            </div>
+
+            <div class="flex justify-end gap-2">
+                <button onclick="ui.toggleRosterModal()"
+                    class="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded">Batal</button>
+                <button onclick="roster.save(); ui.toggleRosterModal(); app.recompute();"
+                    class="px-4 py-2 bg-primary text-white rounded font-bold hover:bg-red-700">Simpan & Hitung
+                    Ulang</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- WORKER SCRIPT (Inline Blob) -->
+    <script id="worker-script" type="javascript/worker">
+self.onmessage = function(e) {
+    const { type, payload } = e.data;
+    if (type === 'PROCESS_DATA') {
+        processData(payload.rawData, payload.roster);
+    }
+};
+
+function processData(rows, roster) {
+    const buckets = {
+        total: 0,
+        validated: 0,
+        unvalidated: 0,
+        slow: 0,
+        byHour: {},
+        byCategory: {},
+        byWeek: {},
+        byShift: {},
+        bySupervisor: {},
+        bySupervisorSlow: {}
+    };
+
+    const processedRows = [];
+    let validCount = 0;
+
+    rows.forEach(row => {
+        // 1. Parsing (WITA assumed +8 UTC relative, or just parse string directly logic)
+        // Since input is Excel serial or string, we need robust parsing
+        // Assuming SheetJS returns raw values or formatted strings.
+        // We rely on standard JS Date parsing and assume input is "local" (WITA).
+        
+        // Helper to parse Excel time serial (fraction of day) or string HH:mm
+        // For simplicity in this demo, we assume SheetJS option `cellDates: true`
+        
+        let alertDate = new Date(row['Date']);
+        if (isNaN(alertDate)) return; // Skip invalid
+
+        let timeStr = row['Time'];
+        if (typeof timeStr === 'number') { 
+            // excel time fraction
+            const totalSeconds = Math.floor(timeStr * 86400);
+            const hrs = Math.floor(totalSeconds / 3600);
+            const min = Math.floor((totalSeconds % 3600) / 60);
+            const sec = totalSeconds % 60;
+            alertDate.setHours(hrs, min, sec);
+        } else if (typeof timeStr === 'string') {
+             // "HH:mm:ss"
+             const parts = timeStr.split(':');
+             if(parts.length >= 2) {
+                 alertDate.setHours(parseInt(parts[0]), parseInt(parts[1]), parts[2] ? parseInt(parts[2]) : 0);
+             }
+        }
+
+        // 2. Week Calculation (Custom)
+        // Anchor Sunday Logic
+        const oprDateStr = row['Date Opr'] || row['Date'];
+        const oprDate = new Date(oprDateStr);
+        if (isNaN(oprDate)) return; // Skip invalid
+        
+        const year = oprDate.getFullYear();
+        const jan1 = new Date(year, 0, 1);
+        const anchorSunday = new Date(jan1);
+        anchorSunday.setDate(jan1.getDate() - jan1.getDay()); // Go back to Sunday
+        
+        const diffTime = Math.abs(oprDate - anchorSunday);
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
+        const weekNum = Math.floor((diffDays - 1) / 7) + 1;
+
+        // 3. Mapping Roster
+        const shift = row['Shift'] ? row['Shift'].toString().toUpperCase() : 'UNKNOWN';
+        let supervisor = 'Belum Diset';
+        const rosterKey = `Week ${weekNum}`;
+        if (roster && roster[rosterKey]) {
+            if (shift.includes('1') || shift.includes('SIANG')) supervisor = roster[rosterKey]['Shift 1'] || 'Belum Diset';
+            else if (shift.includes('2') || shift.includes('MALAM')) supervisor = roster[rosterKey]['Shift 2'] || 'Belum Diset';
+        }
+
+        // 4. Validation Calculation
+        let slaSeconds = null;
+        let category = 'Belum Validasi';
+        let status = 'Unvalidated';
+        let validatedAt = null;
+
+        if (row['validated_at']) {
+            validatedAt = new Date(row['validated_at']);
+            if (!isNaN(validatedAt)) {
+                // simple subtraction in ms / 1000
+                // Assuming both are same timezone (WITA) or relative to each other
+                slaSeconds = (validatedAt - alertDate) / 1000;
+                
+                if (slaSeconds < 300) { category = 'Validasi < 5 Menit'; status = 'Fast'; }
+                else if (slaSeconds < 600) { category = 'Validasi > 5 Menit'; status = 'Slow'; }
+                else if (slaSeconds < 900) { category = 'Validasi > 10 Menit'; status = 'Slow'; }
+                else { category = 'Validasi > 15 Menit'; status = 'Slow'; }
+            }
+        }
+
+        // 5. Build Processed Row (for later filtering)
+        const pRow = {
+            week: weekNum,
+            shift: shift,
+            supervisor: supervisor,
+            category: category,
+            status: status,
+            slaSeconds: slaSeconds,
+            hour: validatedAt ? validatedAt.getHours() : alertDate.getHours(),
+            location: row['Location'],
+            vehicle: row['Vehicle No']
+        };
+        processedRows.push(pRow);
+        validCount++;
+    });
+
+    // 6. Return Processed Rows (Aggregation will happen in main thread for dynamic filtering simplicity? 
+    // Wait, requirement says "Compute-once". But filtering changes buckets.
+    // Better strategy: Return Processed Rows (Lightweight objects) and let Main Thread do Filter->Reduce.
+    // 10k rows * 100 bytes = 1MB. Safe for main thread RAM.
+    
+    self.postMessage({ type: 'DATA_PROCESSED', rows: processedRows, count: validCount });
+}
+</script>
+
+    <!-- MAIN APP SCRIPT -->
+    <script>
+        // --- APP STATE ---
+        const app = {
+            rawData: [], // Processed rows from worker
+            filteredData: [],
+            roster: {},
+            worker: null,
+
+            init: function () {
+                this.initWorker();
+                this.loadRoster();
+                this.setupEventListeners();
+                lucide.createIcons();
+
+                // Charts Init (Global Defaults)
+                Chart.defaults.font.family = 'ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont';
+                Chart.defaults.color = '#4b5563';
+            },
+
+            initWorker: function () {
+                const blob = new Blob([document.getElementById('worker-script').textContent], { type: "text/javascript" });
+                this.worker = new Worker(window.URL.createObjectURL(blob));
+
+                this.worker.onmessage = (e) => {
+                    const { type, rows, count } = e.data;
+                    if (type === 'DATA_PROCESSED') {
+                        this.rawData = rows;
+                        ui.toggleProgress(false);
+                        this.populateFilterOptions();
+                        this.applyFilters();
+                        alert(`Berhasil memproses ${count} baris data alert.`);
+                    }
+                };
+            },
+
+            loadRoster: function () {
+                const stored = localStorage.getItem('fms_roster_2026');
+                if (stored) {
+                    this.roster = JSON.parse(stored);
+                }
+            },
+
+            setupEventListeners: function () {
+                document.getElementById('fileInput').addEventListener('change', (e) => {
+                    const file = e.target.files[0];
+                    if (file) this.processFile(file);
+                });
+            },
+
+            processFile: function (file) {
+                ui.toggleProgress(true);
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array', cellDates: true });
+                    const firstSheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[firstSheetName];
+                    const json = XLSX.utils.sheet_to_json(worksheet);
+
+                    // Send to worker
+                    this.worker.postMessage({
+                        type: 'PROCESS_DATA',
+                        payload: { rawData: json, roster: this.roster }
+                    });
+                };
+                reader.readAsArrayBuffer(file);
+            },
+
+            clearCache: function () {
+                if (confirm("Hapus Roster & Cache?")) {
+                    localStorage.removeItem('fms_roster_2026');
+                    location.reload();
+                }
+            },
+
+            populateFilterOptions: function () {
+                // Get unique values
+                const weeks = [...new Set(this.rawData.map(r => r.week))].sort((a, b) => a - b);
+                const shifts = [...new Set(this.rawData.map(r => r.shift))].sort();
+                const supervisors = [...new Set(this.rawData.map(r => r.supervisor))].sort();
+                const categories = [...new Set(this.rawData.map(r => r.category))].sort();
+
+                ui.fillSelect('filterWeek', weeks, 'Week ');
+                ui.fillSelect('filterShift', shifts);
+                ui.fillSelect('filterSupervisor', supervisors);
+                ui.fillSelect('filterCategory', categories);
+
+                // Also populate Roster Week Select
+                ui.fillSelect('rosterWeekSelect', weeks, 'Week ');
+            },
+
+            applyFilters: function () {
+                const fWeek = document.getElementById('filterWeek').value;
+                const fShift = document.getElementById('filterShift').value;
+                const fSup = document.getElementById('filterSupervisor').value;
+                const fCat = document.getElementById('filterCategory').value;
+
+                this.filteredData = this.rawData.filter(row => {
+                    if (fWeek !== 'all' && row.week != fWeek) return false;
+                    if (fShift !== 'all' && row.shift != fShift) return false;
+                    if (fSup !== 'all' && row.supervisor != fSup) return false;
+                    if (fCat !== 'all' && row.category != fCat) return false;
+                    return true;
+                });
+
+                this.refreshDashboard();
+            },
+
+            recompute: function () {
+                // Rerun worker with new roster (without re-parsing file hopefully? 
+                // Ah, we can't maintain raw JSON in memory easily if very large. 
+                // Better to re-upload. BUT request says "Tombol Recompute tanpa re-parse".
+                // Implementation: We'll have to cache raw JSON or accept we need re-upload if file huge.
+                // For now, prompt re-upload since we optimized by dropping raw JSON in main.
+                // OR we rely on Processed Rows already having Keys, just need to re-map supervisor?
+                // Re-mapping supervisor is cheap.
+
+                // Re-map supervisors in place
+                this.rawData.forEach(row => {
+                    const rosterKey = `Week ${row.week}`;
+                    let newSup = 'Belum Diset';
+                    if (this.roster[rosterKey]) {
+                        if (row.shift.includes('1') || row.shift.includes('SIANG')) newSup = this.roster[rosterKey]['Shift 1'] || 'Belum Diset';
+                        else if (row.shift.includes('2') || row.shift.includes('MALAM')) newSup = this.roster[rosterKey]['Shift 2'] || 'Belum Diset';
+                    }
+                    row.supervisor = newSup;
+                });
+                this.populateFilterOptions(); // Update sup filter
+                this.applyFilters();
+                alert("Roster diperbarui & data dihitung ulang!");
+            },
+
+            refreshDashboard: function () {
+                // Aggregation on Filtered Data
+                const aggr = {
+                    total: this.filteredData.length,
+                    validated: 0,
+                    unvalidated: 0,
+                    slow: 0,
+                    hourly: Array(24).fill(0),
+                    status: {},
+                    supervisorSlow: {}
+                };
+
+                this.filteredData.forEach(row => {
+                    if (row.status === 'Unvalidated') aggr.unvalidated++;
+                    else {
+                        aggr.validated++;
+                        if (row.status === 'Slow') {
+                            aggr.slow++;
+                            aggr.supervisorSlow[row.supervisor] = (aggr.supervisorSlow[row.supervisor] || 0) + 1;
+                        }
+                    }
+                    aggr.hourly[row.hour]++;
+                    aggr.status[row.category] = (aggr.status[row.category] || 0) + 1;
+                });
+
+                // Update KPI
+                ui.updateText('kpiTotal', aggr.total.toLocaleString());
+                ui.updateText('kpiValidated', aggr.validated.toLocaleString());
+                ui.updateText('kpiUnvalidated', aggr.unvalidated.toLocaleString());
+                ui.updateText('kpiSlow', aggr.slow.toLocaleString());
+                const slowPct = aggr.validated > 0 ? ((aggr.slow / aggr.validated) * 100).toFixed(1) : 0;
+                ui.updateText('kpiSlowPct', `(${slowPct}%)`);
+
+                // Update Chart: Hourly
+                charts.updateHourly(aggr.hourly);
+                charts.updateStatus(aggr.status);
+                charts.updateSupervisor(aggr.supervisorSlow);
+
+                // Generate AI
+                setTimeout(() => ai.generate(), 500); // Debounce
+            }
+        };
+
+        // --- CHART CONTROLLER ---
+        const charts = {
+            hourlyChart: null,
+            statusChart: null,
+            supervisorChart: null,
+
+            updateHourly: function (data) {
+                const ctx = document.getElementById('chartHourly').getContext('2d');
+                if (this.hourlyChart) this.hourlyChart.destroy();
+                this.hourlyChart = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: Array.from({ length: 24 }, (_, i) => `${i}:00`),
+                        datasets: [{
+                            label: 'Jumlah Validasi',
+                            data: data,
+                            backgroundColor: '#D32F2F',
+                            borderRadius: 4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { display: false } }
+                    }
+                });
+            },
+
+            updateStatus: function (dataMap) {
+                const ctx = document.getElementById('chartStatus').getContext('2d');
+                if (this.statusChart) this.statusChart.destroy();
+                const labels = Object.keys(dataMap);
+                const data = Object.values(dataMap);
+                this.statusChart = new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            data: data,
+                            backgroundColor: ['#4caf50', '#ff9800', '#f44336', '#9e9e9e'] // Approx colors
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { position: 'right', labels: { boxWidth: 10 } } }
+                    }
+                });
+            },
+
+            updateSupervisor: function (dataMap) {
+                const ctx = document.getElementById('chartSupervisor').getContext('2d');
+                if (this.supervisorChart) this.supervisorChart.destroy();
+                // Sort top 5 desc
+                const sorted = Object.entries(dataMap).sort((a, b) => b[1] - a[1]).slice(0, 5);
+                this.supervisorChart = new Chart(ctx, {
+                    type: 'bar',
+                    indexAxis: 'y',
+                    data: {
+                        labels: sorted.map(d => d[0]),
+                        datasets: [{
+                            label: 'Validation > 5 Min',
+                            data: sorted.map(d => d[1]),
+                            backgroundColor: '#D32F2F',
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { display: false } }
+                    }
+                });
+            }
+        };
+
+        // --- UI CONTROLLER ---
+        const ui = {
+            toggleProgress: function (show) {
+                const el = document.getElementById('progressContainer');
+                const bar = document.getElementById('progressBar');
+                if (show) {
+                    el.classList.remove('hidden');
+                    bar.style.width = '100%'; // Fake progress for demo
+                } else {
+                    bar.style.width = '0%';
+                    setTimeout(() => el.classList.add('hidden'), 300);
+                }
+            },
+            fillSelect: function (id, items, prefix = '') {
+                const sel = document.getElementById(id);
+                // Save current value
+                const current = sel.value;
+                // Clear except first
+                while (sel.options.length > 1) sel.remove(1);
+
+                items.forEach(item => {
+                    const opt = document.createElement('option');
+                    opt.value = item;
+                    opt.text = prefix + item;
+                    sel.add(opt);
+                });
+
+                // Restore if exists
+                if (items.includes(current) || (typeof current === 'string' && items.includes(parseInt(current)))) {
+                    sel.value = current;
+                }
+            },
+            updateText: (id, text) => document.getElementById(id).innerText = text,
+            toggleRosterModal: () => document.getElementById('rosterModal').classList.toggle('hidden')
+        };
+
+        // --- ROSTER LOGIC ---
+        const roster = {
+            loadForm: function () {
+                const week = document.getElementById('rosterWeekSelect').value;
+                const weekKey = `Week ${week}`;
+                document.getElementById('rosterShift1').value = app.roster[weekKey]?.['Shift 1'] || '';
+                document.getElementById('rosterShift2').value = app.roster[weekKey]?.['Shift 2'] || '';
+            },
+            save: function () {
+                const week = document.getElementById('rosterWeekSelect').value;
+                if (!week || week === 'all') return;
+
+                const weekKey = `Week ${week}`;
+                const s1 = document.getElementById('rosterShift1').value;
+                const s2 = document.getElementById('rosterShift2').value;
+
+                if (!app.roster[weekKey]) app.roster[weekKey] = {};
+                app.roster[weekKey]['Shift 1'] = s1;
+                app.roster[weekKey]['Shift 2'] = s2;
+
+                localStorage.setItem('fms_roster_2026', JSON.stringify(app.roster));
+            }
+        };
+
+        // --- AI LOGIC (RULE BASED) ---
+        const ai = {
+            generate: function () {
+                const data = app.filteredData;
+                if (data.length === 0) return;
+
+                // 1. Executive Summary
+                const total = data.length;
+                const slow = data.filter(r => r.status === 'Slow').length;
+                const slowPct = ((slow / total) * 100).toFixed(1);
+
+                // 2. Hotspot Supervisor
+                const supMap = {};
+                data.filter(r => r.status === 'Slow').forEach(r => supMap[r.supervisor] = (supMap[r.supervisor] || 0) + 1);
+                const topSup = Object.entries(supMap).sort((a, b) => b[1] - a[1])[0];
+
+                let html = `
+                <div class="mb-4">
+                    <h4 class="font-bold text-red-800">Executive Summary</h4>
+                    <p>Dari total coverage <span class="font-bold">${total}</span> alert yang terfilter, ditemukan <span class="font-bold text-red-600">${slow} (${slowPct}%)</span> alert yang divalidasi melebihi SLA (>5 menit). Hal ini mengindikasikan ${slowPct > 10 ? 'adanya bottleneck yang signifikan' : 'performansi yang cukup terkendali'}.</p>
+                </div>
+                <div class="mb-4">
+                    <h4 class="font-bold text-red-800">Hotspot Analysis</h4>
+                    <ul class="list-disc pl-5 space-y-1">
+                        <li><b>Pengawas Dominan:</b> ${topSup ? `${topSup[0]} menyumbang ${topSup[1]} late validations.` : 'Tidak ada dominasi spesifik.'}</li>
+                        <li><b>Indikasi Jam Sibuk:</b> Analisa jam ${Math.max(...data.map(d => d.hour))}:00 menunjukkan tren.</li>
+                    </ul>
+                </div>
+                 <div>
+                    <h4 class="font-bold text-red-800">Recommendations</h4>
+                    <ul class="list-disc pl-5 space-y-1">
+                        <li>Lakukan coaching pada pengawas dengan tingkat keterlambatan tertinggi.</li>
+                        <li>Evaluasi beban kerja pada jam-jam puncak.</li>
+                    </ul>
+                </div>
+            `;
+
+                document.getElementById('aiContent').innerHTML = html;
+                document.getElementById('aiTimestamp').innerText = "Generated: " + new Date().toLocaleString('id-ID', { timeZone: 'Asia/Makassar' }) + " WITA";
+            }
+        };
+
+        // Initial Run
+        app.init();
+
+    </script>
+</body>
+
+</html>

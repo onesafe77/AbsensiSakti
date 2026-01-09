@@ -1,0 +1,27 @@
+✅ Database connection initialized successfully
+⚠️ Push notification service: VAPID keys not configured
+SERVER RESTARTING... UPDATED ROUTES LOADING...
+Skipping Replit Auth setup (REPLIT_DOMAINS or REPL_ID not set)
+⚠️ Email credentials not configured. Email notifications disabled.
+Cron jobs initialized for leave monitoring
+⚠️ SIMPER notification email service: INACTIVE (credentials not configured)
+node:events:497
+      throw er; // Unhandled 'error' event
+      ^
+
+Error: listen EADDRINUSE: address already in use 0.0.0.0:5000
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at node:net:2206:7
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21)
+Emitted 'error' event on Server instance at:
+    at emitErrorNT (node:net:1976:8)
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+  code: 'EADDRINUSE',
+  errno: -4091,
+  syscall: 'listen',
+  address: '0.0.0.0',
+  port: 5000
+}
+
+Node.js v22.19.0

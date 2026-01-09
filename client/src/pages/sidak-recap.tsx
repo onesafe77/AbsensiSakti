@@ -1,0 +1,2366 @@
+import { useQuery } from "@tanstack/react-query";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ImageWithFallback } from "@/components/ui/image-with-fallback";
+import {
+  ClipboardCheck,
+  Activity,
+  Calendar as CalendarIcon,
+  Users,
+  Download,
+  Filter,
+  BarChart3,
+  User,
+  Eye,
+  FileText,
+  Image,
+  MapPin,
+  Clock,
+  Building,
+  Signature,
+  Truck,
+  Maximize2,
+  Gauge,
+  Sun,
+  Lock,
+  Tablet,
+  PenTool
+} from "lucide-react";
+import { format } from "date-fns";
+import { id } from "date-fns/locale";
+import { useState, useMemo, useRef } from "react";
+import * as XLSX from "xlsx";
+import html2canvas from "html2canvas";
+import { jsPDF } from "jspdf";
+import { SeatbeltFormPreview } from "@/components/seatbelt-form-preview";
+import { Check, X } from "lucide-react";
+
+interface SidakSession {
+  id: string;
+  type: 'Fatigue' | 'Roster' | 'Seatbelt' | 'Rambu' | 'Antrian' | 'APD' | 'Jarak' | 'Kecepatan' | 'Pencahayaan' | 'LOTO' | 'Digital' | 'Workshop';
+  tanggal: string;
+  waktu: string;
+  shift: string;
+  lokasi: string;
+  departemen: string;
+  area: string | null;
+  perusahaan: string | null;
+  totalSampel: number;
+  observerCount: number;
+  observers: string;
+  createdBy: string | null;
+  supervisorName: string;
+  createdAt: string;
+}
+
+interface SupervisorStats {
+  name: string;
+  fatigue: number;
+  roster: number;
+  seatbelt: number;
+  rambu: number;
+  antrian: number;
+  apd: number;
+  jarak: number;
+  kecepatan: number;
+  pencahayaan: number;
+  loto: number;
+  digital: number;
+  workshop: number;
+  total: number;
+}
+
+interface RecapData {
+  sessions: SidakSession[];
+  stats: {
+    totalSidak: number;
+    totalFatigue: number;
+    totalRoster: number;
+    totalSeatbelt: number;
+    totalRambu: number;
+    totalAntrian: number;
+    totalApd: number;
+    totalJarak: number;
+    totalKecepatan: number;
+    totalPencahayaan: number;
+    totalLoto: number;
+    totalDigital: number;
+    totalWorkshop: number;
+    totalKaryawanDiperiksa: number;
+    supervisorStats: SupervisorStats[];
+  };
+}
+
+interface FatigueRecord {
+  id: string;
+  ordinal: number;
+  nama: string;
+  nik: string;
+  jabatan: string;
+  nomorLambung: string | null;
+  jamTidur: number;
+  konsumiObat: boolean;
+  masalahPribadi: boolean;
+  pemeriksaanRespon: boolean;
+  pemeriksaanKonsentrasi: boolean;
+  pemeriksaanKesehatan: boolean;
+  karyawanSiapBekerja: boolean;
+  fitUntukBekerja: boolean;
+  istirahatDanMonitor: boolean;
+  istirahatLebihdariSatuJam: boolean;
+  tidakBolehBekerja: boolean;
+  employeeSignature: string | null;
+}
+
+interface RosterRecord {
+  id: string;
+  ordinal: number;
+  nama: string;
+  nik: string;
+  nomorLambung: string | null;
+  rosterSesuai: boolean;
+  keterangan: string | null;
+}
+
+interface SeatbeltRecord {
+  id: string;
+  ordinal: number;
+  nama: string;
+  nik: string;
+  nomorLambung: string | null;
+  perusahaan: string;
+  seatbeltDriverCondition: boolean;
+  seatbeltPassengerCondition: boolean;
+  seatbeltDriverUsage: boolean;
+  seatbeltPassengerUsage: boolean;
+  keterangan: string | null;
+}
+
+interface RambuRecord {
+  id: string;
+  ordinal: number;
+  nama: string;
+  noKendaraan: string;
+  perusahaan: string;
+  rambuStop: boolean;
+  rambuGiveWay: boolean;
+  rambuKecepatanMax: boolean;
+  rambuLaranganMasuk: boolean;
+  rambuLaranganParkir: boolean;
+  rambuWajibHelm: boolean;
+  rambuLaranganUTurn: boolean;
+  keterangan: string | null;
+}
+
+interface JarakRecord {
+  id: string;
+  ordinal: number;
+  noKendaraan: string;
+  tipeUnit: string;
+  lokasiMuatan: string | null;
+  lokasiKosongan: string | null;
+  nomorLambungUnit: string | null;
+  jarakAktualKedua: string | null;
+  keterangan: string | null;
+}
+
+interface KecepatanRecord {
+  id: string;
+  ordinal: number;
+  noKendaraan: string;
+  tipeUnit: string;
+  arahMuatan: boolean;
+  arahKosongan: boolean;
+  kecepatanMph: string | null;
+  kecepatanKph: string | null;
+  keterangan: string | null;
+}
+
+interface PencahayaanRecord {
+  id: string;
+  ordinal: number;
+  titikPengambilan: string;
+  sumberPenerangan: string;
+  jenisPengukuran: string;
+  intensitasLux: number;
+  jarakDariSumber: string | null;
+  secaraVisual: string;
+  keterangan: string | null;
+}
+
+interface LotoRecord {
+  id: string;
+  ordinal: number;
+  namaKaryawan: string;
+  perusahaan: string;
+  jenisPekerjaan: string;
+  lokasiIsolasi: string;
+  nomorGembok: string;
+  jamPasang: string;
+  keterangan: string | null;
+}
+
+interface DigitalRecord {
+  id: string;
+  ordinal: number;
+  namaPengawas: string;
+  nik: string | null;
+  jabatan: string | null;
+  appUsage: boolean;
+  timelyReporting: boolean;
+  feedbackQuality: string | null;
+  keterangan: string | null;
+}
+
+interface WorkshopRecord {
+  id: string;
+  ordinal: number;
+  namaAlat: string;
+  kondisi: boolean;
+  kebersihan: boolean;
+  sertifikasi: boolean;
+  keterangan: string | null;
+}
+
+interface Observer {
+  id: string;
+  nama: string;
+  nik: string | null;
+  perusahaan: string | null;
+  jabatan: string | null;
+  tandaTangan: string | null;
+}
+
+interface SessionDetail {
+  session: SidakSession & {
+    waktuMulai?: string;
+    waktuSelesai?: string;
+    area?: string;
+    perusahaan?: string;
+    totalSampel?: number;
+    photos?: string[];
+  };
+  records: FatigueRecord[] | RosterRecord[] | SeatbeltRecord[] | RambuRecord[] | AntrianRecord[] | JarakRecord[] | KecepatanRecord[] | PencahayaanRecord[] | LotoRecord[] | DigitalRecord[] | WorkshopRecord[];
+  observers: Observer[];
+}
+
+const CheckIcon = ({ checked }: { checked: boolean }) => (
+  <span className={`text-lg font-bold ${checked ? 'text-green-600' : 'text-red-500'}`}>
+    {checked ? '✓' : '✗'}
+  </span>
+);
+
+function FatigueFormPreview({ session, records, observers }: {
+  session: SessionDetail['session'];
+  records: FatigueRecord[];
+  observers: Observer[]
+}) {
+  return (
+    <div className="space-y-4 p-4 bg-white text-black text-sm">
+      {/* Header */}
+      <div className="text-center border-b pb-3">
+        <h2 className="text-lg font-bold">FORM PEMERIKSAAN FATIGUE</h2>
+        <p className="text-gray-600">PT Borneo Indobara</p>
+      </div>
+
+      {/* Session Info */}
+      <div className="grid grid-cols-2 gap-4 text-sm border p-3 rounded">
+        <div><span className="font-semibold">Tanggal:</span> {session.tanggal}</div>
+        <div><span className="font-semibold">Shift:</span> {session.shift}</div>
+        <div><span className="font-semibold">Waktu Mulai:</span> {session.waktuMulai}</div>
+        <div><span className="font-semibold">Waktu Selesai:</span> {session.waktuSelesai}</div>
+        <div><span className="font-semibold">Lokasi:</span> {session.lokasi}</div>
+        <div><span className="font-semibold">Area:</span> {session.area}</div>
+        <div><span className="font-semibold">Departemen:</span> {session.departemen}</div>
+        <div><span className="font-semibold">Supervisor:</span> {session.supervisorName}</div>
+      </div>
+
+      {/* Records Table */}
+      <div className="overflow-x-auto">
+        <table className="w-full border-collapse border text-xs">
+          <thead>
+            <tr className="bg-gray-200">
+              <th className="border p-1 w-8">No</th>
+              <th className="border p-1">Nama</th>
+              <th className="border p-1">NIK</th>
+              <th className="border p-1">Jabatan</th>
+              <th className="border p-1 w-12">Jam Tidur</th>
+              <th className="border p-1 w-10">Obat</th>
+              <th className="border p-1 w-10">Masalah</th>
+              <th className="border p-1 w-10">Respon</th>
+              <th className="border p-1 w-10">Fokus</th>
+              <th className="border p-1 w-10">Sehat</th>
+              <th className="border p-1 w-10">Siap</th>
+              <th className="border p-1 w-10">FTW</th>
+              <th className="border p-1 w-16">TTD</th>
+            </tr>
+          </thead>
+          <tbody>
+            {records.map((record, idx) => (
+              <tr key={record.id} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                <td className="border p-1 text-center">{record.ordinal}</td>
+                <td className="border p-1 font-medium">{record.nama}</td>
+                <td className="border p-1">{record.nik}</td>
+                <td className="border p-1">{record.jabatan}</td>
+                <td className="border p-1 text-center">{record.jamTidur}h</td>
+                <td className="border p-1 text-center"><CheckIcon checked={record.konsumiObat} /></td>
+                <td className="border p-1 text-center"><CheckIcon checked={record.masalahPribadi} /></td>
+                <td className="border p-1 text-center"><CheckIcon checked={record.pemeriksaanRespon} /></td>
+                <td className="border p-1 text-center"><CheckIcon checked={record.pemeriksaanKonsentrasi} /></td>
+                <td className="border p-1 text-center"><CheckIcon checked={record.pemeriksaanKesehatan} /></td>
+                <td className="border p-1 text-center"><CheckIcon checked={record.karyawanSiapBekerja} /></td>
+                <td className="border p-1 text-center"><CheckIcon checked={record.fitUntukBekerja} /></td>
+                <td className="border p-1">
+                  {record.employeeSignature && (
+                    <img src={record.employeeSignature} alt="TTD" className="h-8 w-full object-contain" />
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Legend */}
+      <div className="text-xs text-gray-600 grid grid-cols-2 gap-2 border p-2 rounded bg-gray-50">
+        <div><span className="font-semibold">Obat:</span> Konsumsi Obat</div>
+        <div><span className="font-semibold">Masalah:</span> Masalah Pribadi</div>
+        <div><span className="font-semibold">Respon:</span> Respon Baik</div>
+        <div><span className="font-semibold">Fokus:</span> Konsentrasi Baik</div>
+        <div><span className="font-semibold">Sehat:</span> Kesehatan Baik</div>
+        <div><span className="font-semibold">Siap:</span> Siap Bekerja</div>
+        <div><span className="font-semibold">FTW:</span> Fit to Work</div>
+        <div><span className="font-semibold">TTD:</span> Tanda Tangan</div>
+      </div>
+
+      {/* Observers */}
+      <div className="border rounded p-3">
+        <h3 className="font-semibold mb-2">Observer / Pengamat:</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {observers.map((obs) => (
+            <div key={obs.id} className="flex items-start gap-3 border p-2 rounded">
+              <div className="flex-1">
+                <p className="font-medium">{obs.nama}</p>
+                <p className="text-xs text-gray-500">{obs.nik} - {obs.jabatan}</p>
+                <p className="text-xs text-gray-500">{obs.perusahaan}</p>
+              </div>
+              {obs.tandaTangan && (
+                <img src={obs.tandaTangan} alt="TTD" className="h-12 w-20 border rounded object-contain" />
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function RambuFormPreview({ session, records, observers }: {
+  session: SessionDetail['session'];
+  records: RambuRecord[];
+  observers: Observer[]
+}) {
+  return (
+    <div className="space-y-4 p-4 bg-white text-black text-sm">
+      {/* Header */}
+      <div className="text-center border-b pb-3">
+        <h2 className="text-lg font-bold">OBSERVASI KEPATUHAN RAMBU</h2>
+        <p className="text-gray-600">PT Borneo Indobara - HSE Department</p>
+      </div>
+
+      {/* Session Info */}
+      <div className="grid grid-cols-2 gap-4 text-sm border p-3 rounded">
+        <div><span className="font-semibold">Tanggal:</span> {session.tanggal}</div>
+        <div><span className="font-semibold">Waktu:</span> {session.waktu}</div>
+        <div><span className="font-semibold">Shift:</span> {session.shift}</div>
+        <div><span className="font-semibold">Lokasi:</span> {session.lokasi}</div>
+        <div className="col-span-2"><span className="font-semibold">Supervisor:</span> {session.supervisorName}</div>
+        <div><span className="font-semibold">Total Sampel:</span> {session.totalSampel}</div>
+      </div>
+
+      {/* Records Table */}
+      <div className="overflow-x-auto">
+        <table className="w-full border-collapse border text-xs">
+          <thead>
+            <tr className="bg-gray-200">
+              <th className="border p-2 w-10">No</th>
+              <th className="border p-2">Nama</th>
+              <th className="border p-2">No Kendaraan</th>
+              <th className="border p-2">Perusahaan</th>
+              <th className="border p-2 w-16">Stop</th>
+              <th className="border p-2 w-16">Give Way</th>
+              <th className="border p-2 w-16">Max Speed</th>
+              <th className="border p-2 w-16">No Entry</th>
+              <th className="border p-2 w-16">No Parking</th>
+              <th className="border p-2 w-16">Helmet</th>
+              <th className="border p-2 w-16">No U-Turn</th>
+              <th className="border p-2">Keterangan</th>
+            </tr>
+          </thead>
+          <tbody>
+            {records.map((record, idx) => (
+              <tr key={record.id} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                <td className="border p-2 text-center">{record.ordinal}</td>
+                <td className="border p-2 font-medium">{record.nama}</td>
+                <td className="border p-2">{record.noKendaraan}</td>
+                <td className="border p-2 text-xs">{record.perusahaan}</td>
+                <td className="border p-2 text-center">
+                  <span className={`font-bold text-lg ${record.rambuStop ? 'text-green-600' : 'text-red-600'}`}>
+                    {record.rambuStop ? '✓' : '✗'}
+                  </span>
+                </td>
+                <td className="border p-2 text-center">
+                  <span className={`font-bold text-lg ${record.rambuGiveWay ? 'text-green-600' : 'text-red-600'}`}>
+                    {record.rambuGiveWay ? '✓' : '✗'}
+                  </span>
+                </td>
+                <td className="border p-2 text-center">
+                  <span className={`font-bold text-lg ${record.rambuKecepatanMax ? 'text-green-600' : 'text-red-600'}`}>
+                    {record.rambuKecepatanMax ? '✓' : '✗'}
+                  </span>
+                </td>
+                <td className="border p-2 text-center">
+                  <span className={`font-bold text-lg ${record.rambuLaranganMasuk ? 'text-green-600' : 'text-red-600'}`}>
+                    {record.rambuLaranganMasuk ? '✓' : '✗'}
+                  </span>
+                </td>
+                <td className="border p-2 text-center">
+                  <span className={`font-bold text-lg ${record.rambuLaranganParkir ? 'text-green-600' : 'text-red-600'}`}>
+                    {record.rambuLaranganParkir ? '✓' : '✗'}
+                  </span>
+                </td>
+                <td className="border p-2 text-center">
+                  <span className={`font-bold text-lg ${record.rambuWajibHelm ? 'text-green-600' : 'text-red-600'}`}>
+                    {record.rambuWajibHelm ? '✓' : '✗'}
+                  </span>
+                </td>
+                <td className="border p-2 text-center">
+                  <span className={`font-bold text-lg ${record.rambuLaranganUTurn ? 'text-green-600' : 'text-red-600'}`}>
+                    {record.rambuLaranganUTurn ? '✓' : '✗'}
+                  </span>
+                </td>
+                <td className="border p-2 text-gray-600">{record.keterangan || '-'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Summary */}
+      <div className="grid grid-cols-4 gap-4 text-center border p-3 rounded bg-gray-50">
+        <div>
+          <p className="text-2xl font-bold text-gray-800">{records.length}</p>
+          <p className="text-xs text-gray-500">Total Diperiksa</p>
+        </div>
+        <div>
+          <p className="text-2xl font-bold text-green-600">
+            {records.filter(r => [r.rambuStop, r.rambuGiveWay, r.rambuKecepatanMax, r.rambuLaranganMasuk, r.rambuLaranganParkir, r.rambuWajibHelm, r.rambuLaranganUTurn].every(v => v)).length}
+          </p>
+          <p className="text-xs text-gray-500">Full Compliant</p>
+        </div>
+        <div>
+          <p className="text-2xl font-bold text-yellow-600">
+            {records.filter(r => {
+              const values = [r.rambuStop, r.rambuGiveWay, r.rambuKecepatanMax, r.rambuLaranganMasuk, r.rambuLaranganParkir, r.rambuWajibHelm, r.rambuLaranganUTurn];
+              return values.some(v => v) && !values.every(v => v);
+            }).length}
+          </p>
+          <p className="text-xs text-gray-500">Partial Compliant</p>
+        </div>
+        <div>
+          <p className="text-2xl font-bold text-red-600">
+            {records.filter(r => [r.rambuStop, r.rambuGiveWay, r.rambuKecepatanMax, r.rambuLaranganMasuk, r.rambuLaranganParkir, r.rambuWajibHelm, r.rambuLaranganUTurn].every(v => !v)).length}
+          </p>
+          <p className="text-xs text-gray-500">Non Compliant</p>
+        </div>
+      </div>
+
+      {/* Observers */}
+      <div className="border rounded p-3">
+        <h3 className="font-semibold mb-2">Observer / Pengamat:</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {observers.map((obs) => (
+            <div key={obs.id} className="flex items-start gap-3 border p-2 rounded">
+              <div className="flex-1">
+                <p className="font-medium">{obs.nama}</p>
+                <p className="text-xs text-gray-500">{obs.nik} - {obs.jabatan}</p>
+                <p className="text-xs text-gray-500">{obs.perusahaan}</p>
+              </div>
+              {obs.tandaTangan && (
+                <img src={obs.tandaTangan} alt="TTD" className="h-12 w-20 border rounded object-contain" />
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function RosterFormPreview({ session, records, observers }: {
+  session: SessionDetail['session'];
+  records: RosterRecord[];
+  observers: Observer[]
+}) {
+  return (
+    <div className="space-y-4 p-4 bg-white text-black text-sm">
+      {/* Header */}
+      <div className="text-center border-b pb-3">
+        <h2 className="text-lg font-bold">FORM PEMERIKSAAN KESESUAIAN ROSTER</h2>
+        <p className="text-gray-600">PT Borneo Indobara</p>
+      </div>
+
+      {/* Session Info */}
+      <div className="grid grid-cols-2 gap-4 text-sm border p-3 rounded">
+        <div><span className="font-semibold">Tanggal:</span> {session.tanggal}</div>
+        <div><span className="font-semibold">Jam:</span> {session.waktu}</div>
+        <div><span className="font-semibold">Shift:</span> {session.shift}</div>
+        <div><span className="font-semibold">Lokasi:</span> {session.lokasi}</div>
+        <div><span className="font-semibold">Perusahaan:</span> {session.perusahaan}</div>
+        <div><span className="font-semibold">Departemen:</span> {session.departemen}</div>
+        <div><span className="font-semibold">Supervisor:</span> {session.supervisorName}</div>
+        <div><span className="font-semibold">Total Sampel:</span> {session.totalSampel}</div>
+      </div>
+
+      {/* Records Table */}
+      <div className="overflow-x-auto">
+        <table className="w-full border-collapse border text-sm">
+          <thead>
+            <tr className="bg-gray-200">
+              <th className="border p-2 w-12">No</th>
+              <th className="border p-2">Nama Driver</th>
+              <th className="border p-2">NIK</th>
+              <th className="border p-2">Nomor Lambung</th>
+              <th className="border p-2 w-24">Roster Sesuai</th>
+              <th className="border p-2">Keterangan</th>
+            </tr>
+          </thead>
+          <tbody>
+            {records.map((record, idx) => (
+              <tr key={record.id} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                <td className="border p-2 text-center">{record.ordinal}</td>
+                <td className="border p-2 font-medium">{record.nama}</td>
+                <td className="border p-2">{record.nik}</td>
+                <td className="border p-2">{record.nomorLambung || '-'}</td>
+                <td className="border p-2 text-center">
+                  <span className={`px-2 py-1 rounded text-xs font-bold ${record.rosterSesuai ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                    {record.rosterSesuai ? 'YA' : 'TIDAK'}
+                  </span>
+                </td>
+                <td className="border p-2 text-gray-600">{record.keterangan || '-'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Summary */}
+      <div className="grid grid-cols-3 gap-4 text-center border p-3 rounded bg-gray-50">
+        <div>
+          <p className="text-2xl font-bold text-gray-800">{records.length}</p>
+          <p className="text-xs text-gray-500">Total Diperiksa</p>
+        </div>
+        <div>
+          <p className="text-2xl font-bold text-green-600">{records.filter(r => r.rosterSesuai).length}</p>
+          <p className="text-xs text-gray-500">Roster Sesuai</p>
+        </div>
+        <div>
+          <p className="text-2xl font-bold text-red-600">{records.filter(r => !r.rosterSesuai).length}</p>
+          <p className="text-xs text-gray-500">Tidak Sesuai</p>
+        </div>
+      </div>
+
+      {/* Observers */}
+      <div className="border rounded p-3">
+        <h3 className="font-semibold mb-2">Observer / Pengamat:</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {observers.map((obs) => (
+            <div key={obs.id} className="flex items-start gap-3 border p-2 rounded">
+              <div className="flex-1">
+                <p className="font-medium">{obs.nama}</p>
+                <p className="text-xs text-gray-500">{obs.nik} - {obs.jabatan}</p>
+                <p className="text-xs text-gray-500">{obs.perusahaan}</p>
+              </div>
+              {obs.tandaTangan && (
+                <img src={obs.tandaTangan} alt="TTD" className="h-12 w-20 border rounded object-contain" />
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+interface AntrianRecord {
+  id: string;
+  ordinal: number;
+  namaNik: string;
+  noLambung: string | null;
+  handbrakeAktif: boolean;
+  jarakUnitAman: boolean;
+  keterangan: string | null;
+}
+
+function AntrianFormPreview({ session, records, observers }: {
+  session: SessionDetail['session'];
+  records: AntrianRecord[];
+  observers: Observer[]
+}) {
+  return (
+    <div className="space-y-4 p-4 bg-white text-black text-sm">
+      {/* Header */}
+      <div className="text-center border-b pb-3">
+        <h2 className="text-lg font-bold">FORM OBSERVASI ANTRIAN UNIT</h2>
+        <p className="text-gray-600">PT Borneo Indobara</p>
+      </div>
+
+      {/* Session Info */}
+      <div className="grid grid-cols-2 gap-4 text-sm border p-3 rounded">
+        <div><span className="font-semibold">Tanggal:</span> {session.tanggal}</div>
+        <div><span className="font-semibold">Jam:</span> {session.waktu}</div>
+        <div><span className="font-semibold">Shift:</span> {session.shift}</div>
+        <div><span className="font-semibold">Lokasi:</span> {session.lokasi}</div>
+        <div><span className="font-semibold">Perusahaan:</span> {session.perusahaan}</div>
+        <div><span className="font-semibold">Departemen:</span> {session.departemen}</div>
+        <div><span className="font-semibold">Total Sampel:</span> {session.totalSampel}</div>
+      </div>
+
+      {/* Records Table */}
+      <div className="overflow-x-auto">
+        <table className="w-full border-collapse border text-sm">
+          <thead>
+            <tr className="bg-gray-200">
+              <th className="border p-2 w-12">No</th>
+              <th className="border p-2">Nama - NIK</th>
+              <th className="border p-2">No Lambung</th>
+              <th className="border p-2 w-24">Handbrake</th>
+              <th className="border p-2 w-24">Jarak Aman</th>
+              <th className="border p-2">Keterangan</th>
+            </tr>
+          </thead>
+          <tbody>
+            {records.map((record, idx) => (
+              <tr key={record.id} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                <td className="border p-2 text-center">{record.ordinal}</td>
+                <td className="border p-2 font-medium">{record.namaNik}</td>
+                <td className="border p-2">{record.noLambung || '-'}</td>
+                <td className="border p-2 text-center">
+                  <span className={`font-bold text-lg ${record.handbrakeAktif ? 'text-green-600' : 'text-red-600'}`}>
+                    {record.handbrakeAktif ? '✓' : '✗'}
+                  </span>
+                </td>
+                <td className="border p-2 text-center">
+                  <span className={`font-bold text-lg ${record.jarakUnitAman ? 'text-green-600' : 'text-red-600'}`}>
+                    {record.jarakUnitAman ? '✓' : '✗'}
+                  </span>
+                </td>
+                <td className="border p-2 text-gray-600">{record.keterangan || '-'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Observers */}
+      <div className="border rounded p-3">
+        <h3 className="font-semibold mb-2">Observer / Pengamat:</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {observers.map((obs) => (
+            <div key={obs.id} className="flex items-start gap-3 border p-2 rounded">
+              <div className="flex-1">
+                <p className="font-medium">{obs.nama}</p>
+                <p className="text-xs text-gray-500">{obs.jabatan}</p>
+              </div>
+              {obs.tandaTangan && (
+                <img src={obs.tandaTangan} alt="TTD" className="h-12 w-20 border rounded object-contain" />
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+function JarakFormPreview({ session, records, observers }: {
+  session: SessionDetail['session'];
+  records: JarakRecord[];
+  observers: Observer[]
+}) {
+  return (
+    <div className="space-y-4 p-4 bg-white text-black text-sm">
+      {/* Header */}
+      <div className="text-center border-b pb-3">
+        <h2 className="text-lg font-bold">FORM OBSERVASI JARAK AMAN</h2>
+        <p className="text-gray-600">PT Borneo Indobara</p>
+      </div>
+
+      {/* Session Info */}
+      <div className="grid grid-cols-2 gap-4 text-sm border p-3 rounded">
+        <div><span className="font-semibold">Tanggal:</span> {session.tanggal}</div>
+        <div><span className="font-semibold">Jam:</span> {session.waktu}</div>
+        <div><span className="font-semibold">Shift:</span> {session.shift}</div>
+        <div><span className="font-semibold">Lokasi:</span> {session.lokasi}</div>
+        <div><span className="font-semibold">Supervisor:</span> {session.supervisorName}</div>
+        <div><span className="font-semibold">Total Sampel:</span> {session.totalSampel}</div>
+      </div>
+
+      {/* Records Table */}
+      <div className="overflow-x-auto">
+        <table className="w-full border-collapse border text-xs">
+          <thead>
+            <tr className="bg-gray-200">
+              <th className="border p-1 w-8">No</th>
+              <th className="border p-1">No Unit</th>
+              <th className="border p-1">Tipe</th>
+              <th className="border p-1">Lokasi Muatan</th>
+              <th className="border p-1">Lokasi Kosongan</th>
+              <th className="border p-1">Unit Depan</th>
+              <th className="border p-1">Jarak (m)</th>
+              <th className="border p-1">Keterangan</th>
+            </tr>
+          </thead>
+          <tbody>
+            {records.map((record, idx) => (
+              <tr key={record.id} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                <td className="border p-1 text-center">{record.ordinal}</td>
+                <td className="border p-1 font-medium">{record.noKendaraan}</td>
+                <td className="border p-1 text-center">{record.tipeUnit}</td>
+                <td className="border p-1">{record.lokasiMuatan || '-'}</td>
+                <td className="border p-1">{record.lokasiKosongan || '-'}</td>
+                <td className="border p-1">{record.nomorLambungUnit || '-'}</td>
+                <td className="border p-1 text-center font-bold">{record.jarakAktualKedua || '-'}</td>
+                <td className="border p-1 text-gray-500">{record.keterangan || '-'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Observers */}
+      <div className="border rounded p-3">
+        <h3 className="font-semibold mb-2">Observer / Pengamat:</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {observers.map((obs) => (
+            <div key={obs.id} className="flex items-start gap-3 border p-2 rounded">
+              <div className="flex-1">
+                <p className="font-medium">{obs.nama}</p>
+                <p className="text-xs text-gray-500">{obs.perusahaan}</p>
+              </div>
+              {obs.tandaTangan && (
+                <img src={obs.tandaTangan} alt="TTD" className="h-12 w-20 border rounded object-contain" />
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+function KecepatanFormPreview({ session, records, observers }: {
+  session: SessionDetail['session'];
+  records: KecepatanRecord[];
+  observers: Observer[]
+}) {
+  return (
+    <div className="space-y-4 p-4 bg-white text-black text-sm">
+      <div className="text-center border-b pb-3">
+        <h2 className="text-lg font-bold">OBSERVASI KECEPATAN BERKENDARA</h2>
+        <p className="text-gray-600">PT Borneo Indobara</p>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4 text-sm border p-3 rounded">
+        <div><span className="font-semibold">Tanggal:</span> {session.tanggal}</div>
+        <div><span className="font-semibold">Jam:</span> {session.waktu}</div>
+        <div><span className="font-semibold">Shift:</span> {session.shift}</div>
+        <div><span className="font-semibold">Lokasi:</span> {session.lokasi}</div>
+        <div><span className="font-semibold">Sub Lokasi:</span> {session.area || '-'}</div>
+        <div><span className="font-semibold">Supervisor:</span> {session.supervisorName}</div>
+      </div>
+
+      <div className="overflow-x-auto">
+        <table className="w-full border-collapse border text-xs">
+          <thead>
+            <tr className="bg-gray-200">
+              <th className="border p-1 w-8">No</th>
+              <th className="border p-1">No Unit</th>
+              <th className="border p-1">Tipe</th>
+              <th className="border p-1 w-16">Muatan</th>
+              <th className="border p-1 w-16">Kosongan</th>
+              <th className="border p-1 w-16">MPH</th>
+              <th className="border p-1 w-16">KPH</th>
+              <th className="border p-1">Keterangan</th>
+            </tr>
+          </thead>
+          <tbody>
+            {records.map((record, idx) => (
+              <tr key={record.id} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                <td className="border p-1 text-center">{record.ordinal}</td>
+                <td className="border p-1 font-medium">{record.noKendaraan}</td>
+                <td className="border p-1 text-center">{record.tipeUnit}</td>
+                <td className="border p-1 text-center"><CheckIcon checked={record.arahMuatan} /></td>
+                <td className="border p-1 text-center"><CheckIcon checked={record.arahKosongan} /></td>
+                <td className="border p-1 text-center">{record.kecepatanMph || '-'}</td>
+                <td className="border p-1 text-center font-bold">{record.kecepatanKph || '-'}</td>
+                <td className="border p-1 text-gray-500">{record.keterangan || '-'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="border rounded p-3">
+        <h3 className="font-semibold mb-2">Observer / Pengamat:</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {observers.map((obs) => (
+            <div key={obs.id} className="flex items-start gap-3 border p-2 rounded">
+              <div className="flex-1">
+                <p className="font-medium">{obs.nama}</p>
+                <p className="text-xs text-gray-500">{obs.nik ? `${obs.nik} - ` : ''}{obs.perusahaan || ''}</p>
+              </div>
+              {obs.tandaTangan && (
+                <img src={obs.tandaTangan} alt="TTD" className="h-12 w-20 border rounded object-contain" />
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function PencahayaanFormPreview({ session, records, observers }: {
+  session: SessionDetail['session'];
+  records: PencahayaanRecord[];
+  observers: Observer[]
+}) {
+  return (
+    <div className="space-y-4 p-4 bg-white text-black text-sm">
+      <div className="text-center border-b pb-3">
+        <h2 className="text-lg font-bold">PEMERIKSAAN PENCAHAYAAN</h2>
+        <p className="text-gray-600">PT Borneo Indobara</p>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4 text-sm border p-3 rounded">
+        <div><span className="font-semibold">Tanggal:</span> {session.tanggal}</div>
+        <div><span className="font-semibold">Jam:</span> {session.waktu}</div>
+        <div><span className="font-semibold">Shift:</span> {session.shift}</div>
+        <div><span className="font-semibold">Lokasi:</span> {session.lokasi}</div>
+        <div><span className="font-semibold">Departemen:</span> {session.departemen || '-'}</div>
+        <div><span className="font-semibold">Penanggung Jawab:</span> {session.supervisorName}</div>
+      </div>
+
+      <div className="overflow-x-auto">
+        <table className="w-full border-collapse border text-xs">
+          <thead>
+            <tr className="bg-gray-200">
+              <th className="border p-1 w-8">No</th>
+              <th className="border p-1">Titik Pengambilan</th>
+              <th className="border p-1">Sumber Penerangan</th>
+              <th className="border p-1">Jenis Pengukuran</th>
+              <th className="border p-1">Intensitas (Lux)</th>
+              <th className="border p-1">Jarak Sumber</th>
+              <th className="border p-1">Visual</th>
+              <th className="border p-1">Keterangan</th>
+            </tr>
+          </thead>
+          <tbody>
+            {records.map((record, idx) => (
+              <tr key={record.id} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                <td className="border p-1 text-center">{record.ordinal}</td>
+                <td className="border p-1 font-medium">{record.titikPengambilan}</td>
+                <td className="border p-1">{record.sumberPenerangan}</td>
+                <td className="border p-1 text-center">{record.jenisPengukuran}</td>
+                <td className="border p-1 text-center font-bold">{record.intensitasLux}</td>
+                <td className="border p-1 text-center">{record.jarakDariSumber || '-'}</td>
+                <td className="border p-1 text-center">{record.secaraVisual}</td>
+                <td className="border p-1 text-gray-500">{record.keterangan || '-'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="border rounded p-3">
+        <h3 className="font-semibold mb-2">Observer / Pengamat:</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {observers.map((obs) => (
+            <div key={obs.id} className="flex items-start gap-3 border p-2 rounded">
+              <div className="flex-1">
+                <p className="font-medium">{obs.nama}</p>
+                <p className="text-xs text-gray-500">{obs.nik ? `${obs.nik} - ` : ''}{obs.perusahaan || ''}</p>
+              </div>
+              {obs.tandaTangan && (
+                <img src={obs.tandaTangan} alt="TTD" className="h-12 w-20 border rounded object-contain" />
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function LotoFormPreview({ session, records, observers }: {
+  session: SessionDetail['session'];
+  records: LotoRecord[];
+  observers: Observer[]
+}) {
+  return (
+    <div className="space-y-4 p-4 bg-white text-black text-sm">
+      <div className="text-center border-b pb-3">
+        <h2 className="text-lg font-bold uppercase">INSPEKSI KEPATUHAN LOTO (LOCK OUT TAG OUT)</h2>
+        <p className="text-gray-600 font-medium">PT Borneo Indobara</p>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4 text-sm border p-3 rounded bg-gray-50/50">
+        <div><span className="font-semibold text-gray-500">Tanggal:</span> {session.tanggal}</div>
+        <div><span className="font-semibold text-gray-500">Jam:</span> {session.waktu}</div>
+        <div><span className="font-semibold text-gray-500">Shift:</span> {session.shift}</div>
+        <div><span className="font-semibold text-gray-500">Lokasi:</span> {session.lokasi}</div>
+        <div><span className="font-semibold text-gray-500">Departemen:</span> {session.departemen || '-'}</div>
+        <div><span className="font-semibold text-gray-500">Supervisor:</span> {session.supervisorName}</div>
+      </div>
+
+      <div className="overflow-x-auto">
+        <table className="w-full border-collapse border text-xs">
+          <thead>
+            <tr className="bg-orange-50">
+              <th className="border p-2 w-8">No</th>
+              <th className="border p-2">Nama Karyawan</th>
+              <th className="border p-2">Perusahaan</th>
+              <th className="border p-2">Jenis Pekerjaan</th>
+              <th className="border p-2">Lokasi Isolasi</th>
+              <th className="border p-2">No. Gembok</th>
+              <th className="border p-2">Jam Pasang</th>
+              <th className="border p-2">Keterangan</th>
+            </tr>
+          </thead>
+          <tbody>
+            {records.map((record, idx) => (
+              <tr key={record.id} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                <td className="border p-2 text-center font-medium">{record.ordinal}</td>
+                <td className="border p-2 font-bold">{record.namaKaryawan}</td>
+                <td className="border p-2">{record.perusahaan}</td>
+                <td className="border p-2">{record.jenisPekerjaan}</td>
+                <td className="border p-2">{record.lokasiIsolasi}</td>
+                <td className="border p-2 text-center font-mono font-bold text-orange-600">{record.nomorGembok}</td>
+                <td className="border p-2 text-center">{record.jamPasang}</td>
+                <td className="border p-2 text-gray-500 italic">{record.keterangan || '-'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="border rounded p-3">
+        <h3 className="font-semibold mb-2 flex items-center gap-2">
+          <Signature className="h-4 w-4 text-primary" />
+          Observer / Pengamat:
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {observers.map((obs) => (
+            <div key={obs.id} className="flex items-start gap-3 border p-2 rounded bg-white">
+              <div className="flex-1">
+                <p className="font-medium">{obs.nama}</p>
+                <p className="text-xs text-gray-500">{obs.nik ? `${obs.nik} - ` : ''}{obs.perusahaan || ''}</p>
+                <p className="text-xs text-blue-600 font-medium">{obs.jabatan || ''}</p>
+              </div>
+              {obs.tandaTangan && (
+                <div className="p-1 border rounded bg-gray-50">
+                  <img src={obs.tandaTangan} alt="TTD" className="h-12 w-20 object-contain" />
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DigitalFormPreview({ session, records, observers }: {
+  session: SessionDetail['session'];
+  records: DigitalRecord[];
+  observers: Observer[]
+}) {
+  return (
+    <div className="space-y-4 p-4 bg-white text-black text-sm font-sans">
+      <div className="text-center border-b-2 border-blue-600 pb-3">
+        <h2 className="text-xl font-extrabold text-blue-800">INSPEKSI PENGAWAS DIGITAL</h2>
+        <p className="text-gray-600 font-semibold">PT Borneo Indobara</p>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4 text-sm border p-4 rounded-xl bg-blue-50/30">
+        <div className="flex flex-col"><span className="text-xs font-bold text-blue-600 uppercase tracking-wider">Tanggal</span> <span className="font-medium text-gray-900">{session.tanggal}</span></div>
+        <div className="flex flex-col"><span className="text-xs font-bold text-blue-600 uppercase tracking-wider">Jam</span> <span className="font-medium text-gray-900">{session.waktu}</span></div>
+        <div className="flex flex-col"><span className="text-xs font-bold text-blue-600 uppercase tracking-wider">Shift</span> <span className="font-medium text-gray-900">{session.shift}</span></div>
+        <div className="flex flex-col"><span className="text-xs font-bold text-blue-600 uppercase tracking-wider">Lokasi</span> <span className="font-medium text-gray-900">{session.lokasi}</span></div>
+        <div className="col-span-2 flex flex-col pt-2 border-t border-blue-100"><span className="text-xs font-bold text-blue-600 uppercase tracking-wider">Supervisor</span> <span className="font-bold text-gray-900">{session.supervisorName}</span></div>
+      </div>
+
+      <div className="overflow-hidden border border-blue-200 rounded-xl shadow-sm">
+        <table className="w-full border-collapse text-xs">
+          <thead>
+            <tr className="bg-blue-600 text-white">
+              <th className="p-3 w-8 text-center border-r border-blue-500">No</th>
+              <th className="p-3 text-left border-r border-blue-500">Nama Pengawas</th>
+              <th className="p-3 text-left border-r border-blue-500">NIK</th>
+              <th className="p-3 text-left border-r border-blue-500">Jabatan</th>
+              <th className="p-3 w-20 text-center border-r border-blue-500">App Usage</th>
+              <th className="p-3 w-20 text-center border-r border-blue-500">Timely</th>
+              <th className="p-3 text-left border-r border-blue-500">Quality</th>
+              <th className="p-3 text-left">Keterangan</th>
+            </tr>
+          </thead>
+          <tbody>
+            {records.map((record, idx) => (
+              <tr key={record.id} className={`${idx % 2 === 0 ? 'bg-white' : 'bg-blue-50/20'} hover:bg-blue-50/50 transition-colors`}>
+                <td className="p-3 text-center border-r border-blue-100 font-bold text-blue-700">{record.ordinal}</td>
+                <td className="p-3 font-extrabold text-gray-900 border-r border-blue-100">{record.namaPengawas}</td>
+                <td className="p-3 font-medium text-gray-600 border-r border-blue-100">{record.nik || '-'}</td>
+                <td className="p-3 text-gray-600 border-r border-blue-100">{record.jabatan || '-'}</td>
+                <td className="p-3 text-center border-r border-blue-100">
+                  <div className={`inline-flex items-center justify-center p-1 rounded-full ${record.appUsage ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                    <CheckIcon checked={record.appUsage} />
+                  </div>
+                </td>
+                <td className="p-3 text-center border-r border-blue-100">
+                  <div className={`inline-flex items-center justify-center p-1 rounded-full ${record.timelyReporting ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                    <CheckIcon checked={record.timelyReporting} />
+                  </div>
+                </td>
+                <td className="p-3 font-semibold text-blue-800 border-r border-blue-100">{record.feedbackQuality}</td>
+                <td className="p-3 text-gray-500 italic">{record.keterangan || '-'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="border border-blue-200 rounded-xl p-4 bg-gray-50/30">
+        <h3 className="font-bold text-blue-800 mb-4 flex items-center gap-2">
+          <Signature className="h-5 w-5" />
+          Observer / Pengamat:
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {observers.map((obs) => (
+            <div key={obs.id} className="flex items-center gap-4 border border-blue-100 p-4 rounded-xl bg-white shadow-sm hover:shadow-md transition-shadow">
+              <div className="flex-1">
+                <p className="font-extrabold text-gray-900">{obs.nama}</p>
+                <div className="flex flex-col mt-1">
+                  <p className="text-xs font-bold text-blue-600">{obs.nik || '-'}</p>
+                  <p className="text-xs font-medium text-gray-500 uppercase tracking-tighter">{obs.perusahaan || 'BIB'}</p>
+                </div>
+              </div>
+              {obs.tandaTangan && (
+                <div className="p-2 border border-blue-50 rounded-lg bg-gray-50">
+                  <img src={obs.tandaTangan} alt="TTD" className="h-16 w-24 object-contain" />
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function WorkshopFormPreview({ session, records, observers }: {
+  session: SessionDetail['session'];
+  records: WorkshopRecord[];
+  observers: Observer[]
+}) {
+  return (
+    <div className="space-y-4 p-4 bg-white text-black text-sm font-sans">
+      <div className="text-center border-b-2 border-orange-600 pb-3">
+        <h2 className="text-xl font-extrabold text-orange-800">CHECKLIST PERALATAN WORKSHOP</h2>
+        <p className="text-gray-600 font-semibold">PT Borneo Indobara</p>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4 text-sm border p-4 rounded-xl bg-orange-50/30">
+        <div className="flex flex-col"><span className="text-xs font-bold text-orange-600 uppercase tracking-wider">Tanggal</span> <span className="font-medium text-gray-900">{session.tanggal}</span></div>
+        <div className="flex flex-col"><span className="text-xs font-bold text-orange-600 uppercase tracking-wider">Jam</span> <span className="font-medium text-gray-900">{session.waktu}</span></div>
+        <div className="flex flex-col"><span className="text-xs font-bold text-orange-600 uppercase tracking-wider">Shift</span> <span className="font-medium text-gray-900">{session.shift}</span></div>
+        <div className="flex flex-col"><span className="text-xs font-bold text-orange-600 uppercase tracking-wider">Lokasi</span> <span className="font-medium text-gray-900">{session.lokasi}</span></div>
+        <div className="col-span-2 flex flex-col pt-2 border-t border-orange-100"><span className="text-xs font-bold text-orange-600 uppercase tracking-wider">Supervisor</span> <span className="font-bold text-gray-900">{session.supervisorName}</span></div>
+      </div>
+
+      <div className="overflow-hidden border border-orange-200 rounded-xl shadow-sm">
+        <table className="w-full border-collapse text-xs">
+          <thead>
+            <tr className="bg-orange-600 text-white">
+              <th className="p-3 w-8 text-center border-r border-orange-500">No</th>
+              <th className="p-3 text-left border-r border-orange-500">Nama Alat</th>
+              <th className="p-3 w-16 text-center border-r border-orange-500">Kondisi</th>
+              <th className="p-3 w-16 text-center border-r border-orange-500">Bersih</th>
+              <th className="p-3 w-16 text-center border-r border-orange-500">Sertif</th>
+              <th className="p-3 text-left">Keterangan</th>
+            </tr>
+          </thead>
+          <tbody>
+            {records.map((record, idx) => (
+              <tr key={record.id} className={`${idx % 2 === 0 ? 'bg-white' : 'bg-orange-50/20'} hover:bg-orange-50/50 transition-colors`}>
+                <td className="p-3 text-center border-r border-orange-100 font-bold text-orange-700">{record.ordinal}</td>
+                <td className="p-3 font-extrabold text-gray-900 border-r border-orange-100">{record.namaAlat}</td>
+                <td className="p-3 text-center border-r border-orange-100">
+                  <div className={`inline-flex items-center justify-center p-1 rounded-full ${record.kondisi ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                    <CheckIcon checked={record.kondisi} />
+                  </div>
+                </td>
+                <td className="p-3 text-center border-r border-orange-100">
+                  <div className={`inline-flex items-center justify-center p-1 rounded-full ${record.kebersihan ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                    <CheckIcon checked={record.kebersihan} />
+                  </div>
+                </td>
+                <td className="p-3 text-center border-r border-orange-100">
+                  <div className={`inline-flex items-center justify-center p-1 rounded-full ${record.sertifikasi ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                    <CheckIcon checked={record.sertifikasi} />
+                  </div>
+                </td>
+                <td className="p-3 text-gray-500 italic">{record.keterangan || '-'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="border border-orange-200 rounded-xl p-4 bg-gray-50/30">
+        <h3 className="font-bold text-orange-800 mb-4 flex items-center gap-2">
+          <Signature className="h-5 w-5" />
+          Observer / Pengamat:
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {observers.map((obs) => (
+            <div key={obs.id} className="flex items-center gap-4 border border-orange-100 p-4 rounded-xl bg-white shadow-sm hover:shadow-md transition-shadow">
+              <div className="flex-1">
+                <p className="font-extrabold text-gray-900">{obs.nama}</p>
+                <div className="flex flex-col mt-1">
+                  <p className="text-xs font-bold text-orange-600">{obs.nik || '-'}</p>
+                  <p className="text-xs font-medium text-gray-500 uppercase tracking-tighter">{obs.perusahaan || 'BIB'}</p>
+                </div>
+              </div>
+              {obs.tandaTangan && (
+                <div className="p-2 border border-orange-50 rounded-lg bg-gray-50">
+                  <img src={obs.tandaTangan} alt="TTD" className="h-16 w-24 object-contain" />
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+export default function SidakRecap() {
+  const [dateFrom, setDateFrom] = useState<string>("");
+  const [dateTo, setDateTo] = useState<string>("");
+  const [typeFilter, setTypeFilter] = useState<string>("all");
+  const [supervisorFilter, setSupervisorFilter] = useState<string>("all");
+  const [selectedSession, setSelectedSession] = useState<SidakSession | null>(null);
+  const [detailOpen, setDetailOpen] = useState(false);
+  const detailRef = useRef<HTMLDivElement>(null);
+
+  const { data, isLoading, error } = useQuery<RecapData>({
+    queryKey: ['/api/sidak-recap'],
+  });
+
+  const detailUrl = selectedSession
+    ? `/api/sidak-recap/detail?sessionId=${selectedSession.id}&type=${selectedSession.type}`
+    : '';
+
+  const { data: detailData, isLoading: detailLoading } = useQuery<SessionDetail>({
+    queryKey: [detailUrl],
+    enabled: !!selectedSession && detailOpen,
+  });
+
+  const handleRowClick = (session: SidakSession) => {
+    setSelectedSession(session);
+    setDetailOpen(true);
+  };
+
+  const handleDownloadPDF = async () => {
+    if (!detailRef.current) return;
+
+    try {
+      const canvas = await html2canvas(detailRef.current, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: '#ffffff'
+      });
+
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF({
+        orientation: canvas.width > canvas.height ? 'landscape' : 'portrait',
+        unit: 'px',
+        format: [canvas.width, canvas.height]
+      });
+
+      pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
+      pdf.save(`SIDAK_${selectedSession?.type}_${selectedSession?.id}.pdf`);
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+    }
+  };
+
+  const handleDownloadJPG = async () => {
+    if (!detailRef.current) return;
+
+    try {
+      const canvas = await html2canvas(detailRef.current, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: '#ffffff'
+      });
+
+      const link = document.createElement('a');
+      link.download = `SIDAK_${selectedSession?.type}_${selectedSession?.id}.jpg`;
+      link.href = canvas.toDataURL('image/jpeg', 0.95);
+      link.click();
+    } catch (error) {
+      console.error('Error generating JPG:', error);
+    }
+  };
+
+  const filteredSessions = useMemo(() => {
+    if (!data?.sessions) return [];
+
+    return data.sessions.filter(session => {
+      if (typeFilter !== "all" && session.type !== typeFilter) return false;
+      if (supervisorFilter !== "all" && session.supervisorName !== supervisorFilter) return false;
+      if (dateFrom && new Date(session.tanggal) < new Date(dateFrom)) return false;
+      if (dateTo && new Date(session.tanggal) > new Date(dateTo)) return false;
+      return true;
+    });
+  }, [data?.sessions, typeFilter, supervisorFilter, dateFrom, dateTo]);
+
+  const supervisorList = useMemo(() => {
+    if (!data?.stats?.supervisorStats) return [];
+    return data.stats.supervisorStats.map(s => s.name);
+  }, [data?.stats?.supervisorStats]);
+
+  const handleExportExcel = () => {
+    if (!filteredSessions.length) return;
+
+    const exportData = filteredSessions.map((session, idx) => ({
+      'No': idx + 1,
+      'Tanggal': format(new Date(session.tanggal), 'dd/MM/yyyy'),
+      'Waktu': session.waktu,
+      'Tipe SIDAK': session.type,
+      'Shift': session.shift,
+      'Lokasi': session.lokasi,
+      'Departemen': session.departemen,
+      'Area/Perusahaan': session.area || session.perusahaan || '-',
+      'Jumlah Sampel': session.totalSampel,
+      'Observer': session.observers,
+      'Supervisor': session.supervisorName,
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(exportData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Rekap SIDAK");
+
+    ws['!cols'] = [
+      { wch: 5 }, { wch: 12 }, { wch: 10 }, { wch: 10 }, { wch: 8 },
+      { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 12 }, { wch: 25 }, { wch: 25 }
+    ];
+
+    XLSX.writeFile(wb, `Rekap_SIDAK_${format(new Date(), 'yyyyMMdd')}.xlsx`);
+  };
+
+  if (isLoading) {
+    return (
+      <div className="p-6 flex items-center justify-center min-h-[400px]">
+        <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-6">
+        <Card className="border-red-200 bg-red-50">
+          <CardContent className="p-6 text-center text-red-600">
+            Gagal memuat data rekap SIDAK. Pastikan Anda login sebagai admin.
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-4 md:p-6 space-y-6">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+            <ClipboardCheck className="h-7 w-7 text-primary" />
+            Rekap Kegiatan SIDAK
+          </h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+            Rekapitulasi semua kegiatan SIDAK dari seluruh supervisor
+          </p>
+        </div>
+        <Button onClick={handleExportExcel} disabled={!filteredSessions.length} data-testid="button-export-excel">
+          <Download className="h-4 w-4 mr-2" />
+          Export Excel
+        </Button>
+      </div>
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                <ClipboardCheck className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">{data?.stats.totalSidak || 0}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Total SIDAK</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
+                <Activity className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">{data?.stats.totalFatigue || 0}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">SIDAK Fatigue</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
+                <CalendarIcon className="h-5 w-5 text-green-600 dark:text-green-400" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">{data?.stats.totalRoster || 0}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">SIDAK Roster</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-yellow-100 dark:bg-yellow-900/30 rounded-lg">
+                <Users className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">{data?.stats.totalSeatbelt || 0}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">SIDAK Seatbelt</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-rose-100 dark:bg-rose-900/30 rounded-lg">
+                <Truck className="h-5 w-5 text-rose-600 dark:text-rose-400" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">{data?.stats.totalAntrian || 0}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">SIDAK Antrian</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
+                <ClipboardCheck className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">{data?.stats.totalApd || 0}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">SIDAK APD</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                <Maximize2 className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">{data?.stats.totalJarak || 0}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">SIDAK Jarak</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-orange-100 dark:bg-orange-900/30 rounded-lg">
+                <Gauge className="h-5 w-5 text-orange-600 dark:text-orange-400" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">{data?.stats.totalKecepatan || 0}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">SIDAK Kecepatan</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-yellow-100 dark:bg-yellow-900/30 rounded-lg">
+                <Sun className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">{data?.stats.totalPencahayaan || 0}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">SIDAK Pencahayaan</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-orange-100 dark:bg-orange-900/30 rounded-lg">
+                <Lock className="h-5 w-5 text-orange-600 dark:text-orange-400" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">{data?.stats.totalLoto || 0}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">SIDAK LOTO</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                <Tablet className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">{data?.stats.totalDigital || 0}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">SIDAK Digital</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-orange-100 dark:bg-orange-900/30 rounded-lg">
+                <PenTool className="h-5 w-5 text-orange-600 dark:text-orange-400" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">{data?.stats.totalWorkshop || 0}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">SIDAK Workshop</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Supervisor Stats */}
+      {
+        data?.stats.supervisorStats && data.stats.supervisorStats.length > 0 && (
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <BarChart3 className="h-5 w-5 text-primary" />
+                Statistik per Supervisor
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                {data.stats.supervisorStats.slice(0, 6).map((supervisor) => (
+                  <div
+                    key={supervisor.name}
+                    className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg"
+                  >
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center">
+                        <User className="h-4 w-4 text-primary" />
+                      </div>
+                      <span className="text-sm font-medium text-gray-900 dark:text-white truncate max-w-[120px]">
+                        {supervisor.name}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700">
+                        F: {supervisor.fatigue}
+                      </Badge>
+                      <Badge variant="outline" className="text-xs bg-green-50 text-green-700">
+                        R: {supervisor.roster}
+                      </Badge>
+                      {supervisor.apd > 0 && (
+                        <Badge variant="outline" className="text-xs bg-purple-50 text-purple-700">
+                          APD: {supervisor.apd}
+                        </Badge>
+                      )}
+                      {supervisor.jarak > 0 && (
+                        <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700">
+                          J: {supervisor.jarak}
+                        </Badge>
+                      )}
+                      {supervisor.kecepatan > 0 && (
+                        <Badge variant="outline" className="text-xs bg-orange-50 text-orange-700">
+                          K: {supervisor.kecepatan}
+                        </Badge>
+                      )}
+                      {supervisor.pencahayaan > 0 && (
+                        <Badge variant="outline" className="text-xs bg-yellow-50 text-yellow-700">
+                          P: {supervisor.pencahayaan}
+                        </Badge>
+                      )}
+                      {supervisor.loto > 0 && (
+                        <Badge variant="outline" className="text-xs bg-orange-50 text-orange-700">
+                          L: {supervisor.loto}
+                        </Badge>
+                      )}
+                      {supervisor.digital > 0 && (
+                        <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700">
+                          D: {supervisor.digital}
+                        </Badge>
+                      )}
+                      {supervisor.workshop > 0 && (
+                        <Badge variant="outline" className="text-xs bg-orange-50 text-orange-700">
+                          W: {supervisor.workshop}
+                        </Badge>
+                      )}
+                      <Badge className="text-xs">
+                        {supervisor.total}
+                      </Badge>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )
+      }
+
+
+      {/* Filters */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Filter className="h-5 w-5 text-primary" />
+            Filter Data
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div>
+              <Label className="text-xs text-gray-500">Dari Tanggal</Label>
+              <Input
+                type="date"
+                value={dateFrom}
+                onChange={(e) => setDateFrom(e.target.value)}
+                className="mt-1"
+                data-testid="input-date-from"
+              />
+            </div>
+            <div>
+              <Label className="text-xs text-gray-500">Sampai Tanggal</Label>
+              <Input
+                type="date"
+                value={dateTo}
+                onChange={(e) => setDateTo(e.target.value)}
+                className="mt-1"
+                data-testid="input-date-to"
+              />
+            </div>
+            <div>
+              <Label className="text-xs text-gray-500">Tipe SIDAK</Label>
+              <Select value={typeFilter} onValueChange={setTypeFilter}>
+                <SelectTrigger className="mt-1" data-testid="select-type">
+                  <SelectValue placeholder="Semua Tipe" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Semua Tipe</SelectItem>
+                  <SelectItem value="Fatigue">Fatigue</SelectItem>
+                  <SelectItem value="Roster">Roster</SelectItem>
+                  <SelectItem value="Seatbelt">Seatbelt</SelectItem>
+                  <SelectItem value="Rambu">Rambu</SelectItem>
+                  <SelectItem value="Antrian">Antrian</SelectItem>
+                  <SelectItem value="APD">APD</SelectItem>
+                  <SelectItem value="Jarak">Jarak Aman</SelectItem>
+                  <SelectItem value="Kecepatan">Kecepatan</SelectItem>
+                  <SelectItem value="Pencahayaan">Pencahayaan</SelectItem>
+                  <SelectItem value="LOTO">LOTO</SelectItem>
+                  <SelectItem value="Digital">Digital</SelectItem>
+                  <SelectItem value="Workshop">Workshop</SelectItem>
+
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label className="text-xs text-gray-500">Supervisor</Label>
+              <Select value={supervisorFilter} onValueChange={setSupervisorFilter}>
+                <SelectTrigger className="mt-1" data-testid="select-supervisor">
+                  <SelectValue placeholder="Semua Supervisor" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Semua Supervisor</SelectItem>
+                  {supervisorList.map((name) => (
+                    <SelectItem key={name} value={name}>{name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Data Table */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">
+            Daftar Kegiatan SIDAK ({filteredSessions.length} data)
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {filteredSessions.length === 0 ? (
+            <div className="text-center py-8 text-gray-500">
+              Tidak ada data SIDAK yang sesuai dengan filter
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-12">No</TableHead>
+                    <TableHead>Tanggal</TableHead>
+                    <TableHead>Tipe</TableHead>
+                    <TableHead>Shift</TableHead>
+                    <TableHead>Lokasi</TableHead>
+                    <TableHead>Departemen</TableHead>
+                    <TableHead className="text-center">Sampel</TableHead>
+                    <TableHead>Observer</TableHead>
+                    <TableHead>Supervisor</TableHead>
+                    <TableHead className="w-12">Aksi</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredSessions.map((session, idx) => (
+                    <TableRow
+                      key={session.id}
+                      data-testid={`row-session-${session.id}`}
+                      className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800"
+                      onClick={() => handleRowClick(session)}
+                    >
+                      <TableCell className="font-medium">{idx + 1}</TableCell>
+                      <TableCell>
+                        <div>
+                          <p className="font-medium">{format(new Date(session.tanggal), 'dd MMM yyyy', { locale: id })}</p>
+                          <p className="text-xs text-gray-500">{session.waktu}</p>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant="outline"
+                          className={session.type === 'Fatigue'
+                            ? 'bg-blue-50 text-blue-700 border-blue-200'
+                            : session.type === 'Roster'
+                              ? 'bg-purple-50 text-purple-700 border-purple-200'
+                              : session.type === 'Seatbelt'
+                                ? 'bg-yellow-50 text-yellow-700 border-yellow-200'
+                                : session.type === 'Rambu'
+                                  ? 'bg-amber-50 text-amber-700 border-amber-200'
+                                  : session.type === 'Antrian'
+                                    ? 'bg-rose-50 text-rose-700 border-rose-200'
+                                    : session.type === 'APD'
+                                      ? 'bg-purple-50 text-purple-700 border-purple-200'
+                                      : session.type === 'Kecepatan'
+                                        ? 'bg-orange-50 text-orange-700 border-orange-200'
+                                        : session.type === 'Pencahayaan'
+                                          ? 'bg-yellow-50 text-yellow-700 border-yellow-200'
+                                          : session.type === 'LOTO'
+                                            ? 'bg-orange-50 text-orange-700 border-orange-200'
+                                            : session.type === 'Digital'
+                                              ? 'bg-blue-50 text-blue-700 border-blue-200'
+                                              : session.type === 'Workshop'
+                                                ? 'bg-orange-50 text-orange-700 border-orange-200'
+                                                : 'bg-gray-50 text-gray-700 border-gray-200'
+                          }
+                        >
+                          {session.type}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>{session.shift}</TableCell>
+                      <TableCell>
+                        <span className="text-sm">{session.lokasi}</span>
+                      </TableCell>
+                      <TableCell>
+                        <span className="text-sm">{session.departemen}</span>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <Badge variant="secondary">{session.totalSampel}</Badge>
+                      </TableCell>
+                      <TableCell>
+                        <span className="text-sm text-gray-600 dark:text-gray-400 truncate max-w-[150px] block">
+                          {session.observers || '-'}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <div className="w-6 h-6 bg-primary/10 rounded-full flex items-center justify-center">
+                            <User className="h-3 w-3 text-primary" />
+                          </div>
+                          <span className="text-sm font-medium">{session.supervisorName}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                          <Eye className="h-4 w-4 text-primary" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Detail Modal */}
+      <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ClipboardCheck className="h-5 w-5 text-primary" />
+              Detail SIDAK {selectedSession?.type}
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="flex gap-2 mb-4">
+            <Button onClick={handleDownloadPDF} variant="outline" size="sm" data-testid="button-download-pdf">
+              <FileText className="h-4 w-4 mr-2" />
+              Download PDF
+            </Button>
+            <Button onClick={handleDownloadJPG} variant="outline" size="sm" data-testid="button-download-jpg">
+              <Image className="h-4 w-4 mr-2" />
+              Download JPG
+            </Button>
+          </div>
+
+          <ScrollArea className="max-h-[calc(90vh-180px)]">
+            {detailLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" />
+              </div>
+            ) : detailData ? (
+              <div ref={detailRef} className="bg-white p-6 space-y-6">
+                {/* Session Info */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="flex items-center gap-2">
+                    <CalendarIcon className="h-4 w-4 text-gray-500" />
+                    <div>
+                      <p className="text-xs text-gray-500">Tanggal</p>
+                      <p className="font-medium">{selectedSession ? format(new Date(selectedSession.tanggal), 'dd MMM yyyy', { locale: id }) : '-'}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Clock className="h-4 w-4 text-gray-500" />
+                    <div>
+                      <p className="text-xs text-gray-500">Waktu</p>
+                      <p className="font-medium">{selectedSession?.waktu || '-'}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <MapPin className="h-4 w-4 text-gray-500" />
+                    <div>
+                      <p className="text-xs text-gray-500">Lokasi</p>
+                      <p className="font-medium">{selectedSession?.lokasi || '-'}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Building className="h-4 w-4 text-gray-500" />
+                    <div>
+                      <p className="text-xs text-gray-500">Departemen</p>
+                      <p className="font-medium">{selectedSession?.departemen || '-'}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-4 p-3 bg-gray-50 rounded-lg">
+                  <Badge variant="outline" className={
+                    selectedSession?.type === 'Fatigue' ? 'bg-blue-50 text-blue-700' :
+                      selectedSession?.type === 'Roster' ? 'bg-purple-50 text-purple-700' :
+                        selectedSession?.type === 'Seatbelt' ? 'bg-yellow-50 text-yellow-700' :
+                          selectedSession?.type === 'Rambu' ? 'bg-amber-50 text-amber-700' :
+                            selectedSession?.type === 'Antrian' ? 'bg-rose-50 text-rose-700' :
+                              selectedSession?.type === 'APD' ? 'bg-purple-50 text-purple-700' :
+                                selectedSession?.type === 'Jarak' ? 'bg-blue-50 text-blue-700' :
+                                  selectedSession?.type === 'Kecepatan' ? 'bg-orange-50 text-orange-700' :
+                                    selectedSession?.type === 'Pencahayaan' ? 'bg-yellow-50 text-yellow-700' :
+                                      selectedSession?.type === 'LOTO' ? 'bg-orange-50 text-orange-700' :
+                                        selectedSession?.type === 'Digital' ? 'bg-blue-50 text-blue-700' :
+                                          selectedSession?.type === 'Workshop' ? 'bg-orange-50 text-orange-700' :
+                                            'bg-gray-50 text-gray-700'
+                  }>
+                    {selectedSession?.type}
+                  </Badge>
+                  <span className="text-sm">Shift: {selectedSession?.shift}</span>
+                  <span className="text-sm">Supervisor: <strong>{selectedSession?.supervisorName}</strong></span>
+                </div>
+
+                {/* Tabs */}
+                <Tabs defaultValue="form" className="w-full">
+                  <TabsList className="grid w-full grid-cols-4">
+                    <TabsTrigger value="form">Tampilan Form</TabsTrigger>
+                    <TabsTrigger value="records">Data ({detailData.records?.length || 0})</TabsTrigger>
+                    <TabsTrigger value="observers">Observer ({detailData.observers?.length || 0})</TabsTrigger>
+                    <TabsTrigger value="photos">Foto ({detailData.session?.photos?.length || 0})</TabsTrigger>
+                  </TabsList>
+
+                  <TabsContent value="form" className="mt-4">
+                    {selectedSession?.type === 'Fatigue' ? (
+                      <FatigueFormPreview
+                        session={detailData.session}
+                        records={detailData.records as FatigueRecord[]}
+                        observers={detailData.observers}
+                      />
+                    ) : selectedSession?.type === 'Seatbelt' ? (
+                      <SeatbeltFormPreview
+                        session={detailData.session}
+                        records={detailData.records as SeatbeltRecord[]}
+                        observers={detailData.observers}
+                      />
+                    ) : selectedSession?.type === 'Rambu' ? (
+                      <RambuFormPreview
+                        session={detailData.session}
+                        records={detailData.records as RambuRecord[]}
+                        observers={detailData.observers}
+                      />
+                    ) : selectedSession?.type === 'Antrian' ? (
+                      <AntrianFormPreview
+                        session={detailData.session}
+                        records={detailData.records as AntrianRecord[]}
+                        observers={detailData.observers}
+                      />
+                    ) : selectedSession?.type === 'Jarak' ? (
+                      <JarakFormPreview
+                        session={detailData.session}
+                        records={detailData.records as JarakRecord[]}
+                        observers={detailData.observers}
+                      />
+                    ) : selectedSession?.type === 'Kecepatan' ? (
+                      <KecepatanFormPreview
+                        session={detailData.session}
+                        records={detailData.records as KecepatanRecord[]}
+                        observers={detailData.observers}
+                      />
+                    ) : selectedSession?.type === 'Pencahayaan' ? (
+                      <PencahayaanFormPreview
+                        session={detailData.session}
+                        records={detailData.records as PencahayaanRecord[]}
+                        observers={detailData.observers}
+                      />
+                    ) : selectedSession?.type === 'LOTO' ? (
+                      <LotoFormPreview
+                        session={detailData.session}
+                        records={detailData.records as LotoRecord[]}
+                        observers={detailData.observers}
+                      />
+                    ) : selectedSession?.type === 'Digital' ? (
+                      <DigitalFormPreview
+                        session={detailData.session}
+                        records={detailData.records as DigitalRecord[]}
+                        observers={detailData.observers}
+                      />
+                    ) : selectedSession?.type === 'Workshop' ? (
+                      <WorkshopFormPreview
+                        session={detailData.session}
+                        records={detailData.records as WorkshopRecord[]}
+                        observers={detailData.observers}
+                      />
+                    ) : (
+                      <RosterFormPreview
+                        session={detailData.session}
+                        records={detailData.records as RosterRecord[]}
+                        observers={detailData.observers}
+                      />
+                    )}
+                  </TabsContent>
+
+                  <TabsContent value="records" className="mt-4">
+                    {selectedSession?.type === 'Fatigue' ? (
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>No</TableHead>
+                            <TableHead>Nama</TableHead>
+                            <TableHead>NIK</TableHead>
+                            <TableHead>Jabatan</TableHead>
+                            <TableHead className="text-center">Jam Tidur</TableHead>
+                            <TableHead className="text-center">FTW</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {(detailData.records as FatigueRecord[])?.map((record) => (
+                            <TableRow key={record.id}>
+                              <TableCell>{record.ordinal}</TableCell>
+                              <TableCell className="font-medium">{record.nama}</TableCell>
+                              <TableCell>{record.nik}</TableCell>
+                              <TableCell>{record.jabatan}</TableCell>
+                              <TableCell className="text-center">{record.jamTidur}h</TableCell>
+                              <TableCell className="text-center">
+                                <Badge variant={record.fitUntukBekerja ? "default" : "destructive"}>
+                                  {record.fitUntukBekerja ? 'Ya' : 'Tidak'}
+                                </Badge>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    ) : selectedSession?.type === 'Seatbelt' ? (
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>No</TableHead>
+                            <TableHead>Nama</TableHead>
+                            <TableHead>NIK</TableHead>
+                            <TableHead>No Kendaraan</TableHead>
+                            <TableHead>Perusahaan</TableHead>
+                            <TableHead className="text-center">Kondisi Driver</TableHead>
+                            <TableHead className="text-center">Kondisi Passenger</TableHead>
+                            <TableHead className="text-center">Penggunaan Driver</TableHead>
+                            <TableHead className="text-center">Penggunaan Passenger</TableHead>
+                            <TableHead>Keterangan</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {(detailData.records as SeatbeltRecord[])?.map((record) => (
+                            <TableRow key={record.id}>
+                              <TableCell>{record.ordinal}</TableCell>
+                              <TableCell className="font-medium">{record.nama}</TableCell>
+                              <TableCell>{record.nik}</TableCell>
+                              <TableCell>{record.nomorLambung || '-'}</TableCell>
+                              <TableCell>{record.perusahaan}</TableCell>
+                              <TableCell className="text-center">
+                                <Badge variant={record.seatbeltDriverCondition ? 'default' : 'destructive'}>
+                                  {record.seatbeltDriverCondition ? 'Baik' : 'Rusak'}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="text-center">
+                                <Badge variant={record.seatbeltPassengerCondition ? 'default' : 'destructive'}>
+                                  {record.seatbeltPassengerCondition ? 'Baik' : 'Rusak'}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="text-center">
+                                <Badge variant={record.seatbeltDriverUsage ? 'default' : 'destructive'}>
+                                  {record.seatbeltDriverUsage ? 'Ya' : 'Tidak'}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="text-center">
+                                <Badge variant={record.seatbeltPassengerUsage ? 'default' : 'destructive'}>
+                                  {record.seatbeltPassengerUsage ? 'Ya' : 'Tidak'}
+                                </Badge>
+                              </TableCell>
+                              <TableCell>{record.keterangan || '-'}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    ) : selectedSession?.type === 'Rambu' ? (
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>No</TableHead>
+                            <TableHead>Nama</TableHead>
+                            <TableHead>No Kendaraan</TableHead>
+                            <TableHead>Perusahaan</TableHead>
+                            <TableHead className="text-center">Stop</TableHead>
+                            <TableHead className="text-center">Give Way</TableHead>
+                            <TableHead className="text-center">Max Speed</TableHead>
+                            <TableHead className="text-center">No Entry</TableHead>
+                            <TableHead className="text-center">No Parking</TableHead>
+                            <TableHead className="text-center">Helmet</TableHead>
+                            <TableHead className="text-center">No U-Turn</TableHead>
+                            <TableHead>Keterangan</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {(detailData.records as RambuRecord[])?.map((record) => (
+                            <TableRow key={record.id}>
+                              <TableCell>{record.ordinal}</TableCell>
+                              <TableCell className="font-medium">{record.nama}</TableCell>
+                              <TableCell>{record.noKendaraan}</TableCell>
+                              <TableCell>{record.perusahaan}</TableCell>
+                              <TableCell className="text-center">
+                                <Badge variant={record.rambuStop ? 'default' : 'destructive'}>
+                                  {record.rambuStop ? '✓' : '✗'}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="text-center">
+                                <Badge variant={record.rambuGiveWay ? 'default' : 'destructive'}>
+                                  {record.rambuGiveWay ? '✓' : '✗'}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="text-center">
+                                <Badge variant={record.rambuKecepatanMax ? 'default' : 'destructive'}>
+                                  {record.rambuKecepatanMax ? '✓' : '✗'}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="text-center">
+                                <Badge variant={record.rambuLaranganMasuk ? 'default' : 'destructive'}>
+                                  {record.rambuLaranganMasuk ? '✓' : '✗'}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="text-center">
+                                <Badge variant={record.rambuLaranganParkir ? 'default' : 'destructive'}>
+                                  {record.rambuLaranganParkir ? '✓' : '✗'}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="text-center">
+                                <Badge variant={record.rambuWajibHelm ? 'default' : 'destructive'}>
+                                  {record.rambuWajibHelm ? '✓' : '✗'}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="text-center">
+                                <Badge variant={record.rambuLaranganUTurn ? 'default' : 'destructive'}>
+                                  {record.rambuLaranganUTurn ? '✓' : '✗'}
+                                </Badge>
+                              </TableCell>
+                              <TableCell>{record.keterangan || '-'}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    ) : selectedSession?.type === 'Jarak' ? (
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>No</TableHead>
+                            <TableHead>No Unit</TableHead>
+                            <TableHead>Tipe</TableHead>
+                            <TableHead>Lokasi Muatan</TableHead>
+                            <TableHead>Lokasi Kosongan</TableHead>
+                            <TableHead>Unit Depan</TableHead>
+                            <TableHead className="text-center">Jarak (m)</TableHead>
+                            <TableHead>Keterangan</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {(detailData.records as JarakRecord[])?.map((record) => (
+                            <TableRow key={record.id}>
+                              <TableCell>{record.ordinal}</TableCell>
+                              <TableCell className="font-medium">{record.noKendaraan}</TableCell>
+                              <TableCell className="text-center">{record.tipeUnit}</TableCell>
+                              <TableCell>{record.lokasiMuatan || '-'}</TableCell>
+                              <TableCell>{record.lokasiKosongan || '-'}</TableCell>
+                              <TableCell>{record.nomorLambungUnit || '-'}</TableCell>
+                              <TableCell className="text-center font-bold">{record.jarakAktualKedua || '-'}</TableCell>
+                              <TableCell>{record.keterangan || '-'}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    ) : selectedSession?.type === 'Kecepatan' ? (
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>No</TableHead>
+                            <TableHead>No Unit</TableHead>
+                            <TableHead>Tipe</TableHead>
+                            <TableHead className="text-center">Muatan</TableHead>
+                            <TableHead className="text-center">Kosongan</TableHead>
+                            <TableHead className="text-center">MPH</TableHead>
+                            <TableHead className="text-center">KPH</TableHead>
+                            <TableHead>Keterangan</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {(detailData.records as KecepatanRecord[])?.map((record) => (
+                            <TableRow key={record.id}>
+                              <TableCell>{record.ordinal}</TableCell>
+                              <TableCell className="font-medium">{record.noKendaraan}</TableCell>
+                              <TableCell className="text-center">{record.tipeUnit}</TableCell>
+                              <TableCell className="text-center"><CheckIcon checked={record.arahMuatan} /></TableCell>
+                              <TableCell className="text-center"><CheckIcon checked={record.arahKosongan} /></TableCell>
+                              <TableCell className="text-center">{record.kecepatanMph || '-'}</TableCell>
+                              <TableCell className="text-center font-bold">{record.kecepatanKph || '-'}</TableCell>
+                              <TableCell>{record.keterangan || '-'}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    ) : selectedSession?.type === 'Pencahayaan' ? (
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>No</TableHead>
+                            <TableHead>Titik</TableHead>
+                            <TableHead>Sumber</TableHead>
+                            <TableHead className="text-center">Jenis</TableHead>
+                            <TableHead className="text-center">Lux</TableHead>
+                            <TableHead className="text-center">Jarak</TableHead>
+                            <TableHead className="text-center">Visual</TableHead>
+                            <TableHead>Keterangan</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {(detailData.records as PencahayaanRecord[])?.map((record) => (
+                            <TableRow key={record.id}>
+                              <TableCell>{record.ordinal}</TableCell>
+                              <TableCell className="font-medium">{record.titikPengambilan}</TableCell>
+                              <TableCell>{record.sumberPenerangan}</TableCell>
+                              <TableCell className="text-center">{record.jenisPengukuran}</TableCell>
+                              <TableCell className="text-center font-bold">{record.intensitasLux}</TableCell>
+                              <TableCell className="text-center">{record.jarakDariSumber || '-'}</TableCell>
+                              <TableCell className="text-center">{record.secaraVisual}</TableCell>
+                              <TableCell>{record.keterangan || '-'}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    ) : selectedSession?.type === 'LOTO' ? (
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>No</TableHead>
+                            <TableHead>Nama Karyawan</TableHead>
+                            <TableHead>Perusahaan</TableHead>
+                            <TableHead>Jenis Pekerjaan</TableHead>
+                            <TableHead>Lokasi Isolasi</TableHead>
+                            <TableHead>No Gembok</TableHead>
+                            <TableHead>Jam Pasang</TableHead>
+                            <TableHead>Keterangan</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {(detailData.records as LotoRecord[])?.map((record) => (
+                            <TableRow key={record.id}>
+                              <TableCell>{record.ordinal}</TableCell>
+                              <TableCell className="font-medium">{record.namaKaryawan}</TableCell>
+                              <TableCell>{record.perusahaan}</TableCell>
+                              <TableCell>{record.jenisPekerjaan}</TableCell>
+                              <TableCell>{record.lokasiIsolasi}</TableCell>
+                              <TableCell className="font-bold text-orange-600">{record.nomorGembok}</TableCell>
+                              <TableCell>{record.jamPasang}</TableCell>
+                              <TableCell>{record.keterangan || '-'}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    ) : selectedSession?.type === 'Digital' ? (
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>No</TableHead>
+                            <TableHead>Nama Pengawas</TableHead>
+                            <TableHead>NIK</TableHead>
+                            <TableHead>Jabatan</TableHead>
+                            <TableHead className="text-center">App Usage</TableHead>
+                            <TableHead className="text-center">Timely</TableHead>
+                            <TableHead>Feedback Quality</TableHead>
+                            <TableHead>Keterangan</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {(detailData.records as DigitalRecord[])?.map((record) => (
+                            <TableRow key={record.id}>
+                              <TableCell>{record.ordinal}</TableCell>
+                              <TableCell className="font-medium">{record.namaPengawas}</TableCell>
+                              <TableCell>{record.nik || '-'}</TableCell>
+                              <TableCell>{record.jabatan || '-'}</TableCell>
+                              <TableCell className="text-center">
+                                <Badge variant={record.appUsage ? 'default' : 'destructive'}>
+                                  {record.appUsage ? 'Ya' : 'Tidak'}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="text-center">
+                                <Badge variant={record.timelyReporting ? 'default' : 'destructive'}>
+                                  {record.timelyReporting ? 'Ya' : 'Tidak'}
+                                </Badge>
+                              </TableCell>
+                              <TableCell>{record.feedbackQuality}</TableCell>
+                              <TableCell>{record.keterangan || '-'}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    ) : selectedSession?.type === 'Workshop' ? (
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>No</TableHead>
+                            <TableHead>Nama Alat</TableHead>
+                            <TableHead className="text-center">Kondisi</TableHead>
+                            <TableHead className="text-center">Kebersihan</TableHead>
+                            <TableHead className="text-center">Sertifikasi</TableHead>
+                            <TableHead>Keterangan</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {(detailData.records as WorkshopRecord[])?.map((record) => (
+                            <TableRow key={record.id}>
+                              <TableCell>{record.ordinal}</TableCell>
+                              <TableCell className="font-medium">{record.namaAlat}</TableCell>
+                              <TableCell className="text-center">
+                                <Badge variant={record.kondisi ? 'default' : 'destructive'}>
+                                  {record.kondisi ? 'Baik' : 'Rusak'}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="text-center">
+                                <Badge variant={record.kebersihan ? 'default' : 'destructive'}>
+                                  {record.kebersihan ? 'Bersih' : 'Kotor'}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="text-center">
+                                <Badge variant={record.sertifikasi ? 'default' : 'destructive'}>
+                                  {record.sertifikasi ? 'Ada' : 'Tidak'}
+                                </Badge>
+                              </TableCell>
+                              <TableCell>{record.keterangan || '-'}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    ) : (
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>No</TableHead>
+                            <TableHead>Nama</TableHead>
+                            <TableHead>NIK</TableHead>
+                            <TableHead>Nomor Lambung</TableHead>
+                            <TableHead>Roster Sesuai</TableHead>
+                            <TableHead>Keterangan</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {(detailData.records as RosterRecord[])?.map((record) => (
+                            <TableRow key={record.id}>
+                              <TableCell>{record.ordinal}</TableCell>
+                              <TableCell className="font-medium">{record.nama}</TableCell>
+                              <TableCell>{record.nik}</TableCell>
+                              <TableCell>{record.nomorLambung || '-'}</TableCell>
+                              <TableCell>
+                                <Badge variant={record.rosterSesuai ? 'default' : 'destructive'}>
+                                  {record.rosterSesuai ? 'Ya' : 'Tidak'}
+                                </Badge>
+                              </TableCell>
+                              <TableCell>{record.keterangan || '-'}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    )}
+                  </TabsContent>
+
+                  <TabsContent value="observers" className="mt-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {detailData.observers?.map((observer) => (
+                        <div key={observer.id} className="p-4 border rounded-lg">
+                          <div className="flex items-start justify-between">
+                            <div>
+                              <p className="font-medium">{observer.nama}</p>
+                              <p className="text-sm text-gray-500">{observer.nik || '-'}</p>
+                              <p className="text-sm text-gray-500">{observer.perusahaan || '-'}</p>
+                              <p className="text-sm text-gray-500">{observer.jabatan || '-'}</p>
+                            </div>
+                            {observer.tandaTangan && (
+                              <div className="w-20 h-16 border rounded overflow-hidden">
+                                <img src={observer.tandaTangan} alt="Tanda Tangan" className="w-full h-full object-contain" />
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                      {(!detailData.observers || detailData.observers.length === 0) && (
+                        <p className="text-gray-500 text-center py-4 col-span-2">Tidak ada data observer</p>
+                      )}
+                    </div>
+                  </TabsContent>
+
+                  <TabsContent value="photos" className="mt-4">
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                      {detailData.session?.photos?.map((photo, idx) => (
+                        <a
+                          key={idx}
+                          href={photo}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="aspect-square rounded-lg overflow-hidden border bg-gray-100 dark:bg-gray-700 block"
+                        >
+                          <ImageWithFallback
+                            src={photo}
+                            alt={`Foto ${idx + 1}`}
+                            className="w-full h-full object-cover"
+                            index={idx}
+                            showClickHint={true}
+                            accentColor="blue"
+                          />
+                        </a>
+                      ))}
+                      {(!detailData.session?.photos || detailData.session.photos.length === 0) && (
+                        <p className="text-gray-500 text-center py-4 col-span-3">Tidak ada foto kegiatan</p>
+                      )}
+                    </div>
+                  </TabsContent>
+                </Tabs>
+              </div>
+            ) : (
+              <div className="text-center py-8 text-gray-500">
+                Data tidak ditemukan
+              </div>
+            )}
+          </ScrollArea>
+        </DialogContent>
+      </Dialog>
+    </div >
+  );
+}
+

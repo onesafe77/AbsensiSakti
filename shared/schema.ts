@@ -1,0 +1,1635 @@
+﻿import { sql, relations } from "drizzle-orm";
+import { pgTable, text, varchar, timestamp, boolean, integer, unique, jsonb, index, uniqueIndex, real, date } from "drizzle-orm/pg-core";
+import { createInsertSchema } from "drizzle-zod";
+import { z } from "zod";
+
+// Session storage table for Replit Auth
+export const sessions = pgTable(
+  "sessions",
+  {
+    sid: varchar("sid").primaryKey(),
+    sess: jsonb("sess").notNull(),
+    expire: timestamp("expire").notNull(),
+  },
+  (table) => [index("IDX_session_expire").on(table.expire)],
+);
+
+// User storage table for Replit Auth
+export const users = pgTable("users", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  email: varchar("email").unique(),
+  firstName: varchar("first_name"),
+  lastName: varchar("last_name"),
+  profileImageUrl: varchar("profile_image_url"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Authentication table for employee login
+export const authUsers = pgTable("auth_users", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  nik: varchar("nik").notNull().unique().references(() => employees.id),
+  hashedPassword: text("hashed_password").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("IDX_auth_users_nik").on(table.nik),
+]);
+
+export const employees = pgTable("employees", {
+  id: varchar("id").primaryKey(),
+  name: text("name").notNull(),
+  position: text("position"),
+  nomorLambung: text("nomor_lambung"),
+  isSpareOrigin: boolean("is_spare_origin").default(false), // Track jika karyawan asli SPARE
+  department: text("department"),
+  investorGroup: text("investor_group"),
+  phone: text("phone").notNull(),
+  qrCode: text("qr_code"), // QR Code data untuk karyawan
+  status: text("status").notNull().default("active"),
+  createdAt: timestamp("created_at").default(sql`now()`),
+}, (table) => [
+  index("IDX_employees_name").on(table.name),
+  index("IDX_employees_status").on(table.status),
+  index("IDX_employees_department").on(table.department),
+]);
+
+export const attendanceRecords = pgTable("attendance_records", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  employeeId: varchar("employee_id").notNull().references(() => employees.id),
+  date: text("date").notNull(),
+  time: text("time").notNull(),
+  jamTidur: text("jam_tidur"), // Jam tidur karyawan
+  fitToWork: text("fit_to_work"), // Status fit to work
+  status: text("status").notNull().default("present"),
+  createdAt: timestamp("created_at").default(sql`now()`),
+}, (table) => [
+  index("IDX_attendance_date").on(table.date),
+  index("IDX_attendance_employee").on(table.employeeId),
+  index("IDX_attendance_employee_date").on(table.employeeId, table.date),
+  index("IDX_attendance_status").on(table.status),
+]);
+
+export const rosterSchedules = pgTable("roster_schedules", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  employeeId: varchar("employee_id").notNull().references(() => employees.id),
+  date: text("date").notNull(),
+  shift: text("shift").notNull(),
+  startTime: text("start_time").notNull(),
+  endTime: text("end_time").notNull(),
+  jamTidur: text("jam_tidur"), // Jam tidur dalam angka (contoh: "6", "5")
+  fitToWork: text("fit_to_work").notNull().default("Fit To Work"), // Status fit to work
+  hariKerja: text("hari_kerja"), // Hari kerja dari Excel upload (contoh: "Senin", "Selasa")
+  plannedNomorLambung: text("planned_nomor_lambung"), // Nomor lambung yang dijadwalkan
+  actualNomorLambung: text("actual_nomor_lambung"), // Nomor lambung yang benar-benar dipakai (bisa diedit hari itu)
+  status: text("status").notNull().default("scheduled"),
+}, (table) => [
+  index("IDX_roster_date").on(table.date),
+  index("IDX_roster_employee").on(table.employeeId),
+  index("IDX_roster_employee_date").on(table.employeeId, table.date),
+  index("IDX_roster_shift").on(table.shift),
+  index("IDX_roster_status").on(table.status),
+]);
+
+export const leaveRequests = pgTable("leave_requests", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  employeeId: varchar("employee_id").notNull().references(() => employees.id),
+  employeeName: text("employee_name").notNull(),
+  phoneNumber: text("phone_number").notNull(),
+  startDate: text("start_date").notNull(),
+  endDate: text("end_date").notNull(),
+  leaveType: text("leave_type").notNull(),
+  reason: text("reason"),
+  attachmentPath: text("attachment_path"), // Path to uploaded PDF file
+  actionAttachmentPath: text("action_attachment_path"), // Path to HR action PDF file
+  status: text("status").notNull().default("pending"),
+  createdAt: timestamp("created_at").default(sql`now()`),
+});
+
+// Table untuk tracking saldo cuti karyawan
+export const leaveBalances = pgTable("leave_balances", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  employeeId: varchar("employee_id").notNull().references(() => employees.id),
+  year: integer("year").notNull(),
+  totalDays: integer("total_days").notNull().default(0), // Total hari cuti yang berhak
+  usedDays: integer("used_days").notNull().default(0), // Hari cuti yang sudah digunakan
+  remainingDays: integer("remaining_days").notNull().default(0), // Sisa hari cuti
+  workingDaysCompleted: integer("working_days_completed").notNull().default(0), // Hari kerja yang sudah diselesaikan
+  lastWorkDate: text("last_work_date"), // Tanggal kerja terakhir
+  lastLeaveDate: text("last_leave_date"), // Tanggal cuti terakhir
+  nextLeaveEligible: text("next_leave_eligible"), // Tanggal kapan boleh cuti lagi
+  status: text("status").notNull().default("active"), // active, expired
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+});
+
+// Table untuk roster monitoring cuti karyawan
+export const leaveRosterMonitoring = pgTable("leave_roster_monitoring", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  nik: varchar("nik").notNull(),
+  name: text("name").notNull(),
+  nomorLambung: text("nomor_lambung"),
+  month: varchar("month").notNull(), // Format: "YYYY-MM" e.g. "2024-08"
+  investorGroup: text("investor_group").notNull(),
+  lastLeaveDate: text("last_leave_date"), // Tanggal terakhir cuti
+  leaveOption: text("leave_option").notNull(), // "70" atau "35" hari kerja
+  monitoringDays: integer("monitoring_days").notNull().default(0), // Jumlah hari sejak terakhir cuti
+  nextLeaveDate: text("next_leave_date"), // Tanggal cuti berikutnya (otomatis hitung)
+  onSite: text("on_site"), // OnSite status: "Ya", "Tidak", atau kosong
+  status: text("status").notNull().default("Aktif"), // Aktif, Menunggu Cuti, Sedang Cuti, Selesai Cuti
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+}, (table) => ({
+  // Unique constraint untuk NIK + Month (bisa ada duplikat NIK untuk bulan berbeda)
+  nikMonthUnique: unique().on(table.nik, table.month),
+}));
+
+// Table untuk history cuti karyawan  
+export const leaveHistory = pgTable("leave_history", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  employeeId: varchar("employee_id").notNull().references(() => employees.id),
+  leaveRequestId: varchar("leave_request_id").references(() => leaveRequests.id),
+  leaveType: text("leave_type").notNull(),
+  startDate: text("start_date").notNull(),
+  endDate: text("end_date").notNull(),
+  totalDays: integer("total_days").notNull(),
+  balanceBeforeLeave: integer("balance_before_leave").notNull(),
+  balanceAfterLeave: integer("balance_after_leave").notNull(),
+  status: text("status").notNull(), // taken, cancelled, pending
+  remarks: text("remarks"),
+  createdAt: timestamp("created_at").default(sql`now()`),
+});
+
+export const qrTokens = pgTable("qr_tokens", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  employeeId: varchar("employee_id").notNull().references(() => employees.id),
+  token: text("token").notNull(),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").default(sql`now()`),
+});
+
+export const leaveReminders = pgTable("leave_reminders", {
+  id: varchar("id").primaryKey(),
+  leaveRequestId: varchar("leave_request_id").notNull().references(() => leaveRequests.id),
+  employeeId: varchar("employee_id").notNull().references(() => employees.id),
+  reminderType: text("reminder_type").notNull(), // '7_days', '3_days', '1_day'
+  sentAt: timestamp("sent_at").notNull(),
+  phoneNumber: text("phone_number").notNull(),
+  message: text("message").notNull(),
+  createdAt: timestamp("created_at").default(sql`now()`),
+});
+
+
+
+// Insert schemas
+export const insertEmployeeSchema = createInsertSchema(employees).omit({
+  createdAt: true,
+});
+
+export const insertAttendanceSchema = createInsertSchema(attendanceRecords).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertRosterSchema = createInsertSchema(rosterSchedules).omit({
+  id: true,
+});
+
+export const insertLeaveRequestSchema = createInsertSchema(leaveRequests).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertQrTokenSchema = createInsertSchema(qrTokens).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertLeaveReminderSchema = createInsertSchema(leaveReminders).omit({
+  createdAt: true,
+});
+
+export const insertLeaveBalanceSchema = createInsertSchema(leaveBalances).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertLeaveHistorySchema = createInsertSchema(leaveHistory).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertLeaveRosterMonitoringSchema = createInsertSchema(leaveRosterMonitoring).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+// Types
+export type Employee = typeof employees.$inferSelect;
+export type InsertEmployee = z.infer<typeof insertEmployeeSchema>;
+export type AttendanceRecord = typeof attendanceRecords.$inferSelect;
+export type InsertAttendanceRecord = z.infer<typeof insertAttendanceSchema>;
+export type RosterSchedule = typeof rosterSchedules.$inferSelect;
+export type InsertRosterSchedule = z.infer<typeof insertRosterSchema>;
+export type LeaveRequest = typeof leaveRequests.$inferSelect;
+export type InsertLeaveRequest = z.infer<typeof insertLeaveRequestSchema>;
+export type QrToken = typeof qrTokens.$inferSelect;
+export type InsertQrToken = z.infer<typeof insertQrTokenSchema>;
+export type LeaveReminder = typeof leaveReminders.$inferSelect;
+export type InsertLeaveReminder = z.infer<typeof insertLeaveReminderSchema>;
+export type LeaveBalance = typeof leaveBalances.$inferSelect;
+export type InsertLeaveBalance = z.infer<typeof insertLeaveBalanceSchema>;
+export type LeaveHistory = typeof leaveHistory.$inferSelect;
+export type InsertLeaveHistory = z.infer<typeof insertLeaveHistorySchema>;
+export type LeaveRosterMonitoring = typeof leaveRosterMonitoring.$inferSelect;
+export type InsertLeaveRosterMonitoring = z.infer<typeof insertLeaveRosterMonitoringSchema>;
+
+
+// Meeting attendance system
+export const meetings = pgTable("meetings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  title: varchar("title").notNull(),
+  description: text("description"),
+  date: varchar("date").notNull(), // YYYY-MM-DD format
+  startTime: varchar("start_time").notNull(), // HH:MM format
+  endTime: varchar("end_time").notNull(), // HH:MM format
+  location: varchar("location").notNull(),
+  organizer: varchar("organizer").notNull(),
+  status: varchar("status").notNull().default("scheduled"), // scheduled, ongoing, completed, cancelled
+  qrToken: varchar("qr_token").unique(), // Unique token for QR code
+  meetingPhotos: text("meeting_photos").array(), // Array of photo paths (max 4)
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const meetingAttendance = pgTable("meeting_attendance", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  meetingId: varchar("meeting_id").notNull().references(() => meetings.id, { onDelete: "cascade" }),
+  employeeId: varchar("employee_id").references(() => employees.id, { onDelete: "cascade" }), // Made nullable for manual entries
+  scanTime: varchar("scan_time").notNull(), // HH:MM:SS format  
+  scanDate: varchar("scan_date").notNull(), // YYYY-MM-DD format
+  deviceInfo: varchar("device_info"), // Browser/device information
+  attendanceType: varchar("attendance_type").notNull().default("qr_scan"), // "qr_scan" | "manual_entry"
+
+  // Manual entry fields for investor group
+  manualName: varchar("manual_name"), // Nama karyawan for manual entry
+  manualPosition: varchar("manual_position"), // "Investor" | "Korlap"
+  manualDepartment: varchar("manual_department"), // Selected from investorGroup
+
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// SIMPER Employee Monitoring System
+export const simperMonitoring = pgTable("simper_monitoring", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  employeeName: text("employee_name").notNull(),
+  nik: varchar("nik").notNull().unique(),
+  simperBibExpiredDate: text("simper_bib_expired_date"), // Format: YYYY-MM-DD
+  simperTiaExpiredDate: text("simper_tia_expired_date"), // Format: YYYY-MM-DD  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertMeetingSchema = createInsertSchema(meetings).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertMeetingAttendanceSchema = createInsertSchema(meetingAttendance).omit({
+  id: true,
+  createdAt: true,
+});
+
+// Schema for manual attendance entry (investor group)
+export const insertManualAttendanceSchema = insertMeetingAttendanceSchema.extend({
+  attendanceType: z.literal("manual_entry"),
+  manualName: z.string().min(1, "Nama karyawan required"),
+  manualPosition: z.enum(["Investor", "Korlap"], { required_error: "Position required" }),
+  manualDepartment: z.string().min(1, "Department required"),
+}).omit({
+  employeeId: true, // Not needed for manual entry
+  meetingId: true, // Added by backend from route params
+});
+
+export const insertSimperMonitoringSchema = createInsertSchema(simperMonitoring).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type Meeting = typeof meetings.$inferSelect;
+export type InsertMeeting = z.infer<typeof insertMeetingSchema>;
+export type MeetingAttendance = typeof meetingAttendance.$inferSelect;
+export type InsertMeetingAttendance = z.infer<typeof insertMeetingAttendanceSchema>;
+export type InsertManualAttendance = z.infer<typeof insertManualAttendanceSchema>;
+export type SimperMonitoring = typeof simperMonitoring.$inferSelect;
+export type InsertSimperMonitoring = z.infer<typeof insertSimperMonitoringSchema>;
+
+// Authentication types
+export type UpsertUser = typeof users.$inferInsert;
+export type User = typeof users.$inferSelect;
+
+
+// ============================================
+// SIDAK FATIGUE (Pengecekan Kelelahan)
+// ============================================
+
+export const sidakFatigueSessions = pgTable("sidak_fatigue_sessions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tanggal: text("tanggal").notNull(), // Format: YYYY-MM-DD
+  waktu: text("waktu").notNull(), // Unified field
+  shift: text("shift").notNull(), // "Shift 1" or "Shift 2"
+  waktuMulai: text("waktu_mulai").notNull(), // Format: HH:MM
+  waktuSelesai: text("waktu_selesai").notNull(), // Format: HH:MM
+  lokasi: text("lokasi").notNull(),
+  area: text("area").notNull(),
+  departemen: text("departemen").notNull(),
+  totalSampel: integer("total_sampel").notNull().default(0), // Auto calculated from records
+  createdBy: varchar("created_by"), // NIK of supervisor who created the SIDAK
+  activityPhotos: text("activity_photos").array(), // Array of photo paths for activity documentation
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("IDX_fatigue_sessions_created_by").on(table.createdBy),
+]);
+
+export const sidakFatigueRecords = pgTable("sidak_fatigue_records", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  sessionId: varchar("session_id").notNull().references(() => sidakFatigueSessions.id, { onDelete: "cascade" }),
+  employeeId: varchar("employee_id").references(() => employees.id), // Optional, nullable for flexibility
+  ordinal: integer("ordinal").notNull(), // Sequence 1..10, enforces max limit via unique constraint
+  nama: text("nama").notNull(),
+  nik: text("nik").notNull(),
+  jabatan: text("jabatan").notNull(),
+  nomorLambung: text("nomor_lambung"),
+
+  // Data pengecekan
+  jamTidur: integer("jam_tidur").notNull(), // Jam tidur sebelum bekerja (angka)
+  konsumiObat: boolean("konsumsi_obat").notNull().default(false), // true = Ya/âœ“, false = Tidak/âœ—
+  masalahPribadi: boolean("masalah_pribadi").notNull().default(false), // true = Ya/âœ“, false = Tidak/âœ—
+
+  // Pemeriksaan (true = Ya/âœ“, false = Tidak/âœ—)
+  pemeriksaanRespon: boolean("pemeriksaan_respon").notNull().default(true),
+  pemeriksaanKonsentrasi: boolean("pemeriksaan_konsentrasi").notNull().default(true),
+  pemeriksaanKesehatan: boolean("pemeriksaan_kesehatan").notNull().default(true),
+
+  // Rekomendasi (true = Ya/âœ“, false = Tidak/âœ—)
+  karyawanSiapBekerja: boolean("karyawan_siap_bekerja").notNull().default(true),
+  fitUntukBekerja: boolean("fit_untuk_bekerja").notNull().default(true),
+  istirahatDanMonitor: boolean("istirahat_dan_monitor").notNull().default(false),
+  istirahatLebihdariSatuJam: boolean("istirahat_lebih_dari_satu_jam").notNull().default(false),
+  tidakBolehBekerja: boolean("tidak_boleh_bekerja").notNull().default(false),
+
+  // Tanda tangan karyawan
+  employeeSignature: text("employee_signature"), // Base64 encoded signature image
+
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("IDX_fatigue_records_session").on(table.sessionId),
+  index("IDX_fatigue_records_employee").on(table.employeeId),
+  uniqueIndex("sidak_fatigue_session_ordinal_unique").on(table.sessionId, table.ordinal),
+]);
+
+export const sidakFatigueObservers = pgTable("sidak_fatigue_observers", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  sessionId: varchar("session_id").notNull().references(() => sidakFatigueSessions.id, { onDelete: "cascade" }),
+  nama: text("nama").notNull(),
+  nik: text("nik").notNull(),
+  perusahaan: text("perusahaan").notNull(),
+  jabatan: text("jabatan").notNull(),
+  signatureDataUrl: text("signature_data_url").notNull(), // Base64 encoded signature image
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("IDX_fatigue_observers_session").on(table.sessionId),
+]);
+
+
+// ============================================
+// SIDAK ROSTER (Kesesuaian Gilir Kerja)
+// ============================================
+
+export const sidakRosterSessions = pgTable("sidak_roster_sessions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tanggal: text("tanggal").notNull(), // Format: YYYY-MM-DD
+  waktu: text("waktu").notNull(), // Format: HH:MM
+  shift: text("shift").notNull(), // "Shift 1" or "Shift 2"
+  perusahaan: text("perusahaan").notNull(),
+  departemen: text("departemen").notNull(),
+  lokasi: text("lokasi").notNull(),
+  totalSampel: integer("total_sampel").notNull().default(0), // Auto calculated from records
+  activityPhotos: text("activity_photos").array(), // Array of photo URLs for activity documentation
+  createdBy: varchar("created_by"), // NIK of supervisor who created the SIDAK
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("IDX_roster_sessions_created_by").on(table.createdBy),
+]);
+
+export const sidakRosterRecords = pgTable("sidak_roster_records", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  sessionId: varchar("session_id").notNull().references(() => sidakRosterSessions.id, { onDelete: "cascade" }),
+  employeeId: varchar("employee_id").references(() => employees.id), // Optional, nullable for flexibility
+  ordinal: integer("ordinal").notNull(), // Sequence 1..15, enforces max limit via unique constraint
+  nama: text("nama").notNull(),
+  nik: text("nik").notNull(),
+  nomorLambung: text("nomor_lambung"),
+
+  // Kesesuaian roster
+  rosterSesuai: boolean("roster_sesuai").notNull(), // true = Ya/âœ“, false = Tidak/âœ—
+  keterangan: text("keterangan"), // Optional notes
+
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("IDX_roster_records_session").on(table.sessionId),
+  index("IDX_roster_records_employee").on(table.employeeId),
+  uniqueIndex("sidak_roster_session_ordinal_unique").on(table.sessionId, table.ordinal),
+]);
+
+export const sidakRosterObservers = pgTable("sidak_roster_observers", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  sessionId: varchar("session_id").notNull().references(() => sidakRosterSessions.id, { onDelete: "cascade" }),
+  nama: text("nama").notNull(),
+  nik: text("nik").notNull(),
+  perusahaan: text("perusahaan").notNull(),
+  jabatan: text("jabatan").notNull(),
+  signatureDataUrl: text("signature_data_url").notNull(), // Base64 encoded signature image
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("IDX_roster_observers_session").on(table.sessionId),
+]);
+
+
+// ============================================
+// SIDAK SEAT BELT (Pengecekan Sabuk Pengaman)
+// ============================================
+
+export const sidakSeatbeltSessions = pgTable("sidak_seatbelt_sessions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tanggal: text("tanggal").notNull(), // Format: YYYY-MM-DD
+  waktu: text("waktu").notNull(), // Format: HH:MM
+  shift: text("shift").notNull(), // "Shift 1" or "Shift 2"
+  shiftType: text("shift_type").notNull().default("Shift 1"), // Duplicate for safety, matching other tables if needed or just use shift
+  lokasi: text("lokasi").notNull(),
+  totalSampel: integer("total_sampel").notNull().default(0), // Auto calculated
+  activityPhotos: text("activity_photos").array(), // Array of photo URLs
+  createdBy: varchar("created_by"), // NIK of supervisor
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("IDX_seatbelt_sessions_created_by").on(table.createdBy),
+]);
+
+export const sidakSeatbeltRecords = pgTable("sidak_seatbelt_records", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  sessionId: varchar("session_id").notNull().references(() => sidakSeatbeltSessions.id, { onDelete: "cascade" }),
+  employeeId: varchar("employee_id").references(() => employees.id), // Optional/Nullable as input can be manual
+  ordinal: integer("ordinal").notNull(), // Sequence 1..N
+
+  // Identitas
+  nama: text("nama").notNull(),
+  nik: text("nik"), // Bisa kosong jika tidak ada di database? Sebaiknya required tapi manual input.
+  nomorLambung: text("nomor_lambung"),
+  perusahaan: text("perusahaan").notNull(),
+
+  // Checklist Pengecekan 
+  // (True = Ceklis/Berfungsi/Ya, False = X/Rusak/Tidak)
+  seatbeltDriverCondition: boolean("seatbelt_driver_condition").notNull(), // Apakah sabuk pengemudi berfungsi?
+  seatbeltPassengerCondition: boolean("seatbelt_passenger_condition").notNull(), // Apakah sabuk penumpang berfungsi?
+  seatbeltDriverUsage: boolean("seatbelt_driver_usage").notNull(), // Apakah pengemudi pakai benar?
+  seatbeltPassengerUsage: boolean("seatbelt_passenger_usage").notNull(), // Apakah penumpang pakai benar?
+
+  keterangan: text("keterangan"),
+
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("IDX_seatbelt_records_session").on(table.sessionId),
+  uniqueIndex("sidak_seatbelt_session_ordinal_unique").on(table.sessionId, table.ordinal),
+]);
+
+export const sidakSeatbeltObservers = pgTable("sidak_seatbelt_observers", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  sessionId: varchar("session_id").notNull().references(() => sidakSeatbeltSessions.id, { onDelete: "cascade" }),
+  nama: text("nama").notNull(),
+  nik: text("nik").notNull(),
+  perusahaan: text("perusahaan").notNull(),
+  jabatan: text("jabatan").notNull(),
+  signatureDataUrl: text("signature_data_url").notNull(), // Base64 signature
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("IDX_seatbelt_observers_session").on(table.sessionId),
+]);
+
+
+// ============================================
+// INSERT SCHEMAS & TYPES - SIDAK FATIGUE
+// ============================================
+
+export const insertSidakFatigueSessionSchema = createInsertSchema(sidakFatigueSessions).omit({
+  id: true,
+  createdAt: true,
+  totalSampel: true, // Auto calculated
+});
+
+export const insertSidakFatigueRecordSchema = createInsertSchema(sidakFatigueRecords).omit({
+  id: true,
+  ordinal: true, // Auto-generated sequence
+  createdAt: true,
+});
+
+export const insertSidakFatigueObserverSchema = createInsertSchema(sidakFatigueObservers).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type SidakFatigueSession = typeof sidakFatigueSessions.$inferSelect;
+export type InsertSidakFatigueSession = z.infer<typeof insertSidakFatigueSessionSchema>;
+export type SidakFatigueRecord = typeof sidakFatigueRecords.$inferSelect;
+export type InsertSidakFatigueRecord = z.infer<typeof insertSidakFatigueRecordSchema>;
+export type SidakFatigueObserver = typeof sidakFatigueObservers.$inferSelect;
+export type InsertSidakFatigueObserver = z.infer<typeof insertSidakFatigueObserverSchema>;
+
+
+// ============================================
+// INSERT SCHEMAS & TYPES - SIDAK ROSTER
+// ============================================
+
+export const insertSidakRosterSessionSchema = createInsertSchema(sidakRosterSessions).omit({
+  id: true,
+  createdAt: true,
+  totalSampel: true, // Auto calculated
+});
+
+export const insertSidakRosterRecordSchema = createInsertSchema(sidakRosterRecords).omit({
+  id: true,
+  ordinal: true, // Auto-generated sequence
+  createdAt: true,
+});
+
+export const insertSidakRosterObserverSchema = createInsertSchema(sidakRosterObservers).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type SidakRosterSession = typeof sidakRosterSessions.$inferSelect;
+export type InsertSidakRosterSession = z.infer<typeof insertSidakRosterSessionSchema>;
+export type SidakRosterRecord = typeof sidakRosterRecords.$inferSelect;
+export type InsertSidakRosterRecord = z.infer<typeof insertSidakRosterRecordSchema>;
+export type SidakRosterObserver = typeof sidakRosterObservers.$inferSelect;
+export type InsertSidakRosterObserver = z.infer<typeof insertSidakRosterObserverSchema>;
+
+
+// ============================================
+// INSERT SCHEMAS & TYPES - SIDAK SEAT BELT
+// ============================================
+
+export const insertSidakSeatbeltSessionSchema = createInsertSchema(sidakSeatbeltSessions).omit({
+  id: true,
+  createdAt: true,
+  totalSampel: true,
+});
+
+export const insertSidakSeatbeltRecordSchema = createInsertSchema(sidakSeatbeltRecords).omit({
+  id: true,
+  ordinal: true,
+  createdAt: true,
+});
+
+export const insertSidakSeatbeltObserverSchema = createInsertSchema(sidakSeatbeltObservers).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type SidakSeatbeltSession = typeof sidakSeatbeltSessions.$inferSelect;
+export type InsertSidakSeatbeltSession = z.infer<typeof insertSidakSeatbeltSessionSchema
+
+>;
+export type SidakSeatbeltRecord = typeof sidakSeatbeltRecords.$inferSelect;
+export type InsertSidakSeatbeltRecord = z.infer<typeof insertSidakSeatbeltRecordSchema>;
+export type SidakSeatbeltObserver = typeof sidakSeatbeltObservers.$inferSelect;
+export type InsertSidakSeatbeltObserver = z.infer<typeof insertSidakSeatbeltObserverSchema>;
+
+
+
+
+// ============================================
+// SIDAK KECEPATAN (Observasi Kecepatan Unit)
+// ============================================
+
+
+
+
+
+
+// ============================================
+// AUTHENTICATION - AUTH USERS
+// ============================================
+
+export const insertAuthUserSchema = createInsertSchema(authUsers).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type AuthUser = typeof authUsers.$inferSelect;
+export type InsertAuthUser = z.infer<typeof insertAuthUserSchema>;
+
+// Login validation schema
+export const loginSchema = z.object({
+  nik: z.string().min(1, "NIK is required"),
+  password: z.string().min(1, "Password is required"),
+});
+
+export type LoginInput = z.infer<typeof loginSchema>;
+
+// Password reset validation schema
+export const resetPasswordSchema = z.object({
+  oldPassword: z.string().min(1, "Old password is required"),
+  newPassword: z.string().min(8, "Password must be at least 8 characters"),
+  confirmPassword: z.string().min(1, "Please confirm your password"),
+}).refine((data) => data.newPassword === data.confirmPassword, {
+  message: "Passwords don't match",
+  path: ["confirmPassword"],
+});
+
+export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;
+
+
+// ============================================
+// ANNOUNCEMENTS (Pengumuman untuk Driver)
+// ============================================
+
+export const announcements = pgTable("announcements", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  title: text("title").notNull(),
+  content: text("content").notNull(),
+  imageUrls: text("image_urls").array(), // Array URL gambar lampiran (multiple images)
+  createdBy: varchar("created_by").notNull(), // NIK admin yang membuat
+  createdByName: text("created_by_name").notNull(), // Nama admin yang membuat
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("IDX_announcements_created_at").on(table.createdAt),
+  index("IDX_announcements_is_active").on(table.isActive),
+]);
+
+export const announcementReads = pgTable("announcement_reads", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  announcementId: varchar("announcement_id").notNull().references(() => announcements.id, { onDelete: "cascade" }),
+  employeeId: varchar("employee_id").notNull().references(() => employees.id),
+  employeeName: text("employee_name").notNull(), // Nama driver yang membaca
+  readAt: timestamp("read_at").defaultNow(),
+}, (table) => [
+  index("IDX_announcement_reads_announcement").on(table.announcementId),
+  index("IDX_announcement_reads_employee").on(table.employeeId),
+  uniqueIndex("announcement_reads_unique").on(table.announcementId, table.employeeId),
+]);
+
+export const insertAnnouncementSchema = createInsertSchema(announcements).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertAnnouncementReadSchema = createInsertSchema(announcementReads).omit({
+  id: true,
+  readAt: true,
+});
+
+export type Announcement = typeof announcements.$inferSelect;
+export type InsertAnnouncement = z.infer<typeof insertAnnouncementSchema>;
+export type AnnouncementRead = typeof announcementReads.$inferSelect;
+export type InsertAnnouncementRead = z.infer<typeof insertAnnouncementReadSchema>;
+
+// ============================================
+// DOCUMENT MANAGEMENT TABLES
+// Dokumen perusahaan: Kebijakan KPLH, Prosedur, SPDK, Zero Harm, Critical Control Card, Golden Rule
+// ============================================
+
+export const documentCategories = [
+  "Kebijakan KPLH",
+  "Prosedur - Dept HSE",
+  "Prosedur - Dept Opr",
+  "Prosedur - Dept Plant",
+  "SPDK",
+  "Zero Harm",
+  "Critical Control Card",
+  "Golden Rule",
+] as const;
+
+export type DocumentCategory = typeof documentCategories[number];
+
+export const documents = pgTable("documents", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  title: text("title").notNull(),
+  category: text("category").notNull(), // One of documentCategories
+  fileName: text("file_name").notNull(), // Original file name
+  filePath: text("file_path").notNull(), // Path to stored PDF file
+  fileSize: integer("file_size"), // File size in bytes
+  uploadedBy: varchar("uploaded_by").notNull(), // NIK admin who uploaded
+  uploadedByName: text("uploaded_by_name").notNull(), // Name of admin who uploaded
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("IDX_documents_category").on(table.category),
+  index("IDX_documents_created_at").on(table.createdAt),
+  index("IDX_documents_is_active").on(table.isActive),
+]);
+
+export const insertDocumentSchema = createInsertSchema(documents).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type Document = typeof documents.$inferSelect;
+export type InsertDocument = z.infer<typeof insertDocumentSchema>;
+
+// ============================================
+// NEWS (Berita untuk semua karyawan)
+// ============================================
+
+export const news = pgTable("news", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  title: text("title").notNull(),
+  content: text("content").notNull(),
+  imageUrl: text("image_url"), // URL gambar berita (legacy, untuk backward compatibility)
+  imageUrls: text("image_urls").array(), // Array URL gambar (multiple images)
+  isImportant: boolean("is_important").notNull().default(false), // Berita penting
+  createdBy: varchar("created_by").notNull(), // NIK admin yang membuat
+  createdByName: text("created_by_name").notNull(), // Nama admin yang membuat
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("IDX_news_created_at").on(table.createdAt),
+  index("IDX_news_is_active").on(table.isActive),
+  index("IDX_news_is_important").on(table.isImportant),
+]);
+
+export const insertNewsSchema = createInsertSchema(news).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type News = typeof news.$inferSelect;
+export type InsertNews = z.infer<typeof insertNewsSchema>;
+
+// ============================================
+// PUSH NOTIFICATIONS
+// ============================================
+
+export const pushSubscriptions = pgTable("push_subscriptions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  employeeId: varchar("employee_id").notNull().references(() => employees.id),
+  endpoint: text("endpoint").notNull(),
+  p256dh: text("p256dh").notNull(), // Public key
+  auth: text("auth").notNull(), // Auth secret
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("IDX_push_subscriptions_employee").on(table.employeeId),
+  index("IDX_push_subscriptions_is_active").on(table.isActive),
+  uniqueIndex("push_subscriptions_endpoint_unique").on(table.endpoint),
+]);
+
+export const insertPushSubscriptionSchema = createInsertSchema(pushSubscriptions).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type PushSubscription = typeof pushSubscriptions.$inferSelect;
+export type InsertPushSubscription = z.infer<typeof insertPushSubscriptionSchema>;
+
+
+// ============================================
+// TRAINING NEED ANALYSIS (TNA)
+// ============================================
+
+// Master Data Trainings
+export const trainings = pgTable("trainings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  code: text("code"), // Optional code, e.g. "TR-001"
+  name: text("name").notNull().unique(),
+  category: text("category").notNull(), // e.g., "K3 Umum", "Safety", "Technical"
+  isMandatory: boolean("is_mandatory").notNull().default(false), // If true, auto-added to everyone (MVP logic)
+  description: text("description"),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("IDX_trainings_name").on(table.name),
+  index("IDX_trainings_category").on(table.category),
+]);
+
+// TNA Summary (Header per Employee per Period)
+export const tnaSummaries = pgTable("tna_summaries", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  employeeId: varchar("employee_id").notNull().references(() => employees.id),
+  period: text("period").notNull(), // Format: "YYYY-MM"
+  status: text("status").notNull().default("Draft"), // "Draft", "Submitted", "Locked"
+  createdBy: varchar("created_by").notNull(), // NIK
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  uniqueIndex("tna_summary_employee_period").on(table.employeeId, table.period),
+  index("IDX_tna_summary_period").on(table.period),
+]);
+
+// TNA Entries (Matrix Rows)
+export const tnaEntries = pgTable("tna_entries", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tnaSummaryId: varchar("tna_summary_id").notNull().references(() => tnaSummaries.id, { onDelete: "cascade" }),
+  trainingId: varchar("training_id").notNull().references(() => trainings.id),
+
+  // PLAN
+  planStatus: text("plan_status").notNull(), // "M" (Mandatory), "D" (Development)
+
+  // ACTUAL
+  actualStatus: text("actual_status"), // "C" (Complied), "NC" (Not Complied), or null (Not Reported)
+  actualDate: text("actual_date"), // Format: YYYY-MM-DD
+  trainerProvider: text("trainer_provider"), // Optional
+  evidenceFile: text("evidence_file"), // Path to file
+  notes: text("notes"), // Reason if NC, or general notes
+
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("IDX_tna_entries_summary").on(table.tnaSummaryId),
+  uniqueIndex("tna_entry_summary_training").on(table.tnaSummaryId, table.trainingId),
+]);
+
+// Schemas
+export const insertTrainingSchema = createInsertSchema(trainings).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertTnaSummarySchema = createInsertSchema(tnaSummaries).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertTnaEntrySchema = createInsertSchema(tnaEntries).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+// Types
+export type Training = typeof trainings.$inferSelect;
+export type InsertTraining = z.infer<typeof insertTrainingSchema>;
+export type TnaSummary = typeof tnaSummaries.$inferSelect;
+export type InsertTnaSummary = z.infer<typeof insertTnaSummarySchema>;
+export type TnaEntry = typeof tnaEntries.$inferSelect;
+export type InsertTnaEntry = z.infer<typeof insertTnaEntrySchema>;
+
+// Relations
+export const tnaSummariesRelations = relations(tnaSummaries, ({ one, many }) => ({
+  employee: one(employees, {
+    fields: [tnaSummaries.employeeId],
+    references: [employees.id],
+  }),
+  entries: many(tnaEntries),
+}));
+
+export const tnaEntriesRelations = relations(tnaEntries, ({ one }) => ({
+  summary: one(tnaSummaries, {
+    fields: [tnaEntries.tnaSummaryId],
+    references: [tnaSummaries.id],
+  }),
+  training: one(trainings, {
+    fields: [tnaEntries.trainingId],
+    references: [trainings.id],
+  }),
+}));
+
+// ============================================
+// SAFETY PATROL REPORTS (WhatsApp Integration)
+// ============================================
+
+export const safetyPatrolReports = pgTable("safety_patrol_reports", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tanggal: text("tanggal").notNull(), // Format: YYYY-MM-DD
+  bulan: text("bulan"), // Nama bulan (Januari, Februari, dst) - auto calculated
+  week: integer("week"), // Minggu ke-berapa dalam bulan - auto calculated
+  waktuPelaksanaan: text("waktu_pelaksanaan"), // Jam pelaksanaan (e.g., "08:00 - 09:00")
+  jenisLaporan: text("jenis_laporan").notNull(), // "Daily Briefing", "Temuan", "Pelanggaran", etc.
+  kegiatan: text("kegiatan"), // Jenis kegiatan dari template (Wake Up Call, Sidak Roster, dll)
+  shift: text("shift"), // "Shift 1", "Shift 2"
+  lokasi: text("lokasi"),
+
+  // Pemateri/Pelapor
+  pemateri: text("pemateri").array(), // Array of presenter names
+  namaPelaksana: text("nama_pelaksana"), // Nama pelaksana kegiatan
+
+  // Temuan dan bukti
+  temuan: text("temuan"), // Hasil temuan/observasi
+  buktiKegiatan: text("bukti_kegiatan").array(), // Array of photo URLs as evidence
+
+  // Raw message content
+  rawMessage: text("raw_message").notNull(),
+
+  // Parsed data (JSON)
+  parsedData: jsonb("parsed_data"), // AI-parsed structured data
+
+  // Photos
+  photos: text("photos").array(), // Array of photo URLs
+
+  // WhatsApp sender info
+  senderPhone: text("sender_phone").notNull(),
+  senderName: text("sender_name"),
+
+  // Processing status
+  status: text("status").notNull().default("pending"), // "pending", "processed", "failed"
+  aiAnalysis: text("ai_analysis"), // AI summary/analysis
+
+  createdAt: timestamp("created_at").defaultNow(),
+  processedAt: timestamp("processed_at"),
+}, (table) => [
+  index("IDX_safety_patrol_tanggal").on(table.tanggal),
+  index("IDX_safety_patrol_jenis").on(table.jenisLaporan),
+  index("IDX_safety_patrol_status").on(table.status),
+  index("IDX_safety_patrol_sender").on(table.senderPhone),
+  index("IDX_safety_patrol_kegiatan").on(table.kegiatan),
+  index("IDX_safety_patrol_bulan").on(table.bulan),
+]);
+
+export const safetyPatrolAttendance = pgTable("safety_patrol_attendance", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  reportId: varchar("report_id").notNull().references(() => safetyPatrolReports.id, { onDelete: "cascade" }),
+  unitCode: text("unit_code").notNull(), // "RBT", "BMT", "AEK", etc.
+  shift: text("shift").notNull(), // "Shift 1", "Shift 2"
+  status: text("status").notNull(), // "Hadir", "Tidak Hadir", "-"
+  keterangan: text("keterangan"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("IDX_sp_attendance_report").on(table.reportId),
+  index("IDX_sp_attendance_unit").on(table.unitCode),
+]);
+
+export const safetyPatrolRawMessages = pgTable("safety_patrol_raw_messages", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  messageId: text("message_id"), // WhatsApp message ID
+  senderPhone: text("sender_phone").notNull(),
+  senderName: text("sender_name"),
+  messageType: text("message_type").notNull(), // "text", "image", "document"
+  content: text("content"), // Text content
+  mediaUrl: text("media_url"), // Media URL if any
+  rawPayload: jsonb("raw_payload"), // Full webhook payload
+  messageTimestamp: timestamp("message_timestamp"), // WhatsApp message timestamp (from unixTimestamp)
+  processed: boolean("processed").notNull().default(false),
+  reportId: varchar("report_id").references(() => safetyPatrolReports.id),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("IDX_sp_raw_sender").on(table.senderPhone),
+  index("IDX_sp_raw_processed").on(table.processed),
+  index("IDX_sp_raw_msg_timestamp").on(table.messageTimestamp),
+]);
+
+// ============================================
+// SAFETY PATROL TEMPLATES (Knowledge Base)
+// ============================================
+
+export const safetyPatrolTemplates = pgTable("safety_patrol_templates", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(), // Nama template (e.g., "Daily Briefing", "Sidak Roster")
+  category: text("category").notNull(), // Kategori laporan
+  description: text("description"), // Deskripsi template
+  exampleMessage: text("example_message").notNull(), // Contoh format pesan WhatsApp
+  expectedFields: jsonb("expected_fields"), // JSON: field apa saja yang di-extract
+  matchingKeywords: text("matching_keywords").array(), // Keywords untuk matching
+  promptContext: text("prompt_context"), // Konteks tambahan untuk prompt Gemini
+  isDefault: boolean("is_default").notNull().default(false), // Template bawaan sistem
+  isActive: boolean("is_active").notNull().default(true), // Aktif/nonaktif
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("IDX_sp_templates_category").on(table.category),
+  index("IDX_sp_templates_active").on(table.isActive),
+]);
+
+export const insertSafetyPatrolTemplateSchema = createInsertSchema(safetyPatrolTemplates).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type SafetyPatrolTemplate = typeof safetyPatrolTemplates.$inferSelect;
+export type InsertSafetyPatrolTemplate = z.infer<typeof insertSafetyPatrolTemplateSchema>;
+
+export const insertSafetyPatrolReportSchema = createInsertSchema(safetyPatrolReports).omit({
+  id: true,
+  createdAt: true,
+  processedAt: true,
+});
+
+export const insertSafetyPatrolAttendanceSchema = createInsertSchema(safetyPatrolAttendance).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertSafetyPatrolRawMessageSchema = createInsertSchema(safetyPatrolRawMessages).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type SafetyPatrolReport = typeof safetyPatrolReports.$inferSelect;
+export type InsertSafetyPatrolReport = z.infer<typeof insertSafetyPatrolReportSchema>;
+export type SafetyPatrolAttendance = typeof safetyPatrolAttendance.$inferSelect;
+export type InsertSafetyPatrolAttendance = z.infer<typeof insertSafetyPatrolAttendanceSchema>;
+export type SafetyPatrolRawMessage = typeof safetyPatrolRawMessages.$inferSelect;
+export type InsertSafetyPatrolRawMessage = z.infer<typeof insertSafetyPatrolRawMessageSchema>;
+
+// ============================================
+// SIDAK RAMBU (Observasi Kepatuhan Rambu)
+// ============================================
+
+export const sidakRambuSessions = pgTable("sidak_rambu_sessions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tanggal: varchar("tanggal").notNull(),
+  shift: varchar("shift").notNull(),
+  waktuMulai: varchar("waktu_mulai").notNull(),
+  waktuSelesai: varchar("waktu_selesai").notNull(),
+  lokasi: text("lokasi").notNull(),
+  totalSampel: integer("total_sampel").notNull().default(0),
+  activityPhotos: text("activity_photos").array(), // Array of photo URLs
+  createdBy: varchar("created_by"), // NIK of supervisor who created the SIDAK
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("IDX_rambu_sessions_created_by").on(table.createdBy),
+]);
+
+export const sidakRambuObservations = pgTable("sidak_rambu_observations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  sessionId: varchar("session_id").notNull().references(() => sidakRambuSessions.id, { onDelete: "cascade" }),
+  ordinal: integer("ordinal").notNull(),
+  nama: text("nama").notNull(),
+  noKendaraan: varchar("no_kendaraan").notNull(),
+  perusahaan: text("perusahaan").notNull(),
+  rambuStop: boolean("rambu_stop").notNull().default(true),
+  rambuGiveWay: boolean("rambu_give_way").notNull().default(true),
+  rambuKecepatanMax: boolean("rambu_kecepatan_max").notNull().default(true),
+  rambuLaranganMasuk: boolean("rambu_larangan_masuk").notNull().default(true),
+  rambuLaranganParkir: boolean("rambu_larangan_parkir").notNull().default(true),
+  rambuWajibHelm: boolean("rambu_wajib_helm").notNull().default(true),
+  rambuLaranganUTurn: boolean("rambu_larangan_uturn").notNull().default(true),
+  keterangan: text("keterangan").default(""),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const sidakRambuObservers = pgTable("sidak_rambu_observers", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  sessionId: varchar("session_id").notNull().references(() => sidakRambuSessions.id, { onDelete: "cascade" }),
+  ordinal: integer("ordinal").notNull(),
+  nama: text("nama").notNull(),
+  perusahaan: text("perusahaan").notNull(),
+  signatureDataUrl: text("signature_data_url").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertSidakRambuSessionSchema = createInsertSchema(sidakRambuSessions).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertSidakRambuObservationSchema = createInsertSchema(sidakRambuObservations).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertSidakRambuObserverSchema = createInsertSchema(sidakRambuObservers).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type SidakRambuSession = typeof sidakRambuSessions.$inferSelect;
+export type InsertSidakRambuSession = z.infer<typeof insertSidakRambuSessionSchema>;
+export type SidakRambuObservation = typeof sidakRambuObservations.$inferSelect;
+export type InsertSidakRambuObservation = z.infer<typeof insertSidakRambuObservationSchema>;
+export type SidakRambuObserver = typeof sidakRambuObservers.$inferSelect;
+export type InsertSidakRambuObserver = z.infer<typeof insertSidakRambuObserverSchema>;
+
+// ============================================================================
+// SIDAK ANTRIAN (Queue Observation)
+// ============================================================================
+
+export const sidakAntrianSessions = pgTable("sidak_antrian_sessions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tanggal: varchar("tanggal").notNull(), // Standardized to match Rambu/Seatbelt
+  waktu: varchar("waktu").notNull(),     // Standardized to match Rambu/Seatbelt
+  shift: varchar("shift").notNull(), // "Shift 1" or "Shift 2"
+  perusahaan: text("perusahaan").notNull(),
+  departemen: text("departemen").notNull(),
+  lokasi: text("lokasi").notNull(),
+  totalSampel: integer("total_sampel").notNull().default(0), // Auto calculated from records
+  activityPhotos: text("activity_photos").array(), // Array of photo URLs
+  createdBy: varchar("created_by").notNull(), // NIK of supervisor who created the SIDAK
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("IDX_antrian_sessions_created_by").on(table.createdBy),
+]);
+
+export const sidakAntrianRecords = pgTable("sidak_antrian_records", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  sessionId: varchar("session_id").notNull().references(() => sidakAntrianSessions.id, { onDelete: "cascade" }),
+  ordinal: integer("ordinal").notNull(), // Row number
+  namaNik: text("nama_nik").notNull(), // Combined "Nama - NIK" (e.g., "Gede - C-024050")
+  noLambung: varchar("no_lambung"), // Vehicle number (e.g., "RB7-4020")
+  handbrakeAktif: boolean("handbrake_aktif").notNull(), // Ya/Tidak
+  jarakUnitAman: boolean("jarak_unit_aman").notNull(), // Ya/Tidak
+  keterangan: text("keterangan"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("IDX_antrian_records_session").on(table.sessionId),
+]);
+
+export const sidakAntrianObservers = pgTable("sidak_antrian_observers", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  sessionId: varchar("session_id").notNull().references(() => sidakAntrianSessions.id, { onDelete: "cascade" }),
+  ordinal: integer("ordinal").notNull(), // Observer number (1-4)
+  nama: text("nama").notNull(),
+  perusahaan: text("perusahaan"), // Added to fix property access in storage.ts
+  jabatan: text("jabatan"), // Job title
+  tandaTangan: text("tanda_tangan"), // Signature image URL
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("IDX_antrian_observers_session").on(table.sessionId),
+]);
+
+// Insert schemas
+export const insertSidakAntrianSessionSchema = createInsertSchema(sidakAntrianSessions).omit({
+  id: true,
+  createdAt: true,
+  totalSampel: true, // Auto calculated
+  createdBy: true, // Handled by backend
+});
+
+export const insertSidakAntrianRecordSchema = createInsertSchema(sidakAntrianRecords).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertSidakAntrianObserverSchema = createInsertSchema(sidakAntrianObservers).omit({
+  id: true,
+  createdAt: true,
+});
+
+// Types
+export type SidakAntrianSession = typeof sidakAntrianSessions.$inferSelect;
+export type InsertSidakAntrianSession = z.infer<typeof insertSidakAntrianSessionSchema>;
+export type SidakAntrianRecord = typeof sidakAntrianRecords.$inferSelect;
+export type InsertSidakAntrianRecord = z.infer<typeof insertSidakAntrianRecordSchema>;
+export type SidakAntrianObserver = typeof sidakAntrianObservers.$inferSelect;
+export type InsertSidakAntrianObserver = z.infer<typeof insertSidakAntrianObserverSchema>;
+
+// ============================================================================
+// SIDAK APD (Alat Pelindung Diri)
+// ============================================================================
+
+export const sidakApdSessions = pgTable("sidak_apd_sessions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tanggal: varchar("tanggal").notNull(),
+  waktu: varchar("waktu").notNull(),
+  shift: varchar("shift").notNull(),
+  perusahaan: text("perusahaan").notNull(),
+  departemen: text("departemen").notNull(),
+  lokasi: text("lokasi").notNull(),
+  totalSampel: integer("total_sampel").notNull().default(0),
+  activityPhotos: text("activity_photos").array(),
+  createdBy: varchar("created_by"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("IDX_apd_sessions_created_by").on(table.createdBy),
+]);
+
+export const sidakApdRecords = pgTable("sidak_apd_records", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  sessionId: varchar("session_id").notNull().references(() => sidakApdSessions.id, { onDelete: "cascade" }),
+  ordinal: integer("ordinal").notNull(),
+
+  // Data Personel
+  nama: text("nama").notNull(),
+  nik: text("nik"),
+  jabatan: text("jabatan"),
+  perusahaan: text("perusahaan"),
+  areaKerja: text("area_kerja"), // Specific area/unit where person is found
+
+  // Checklist APD (True = Lengkap/Pakai, False = Tidak Lengkap/Tidak Pakai)
+  helm: boolean("helm").notNull().default(false),
+  rompi: boolean("rompi").notNull().default(false),
+  sepatu: boolean("sepatu").notNull().default(false),
+  kacamata: boolean("kacamata").notNull().default(false),
+  sarungTangan: boolean("sarung_tangan").notNull().default(false),
+  earplug: boolean("earplug").notNull().default(false),
+  masker: boolean("masker").notNull().default(false),
+
+  // Kepatuhan (Compliance)
+  apdLengkap: boolean("apd_lengkap").notNull().default(false), // Auto or manual check if all required are present
+
+  keterangan: text("keterangan"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("IDX_apd_records_session").on(table.sessionId),
+]);
+
+export const sidakApdObservers = pgTable("sidak_apd_observers", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  sessionId: varchar("session_id").notNull().references(() => sidakApdSessions.id, { onDelete: "cascade" }),
+  ordinal: integer("ordinal").notNull(),
+  nama: text("nama").notNull(),
+  perusahaan: text("perusahaan"),
+  jabatan: text("jabatan"),
+  tandaTangan: text("tanda_tangan"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("IDX_apd_observers_session").on(table.sessionId),
+]);
+
+// Insert schemas
+export const insertSidakApdSessionSchema = createInsertSchema(sidakApdSessions).omit({
+  id: true,
+  createdAt: true,
+  totalSampel: true,
+});
+
+export const insertSidakApdRecordSchema = createInsertSchema(sidakApdRecords).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertSidakApdObserverSchema = createInsertSchema(sidakApdObservers).omit({
+  id: true,
+  createdAt: true,
+});
+
+// Types
+export type SidakApdSession = typeof sidakApdSessions.$inferSelect;
+export type InsertSidakApdSession = z.infer<typeof insertSidakApdSessionSchema>;
+export type SidakApdRecord = typeof sidakApdRecords.$inferSelect;
+export type InsertSidakApdRecord = z.infer<typeof insertSidakApdRecordSchema>;
+export type SidakApdObserver = typeof sidakApdObservers.$inferSelect;
+export type InsertSidakApdObserver = z.infer<typeof insertSidakApdObserverSchema>;
+
+
+// ============================================================================
+// SIDAK JARAK AMAN (Safe Distance Observation)
+// ============================================================================
+
+export const sidakJarakSessions = pgTable("sidak_jarak_sessions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tanggal: varchar("tanggal").notNull(),
+  waktu: varchar("waktu").notNull(), // Renamed from jam
+  shift: varchar("shift").notNull(),
+  lokasi: text("lokasi").notNull(),
+  totalSampel: integer("total_sampel").notNull().default(0),
+  persenKepatuhan: integer("persen_kepatuhan").notNull().default(0),
+  activityPhotos: text("activity_photos").array(),
+  createdBy: varchar("created_by"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("IDX_jarak_sessions_created_by").on(table.createdBy),
+]);
+
+export const sidakJarakRecords = pgTable("sidak_jarak_records", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  sessionId: varchar("session_id").notNull().references(() => sidakJarakSessions.id, { onDelete: "cascade" }),
+  ordinal: integer("ordinal").notNull(),
+  noKendaraan: varchar("no_kendaraan").notNull(),
+  tipeUnit: varchar("tipe_unit").notNull(),
+  lokasiMuatan: text("lokasi_muatan"),
+  lokasiKosongan: text("lokasi_kosongan"),
+  nomorLambungUnit: varchar("nomor_lambung_unit"), // Unit yang berdekatan
+  jarakAktualKedua: text("jarak_aktual_kedua"), // Jarak aman (m)
+  keterangan: text("keterangan"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("IDX_jarak_records_session").on(table.sessionId),
+]);
+
+export const sidakJarakObservers = pgTable("sidak_jarak_observers", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  sessionId: varchar("session_id").notNull().references(() => sidakJarakSessions.id, { onDelete: "cascade" }),
+  ordinal: integer("ordinal").notNull(),
+  nama: text("nama").notNull(),
+  perusahaan: text("perusahaan"),
+  tandaTangan: text("tanda_tangan"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("IDX_jarak_observers_session").on(table.sessionId),
+]);
+
+// Insert schemas
+export const insertSidakJarakSessionSchema = createInsertSchema(sidakJarakSessions).omit({
+  id: true,
+  createdAt: true,
+  totalSampel: true,
+  persenKepatuhan: true,
+});
+
+export const insertSidakJarakRecordSchema = createInsertSchema(sidakJarakRecords).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertSidakJarakObserverSchema = createInsertSchema(sidakJarakObservers).omit({
+  id: true,
+  createdAt: true,
+});
+
+// Types
+export type SidakJarakSession = typeof sidakJarakSessions.$inferSelect;
+export type InsertSidakJarakSession = z.infer<typeof insertSidakJarakSessionSchema>;
+export type SidakJarakRecord = typeof sidakJarakRecords.$inferSelect;
+export type InsertSidakJarakRecord = z.infer<typeof insertSidakJarakRecordSchema>;
+export type SidakJarakObserver = typeof sidakJarakObservers.$inferSelect;
+export type InsertSidakJarakObserver = z.infer<typeof insertSidakJarakObserverSchema>;
+
+// ============================================================================
+// SIDAK KECEPATAN (Observasi Kecepatan Berkendara)
+// ============================================================================
+
+export const sidakKecepatanSessions = pgTable("sidak_kecepatan_sessions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tanggal: varchar("tanggal").notNull(),
+  shift: varchar("shift").notNull(),
+  waktu: varchar("waktu").notNull(),
+  lokasi: text("lokasi").notNull(),
+  subLokasi: text("sub_lokasi"),
+  batasKecepatanKph: integer("batas_kecepatan_kph").default(0),
+  totalSampel: integer("total_sampel").notNull().default(0),
+  activityPhotos: text("activity_photos").array(),
+  createdBy: varchar("created_by"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("IDX_kecepatan_sessions_created_by").on(table.createdBy),
+]);
+
+export const sidakKecepatanRecords = pgTable("sidak_kecepatan_records", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  sessionId: varchar("session_id").notNull().references(() => sidakKecepatanSessions.id, { onDelete: "cascade" }),
+  ordinal: integer("ordinal").notNull(),
+  noKendaraan: varchar("no_kendaraan").notNull(),
+  tipeUnit: varchar("tipe_unit").notNull(),
+  arahMuatan: boolean("arah_muatan").default(false),
+  arahKosongan: boolean("arah_kosongan").default(false),
+  kecepatanMph: text("kecepatan_mph"),
+  kecepatanKph: text("kecepatan_kph"),
+  keterangan: text("keterangan"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("IDX_kecepatan_records_session").on(table.sessionId),
+]);
+
+export const sidakKecepatanObservers = pgTable("sidak_kecepatan_observers", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  sessionId: varchar("session_id").notNull().references(() => sidakKecepatanSessions.id, { onDelete: "cascade" }),
+  ordinal: integer("ordinal").notNull(),
+  nama: text("nama").notNull(),
+  nik: text("nik"),
+  perusahaan: text("perusahaan"),
+  tandaTangan: text("tanda_tangan"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("IDX_kecepatan_observers_session").on(table.sessionId),
+]);
+
+// Insert schemas
+export const insertSidakKecepatanSessionSchema = createInsertSchema(sidakKecepatanSessions).omit({
+  id: true,
+  createdAt: true,
+  totalSampel: true,
+});
+
+export const insertSidakKecepatanRecordSchema = createInsertSchema(sidakKecepatanRecords).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertSidakKecepatanObserverSchema = createInsertSchema(sidakKecepatanObservers).omit({
+  id: true,
+  createdAt: true,
+});
+
+// Types
+export type SidakKecepatanSession = typeof sidakKecepatanSessions.$inferSelect;
+export type InsertSidakKecepatanSession = z.infer<typeof insertSidakKecepatanSessionSchema>;
+export type SidakKecepatanRecord = typeof sidakKecepatanRecords.$inferSelect;
+export type InsertSidakKecepatanRecord = z.infer<typeof insertSidakKecepatanRecordSchema>;
+export type SidakKecepatanObserver = typeof sidakKecepatanObservers.$inferSelect;
+export type InsertSidakKecepatanObserver = z.infer<typeof insertSidakKecepatanObserverSchema>;
+
+// ============================================================================
+// SIDAK PENCAHAYAAN (Lighting Inspection)
+// ============================================================================
+
+export const sidakPencahayaanSessions = pgTable("sidak_pencahayaan_sessions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tanggal: varchar("tanggal").notNull(),
+  shift: varchar("shift").notNull(),
+  waktu: varchar("waktu").notNull(),
+  lokasi: text("lokasi").notNull(),
+  departemen: text("departemen"),
+  penanggungJawab: varchar("penanggung_jawab"),
+  totalSampel: integer("total_sampel").notNull().default(0),
+  activityPhotos: text("activity_photos").array(),
+  createdBy: varchar("created_by"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [index("IDX_pencahayaan_sessions_created_by").on(table.createdBy)]);
+
+export const sidakPencahayaanRecords = pgTable("sidak_pencahayaan_records", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  sessionId: varchar("session_id").notNull().references(() => sidakPencahayaanSessions.id, { onDelete: "cascade" }),
+  ordinal: integer("ordinal").notNull(),
+  titikPengambilan: text("titik_pengambilan").notNull(),
+  sumberPenerangan: text("sumber_penerangan"),
+  jenisPengukuran: varchar("jenis_pengukuran"),
+  intensitasLux: integer("intensitas_lux"),
+  jarakDariSumber: varchar("jarak_dari_sumber"),
+  secaraVisual: varchar("secara_visual"),
+  keterangan: text("keterangan"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [index("IDX_pencahayaan_records_session").on(table.sessionId)]);
+
+export const sidakPencahayaanObservers = pgTable("sidak_pencahayaan_observers", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  sessionId: varchar("session_id").notNull().references(() => sidakPencahayaanSessions.id, { onDelete: "cascade" }),
+  ordinal: integer("ordinal").notNull(),
+  nama: text("nama").notNull(),
+  nik: varchar("nik"),
+  perusahaan: text("perusahaan"),
+  tandaTangan: text("tanda_tangan"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [index("IDX_pencahayaan_observers_session").on(table.sessionId)]);
+
+export const insertSidakPencahayaanSessionSchema = createInsertSchema(sidakPencahayaanSessions).omit({ id: true, createdAt: true, totalSampel: true });
+export const insertSidakPencahayaanRecordSchema = createInsertSchema(sidakPencahayaanRecords).omit({ id: true, createdAt: true });
+export const insertSidakPencahayaanObserverSchema = createInsertSchema(sidakPencahayaanObservers).omit({ id: true, createdAt: true });
+
+export type SidakPencahayaanSession = typeof sidakPencahayaanSessions.$inferSelect;
+export type InsertSidakPencahayaanSession = z.infer<typeof insertSidakPencahayaanSessionSchema>;
+export type SidakPencahayaanRecord = typeof sidakPencahayaanRecords.$inferSelect;
+export type InsertSidakPencahayaanRecord = z.infer<typeof insertSidakPencahayaanRecordSchema>;
+export type SidakPencahayaanObserver = typeof sidakPencahayaanObservers.$inferSelect;
+export type InsertSidakPencahayaanObserver = z.infer<typeof insertSidakPencahayaanObserverSchema>;
+
+// ============================================================================
+// SIDAK LOTO (Inspeksi Kepatuhan LOTO)
+// ============================================================================
+
+export const sidakLotoSessions = pgTable("sidak_loto_sessions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tanggal: varchar("tanggal").notNull(),
+  shift: varchar("shift").notNull(),
+  waktu: varchar("waktu").notNull(),
+  lokasi: text("lokasi").notNull(),
+  departemen: text("departemen"),
+  totalSampel: integer("total_sampel").notNull().default(0),
+  activityPhotos: text("activity_photos").array(),
+  createdBy: varchar("created_by"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [index("IDX_loto_sessions_created_by").on(table.createdBy)]);
+
+export const sidakLotoRecords = pgTable("sidak_loto_records", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  sessionId: varchar("session_id").notNull().references(() => sidakLotoSessions.id, { onDelete: "cascade" }),
+  ordinal: integer("ordinal").notNull(),
+  namaKaryawan: text("nama_karyawan").notNull(),
+  perusahaan: text("perusahaan"),
+  jenisPekerjaan: text("jenis_pekerjaan"),
+  lokasiIsolasi: text("lokasi_isolasi"),
+  nomorGembok: varchar("nomor_gembok"),
+  jamPasang: varchar("jam_pasang"),
+  keterangan: text("keterangan"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [index("IDX_loto_records_session").on(table.sessionId)]);
+
+export const sidakLotoObservers = pgTable("sidak_loto_observers", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  sessionId: varchar("session_id").notNull().references(() => sidakLotoSessions.id, { onDelete: "cascade" }),
+  ordinal: integer("ordinal").notNull(),
+  nama: text("nama").notNull(),
+  nik: varchar("nik"),
+  perusahaan: text("perusahaan"),
+  tandaTangan: text("tanda_tangan"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [index("IDX_loto_observers_session").on(table.sessionId)]);
+
+export const insertSidakLotoSessionSchema = createInsertSchema(sidakLotoSessions).omit({ id: true, createdAt: true, totalSampel: true });
+export const insertSidakLotoRecordSchema = createInsertSchema(sidakLotoRecords).omit({ id: true, createdAt: true });
+export const insertSidakLotoObserverSchema = createInsertSchema(sidakLotoObservers).omit({ id: true, createdAt: true });
+
+export type SidakLotoSession = typeof sidakLotoSessions.$inferSelect;
+export type InsertSidakLotoSession = z.infer<typeof insertSidakLotoSessionSchema>;
+export type SidakLotoRecord = typeof sidakLotoRecords.$inferSelect;
+export type InsertSidakLotoRecord = z.infer<typeof insertSidakLotoRecordSchema>;
+export type SidakLotoObserver = typeof sidakLotoObservers.$inferSelect;
+export type InsertSidakLotoObserver = z.infer<typeof insertSidakLotoObserverSchema>;
+
+// ============================================================================
+// SIDAK DIGITAL (Inspeksi Pengawas Digital)
+// ============================================================================
+
+export const sidakDigitalSessions = pgTable("sidak_digital_sessions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tanggal: varchar("tanggal").notNull(),
+  shift: varchar("shift").notNull(),
+  waktu: varchar("waktu").notNull(),
+  lokasi: text("lokasi").notNull(),
+  departemen: text("departemen"),
+  totalSampel: integer("total_sampel").notNull().default(0),
+  activityPhotos: text("activity_photos").array(),
+  createdBy: varchar("created_by"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [index("IDX_digital_sessions_created_by").on(table.createdBy)]);
+
+export const sidakDigitalRecords = pgTable("sidak_digital_records", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  sessionId: varchar("session_id").notNull().references(() => sidakDigitalSessions.id, { onDelete: "cascade" }),
+  ordinal: integer("ordinal").notNull(),
+  namaPengawas: text("nama_pengawas").notNull(),
+  nik: varchar("nik"),
+  jabatan: text("jabatan"),
+  appUsage: boolean("app_usage").notNull().default(true),
+  timelyReporting: boolean("timely_reporting").notNull().default(true),
+  feedbackQuality: text("feedback_quality"), // "Baik", "Cukup", "Kurang"
+  keterangan: text("keterangan"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [index("IDX_digital_records_session").on(table.sessionId)]);
+
+export const sidakDigitalObservers = pgTable("sidak_digital_observers", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  sessionId: varchar("session_id").notNull().references(() => sidakDigitalSessions.id, { onDelete: "cascade" }),
+  ordinal: integer("ordinal").notNull(),
+  nama: text("nama").notNull(),
+  nik: varchar("nik"),
+  perusahaan: text("perusahaan"),
+  tandaTangan: text("tanda_tangan"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [index("IDX_digital_observers_session").on(table.sessionId)]);
+
+export const insertSidakDigitalSessionSchema = createInsertSchema(sidakDigitalSessions).omit({ id: true, createdAt: true, totalSampel: true });
+export const insertSidakDigitalRecordSchema = createInsertSchema(sidakDigitalRecords).omit({ id: true, createdAt: true });
+export const insertSidakDigitalObserverSchema = createInsertSchema(sidakDigitalObservers).omit({ id: true, createdAt: true });
+
+export type SidakDigitalSession = typeof sidakDigitalSessions.$inferSelect;
+export type InsertSidakDigitalSession = z.infer<typeof insertSidakDigitalSessionSchema>;
+export type SidakDigitalRecord = typeof sidakDigitalRecords.$inferSelect;
+export type InsertSidakDigitalRecord = z.infer<typeof insertSidakDigitalRecordSchema>;
+export type SidakDigitalObserver = typeof sidakDigitalObservers.$inferSelect;
+export type InsertSidakDigitalObserver = z.infer<typeof insertSidakDigitalObserverSchema>;
+
+// ============================================================================
+// SIDAK WORKSHOP (Checklist Peralatan Workshop)
+// ============================================================================
+
+export const sidakWorkshopSessions = pgTable("sidak_workshop_sessions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tanggal: varchar("tanggal").notNull(),
+  shift: varchar("shift").notNull(),
+  waktu: varchar("waktu").notNull(),
+  lokasi: text("lokasi").notNull(), // Workshop Name/Area
+  departemen: text("departemen"),
+  totalSampel: integer("total_sampel").notNull().default(0),
+  activityPhotos: text("activity_photos").array(),
+  createdBy: varchar("created_by"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [index("IDX_workshop_sessions_created_by").on(table.createdBy)]);
+
+export const sidakWorkshopRecords = pgTable("sidak_workshop_records", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  sessionId: varchar("session_id").notNull().references(() => sidakWorkshopSessions.id, { onDelete: "cascade" }),
+  ordinal: integer("ordinal").notNull(),
+  namaAlat: text("nama_alat").notNull(),
+  kondisi: boolean("kondisi").notNull().default(true), // true = Baik, false = Rusak
+  kebersihan: boolean("kebersihan").notNull().default(true), // true = Rapi, false = Kotor
+  sertifikasi: boolean("sertifikasi").notNull().default(true), // true = Valid, false = Expired
+  keterangan: text("keterangan"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [index("IDX_workshop_records_session").on(table.sessionId)]);
+
+export const sidakWorkshopObservers = pgTable("sidak_workshop_observers", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  sessionId: varchar("session_id").notNull().references(() => sidakWorkshopSessions.id, { onDelete: "cascade" }),
+  ordinal: integer("ordinal").notNull(),
+  nama: text("nama").notNull(),
+  nik: varchar("nik"),
+  perusahaan: text("perusahaan"),
+  tandaTangan: text("tanda_tangan"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [index("IDX_workshop_observers_session").on(table.sessionId)]);
+
+export const insertSidakWorkshopSessionSchema = createInsertSchema(sidakWorkshopSessions).omit({ id: true, createdAt: true, totalSampel: true });
+export const insertSidakWorkshopRecordSchema = createInsertSchema(sidakWorkshopRecords).omit({ id: true, createdAt: true });
+export const insertSidakWorkshopObserverSchema = createInsertSchema(sidakWorkshopObservers).omit({ id: true, createdAt: true });
+
+export type SidakWorkshopSession = typeof sidakWorkshopSessions.$inferSelect;
+export type InsertSidakWorkshopSession = z.infer<typeof insertSidakWorkshopSessionSchema>;
+export type SidakWorkshopRecord = typeof sidakWorkshopRecords.$inferSelect;
+export type InsertSidakWorkshopRecord = z.infer<typeof insertSidakWorkshopRecordSchema>;
+export type SidakWorkshopObserver = typeof sidakWorkshopObservers.$inferSelect;
+export type InsertSidakWorkshopObserver = z.infer<typeof insertSidakWorkshopObserverSchema>;
