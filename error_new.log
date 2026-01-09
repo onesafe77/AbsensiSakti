@@ -1,0 +1,66 @@
+client/src/lib/qr-utils.ts(41,3): error TS2322: Type 'void' is not assignable to type 'string'.
+client/src/lib/sidak-antrian-pdf-utils.ts(325,39): error TS2307: Cannot find module 'pdfjs-dist/legacy/build/pdf' or its corresponding type declarations.
+client/src/lib/sidak-pdf-utils.ts(386,35): error TS2307: Cannot find module 'pdfjs-dist/legacy/build/pdf' or its corresponding type declarations.
+client/src/lib/sidak-pdf-utils.ts(775,35): error TS2307: Cannot find module 'pdfjs-dist/legacy/build/pdf' or its corresponding type declarations.
+client/src/lib/sidak-pencahayaan-pdf-utils.ts(309,39): error TS2307: Cannot find module 'pdfjs-dist/legacy/build/pdf' or its corresponding type declarations.
+client/src/lib/sidak-rambu-pdf-utils.ts(387,39): error TS2307: Cannot find module 'pdfjs-dist/legacy/build/pdf' or its corresponding type declarations.
+client/src/lib/sidak-seatbelt-pdf-utils.ts(453,39): error TS2307: Cannot find module 'pdfjs-dist/legacy/build/pdf' or its corresponding type declarations.
+server/leaveMonitoringService.ts(102,13): error TS2322: Type 'string' is not assignable to type 'Date'.
+server/routes.ts(964,24): error TS7006: Parameter 'att' implicitly has an 'any' type.
+server/routes.ts(967,29): error TS7006: Parameter 'leave' implicitly has an 'any' type.
+server/routes.ts(970,26): error TS7006: Parameter 'emp' implicitly has an 'any' type.
+server/routes.ts(976,41): error TS7006: Parameter 'schedule' implicitly has an 'any' type.
+server/routes.ts(985,45): error TS2339: Property 'time' does not exist on type '{}'.
+server/routes.ts(986,45): error TS2339: Property 'jamTidur' does not exist on type '{}'.
+server/routes.ts(987,46): error TS2339: Property 'fitToWork' does not exist on type '{}'.
+server/routes.ts(989,34): error TS2339: Property 'monitoringDays' does not exist on type '{}'.
+server/routes.ts(1673,17): error TS18048: 'activeToken' is possibly 'undefined'.
+server/routes.ts(3347,34): error TS2802: Type 'Set<unknown>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.
+server/routes.ts(3349,16): error TS7006: Parameter 'emp' implicitly has an 'any' type.
+server/routes.ts(3350,19): error TS7006: Parameter 'group' implicitly has an 'any' type.
+server/routes.ts(5551,20): error TS2339: Property 'waktu' does not exist on type '{ id: string; createdAt: Date | null; shift: string; tanggal: string; lokasi: string; totalSampel: number; createdBy: string | null; activityPhotos: string[] | null; jam: string; persenKepatuhan: number; }'.
+server/routes.ts(5824,28): error TS2339: Property 'waktu' does not exist on type '{ id: string; createdAt: Date | null; shift: string; tanggal: string; lokasi: string; totalSampel: number; createdBy: string | null; activityPhotos: string[] | null; jam: string; persenKepatuhan: number; }'.
+server/routes.ts(7678,100): error TS2345: Argument of type 'Date | null' is not assignable to parameter of type 'Date'.
+  Type 'null' is not assignable to type 'Date'.
+server/routes.ts(8659,65): error TS2345: Argument of type '{ sessionId: string; nama: any; jabatan: any; tandaTangan: any; }' is not assignable to parameter of type '{ sessionId: string; ordinal: number; nama: string; jabatan?: string | null | undefined; tandaTangan?: string | null | undefined; }'.
+  Property 'ordinal' is missing in type '{ sessionId: string; nama: any; jabatan: any; tandaTangan: any; }' but required in type '{ sessionId: string; ordinal: number; nama: string; jabatan?: string | null | undefined; tandaTangan?: string | null | undefined; }'.
+server/routes.ts(9132,87): error TS2339: Property 'tanggal' does not exist on type '{ id: string; createdAt: Date | null; shift: string; lokasi: string; departemen: string; totalSampel: number; createdBy: string | null; activityPhotos: string[] | null; perusahaan: string; tanggalPelaksanaan: string; jamPelaksanaan: string; }'.
+server/storage.ts(3078,25): error TS2552: Cannot find name 'PDFDocument'. Did you mean 'documents'?
+server/storage.ts(3476,51): error TS2339: Property 'tanggal' does not exist on type '{ id: string; createdAt: Date | null; shift: string; lokasi: string; departemen: string; totalSampel: number; createdBy: string | null; activityPhotos: string[] | null; perusahaan: string; tanggalPelaksanaan: string; jamPelaksanaan: string; }'.
+server/storage.ts(3478,40): error TS2339: Property 'waktu' does not exist on type '{ id: string; createdAt: Date | null; shift: string; lokasi: string; departemen: string; totalSampel: number; createdBy: string | null; activityPhotos: string[] | null; perusahaan: string; tanggalPelaksanaan: string; jamPelaksanaan: string; }'.
+server/storage.ts(3589,24): error TS2339: Property 'perusahaan' does not exist on type '{ id: string; createdAt: Date | null; sessionId: string; ordinal: number; nama: string; jabatan: string | null; tandaTangan: string | null; }'.
+server/storage.ts(3697,25): error TS2552: Cannot find name 'PDFDocument'. Did you mean 'documents'?
+server/storage.ts(3895,9): error TS2393: Duplicate function implementation.
+server/storage.ts(3903,9): error TS2393: Duplicate function implementation.
+server/storage.ts(3910,9): error TS2393: Duplicate function implementation.
+server/storage.ts(3918,9): error TS2393: Duplicate function implementation.
+server/storage.ts(3927,9): error TS2393: Duplicate function implementation.
+server/storage.ts(3935,9): error TS2393: Duplicate function implementation.
+server/storage.ts(3947,9): error TS2393: Duplicate function implementation.
+server/storage.ts(3955,9): error TS2393: Duplicate function implementation.
+server/storage.ts(3966,9): error TS2393: Duplicate function implementation.
+server/storage.ts(3975,9): error TS2393: Duplicate function implementation.
+server/storage.ts(4197,25): error TS2552: Cannot find name 'PDFDocument'. Did you mean 'documents'?
+server/storage.ts(4215,26): error TS2304: Cannot find name 'path'.
+server/storage.ts(4222,13): error TS2304: Cannot find name 'fs'.
+server/storage.ts(4250,62): error TS2339: Property 'tanggalPelaksanaan' does not exist on type '{ id: string; createdAt: Date | null; shift: string; tanggal: string; lokasi: string; totalSampel: number; createdBy: string | null; activityPhotos: string[] | null; waktu: string; subLokasi: string | null; batasKecepatanKph: number | null; }'.
+server/storage.ts(4252,40): error TS2339: Property 'jamPelaksanaan' does not exist on type '{ id: string; createdAt: Date | null; shift: string; tanggal: string; lokasi: string; totalSampel: number; createdBy: string | null; activityPhotos: string[] | null; waktu: string; subLokasi: string | null; batasKecepatanKph: number | null; }'.
+server/storage.ts(4463,25): error TS2552: Cannot find name 'PDFDocument'. Did you mean 'documents'?
+server/storage.ts(4481,26): error TS2304: Cannot find name 'path'.
+server/storage.ts(4488,13): error TS2304: Cannot find name 'fs'.
+server/storage.ts(4729,25): error TS2552: Cannot find name 'PDFDocument'. Did you mean 'documents'?
+server/storage.ts(4746,26): error TS2304: Cannot find name 'path'.
+server/storage.ts(4748,13): error TS2304: Cannot find name 'fs'.
+server/storage.ts(4874,25): error TS2304: Cannot find name 'PDFDocument'.
+server/storage.ts(4892,26): error TS2304: Cannot find name 'path'.
+server/storage.ts(4899,13): error TS2304: Cannot find name 'fs'.
+server/storage.ts(5319,9): error TS2393: Duplicate function implementation.
+server/storage.ts(5324,9): error TS2393: Duplicate function implementation.
+server/storage.ts(5328,9): error TS2393: Duplicate function implementation.
+server/storage.ts(5333,9): error TS2393: Duplicate function implementation.
+server/storage.ts(5338,9): error TS2393: Duplicate function implementation.
+server/storage.ts(5342,9): error TS2393: Duplicate function implementation.
+server/storage.ts(5348,9): error TS2393: Duplicate function implementation.
+server/storage.ts(5352,9): error TS2393: Duplicate function implementation.
+server/storage.ts(5357,9): error TS2393: Duplicate function implementation.
+server/storage.ts(5362,9): error TS2393: Duplicate function implementation.

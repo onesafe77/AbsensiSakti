@@ -1,0 +1,1086 @@
+import { useState, useRef, useCallback, useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { validateQRData } from "@/lib/crypto-utils";
+import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+import { determineShiftByTime, getCurrentShift } from "@/lib/shift-utils";
+import { Camera, CameraOff, CheckCircle, User, Clock, XCircle, Moon, Heart, Activity, Calendar, Truck } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { queryClient } from "@/lib/queryClient";
+import jsQR from "jsqr";
+
+interface ScanResult {
+  employeeId: string;
+  name: string;
+  nomorLambung?: string;
+  isSpareOrigin?: boolean;
+  scanTime: string;
+  roster?: any; // Add roster data for nomor lambung update
+  status?: 'validated' | 'processing' | 'success' | 'error';
+  errorMessage?: string;
+}
+
+interface AttendanceFormData {
+  jamTidur: string;
+  fitToWork: string;
+  nomorLambung?: string;
+}
+
+interface RecentActivity {
+  id: string;
+  employeeId: string;
+  employeeName: string;
+  time: string;
+  jamTidur: string;
+  fitToWork: string;
+  status: string;
+  createdAt: string;
+  workingDays: number;
+}
+
+
+export function QRScanner() {
+  const [isScanning, setIsScanning] = useState(false);
+  const [scanResult, setScanResult] = useState<ScanResult | null>(null);
+  const [stream, setStream] = useState<MediaStream | null>(null);
+  const [attendanceForm, setAttendanceForm] = useState<AttendanceFormData>({
+    jamTidur: '',
+    fitToWork: '',
+    nomorLambung: ''
+  });
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [lastScanTime, setLastScanTime] = useState<number>(0);
+  const [showEditNomorLambungDialog, setShowEditNomorLambungDialog] = useState(false);
+  const [newNomorLambung, setNewNomorLambung] = useState('');
+  const [editingRoster, setEditingRoster] = useState<{
+    id: string;
+    actualNomorLambung: string | null;
+    plannedNomorLambung: string | null;
+    employeeId: string;
+    date: string;
+  } | null>(null); // Persist roster snapshot saat dialog dibuka (architect: full snapshot prevents undefined values)
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const scanningRef = useRef(false);
+  const { toast } = useToast();
+
+  // Query untuk mengambil aktivitas terbaru
+  const today = new Date().toISOString().split('T')[0];
+  const { data: recentActivities, refetch: refetchActivities } = useQuery<RecentActivity[]>({
+    queryKey: ["/api/dashboard/recent-activities", today],
+    queryFn: async () => {
+      const response = await fetch(`/api/dashboard/recent-activities?date=${today}`, {
+        cache: 'no-cache',
+        headers: { 'Cache-Control': 'no-cache' }
+      });
+      if (!response.ok) throw new Error('Failed to fetch activities');
+      return response.json();
+    },
+    staleTime: 0,
+    refetchOnWindowFocus: true,
+    refetchInterval: 30000, // Auto-refresh setiap 30 detik
+  });
+
+  // Listen untuk perubahan roster data dan clear scan result jika ada
+  useEffect(() => {
+    const handleRosterChange = () => {
+      if (scanResult) {
+        setScanResult(null);
+        toast({
+          title: "Data Roster Berubah",
+          description: "Silakan scan QR code lagi untuk mendapatkan data roster terbaru",
+          variant: "default",
+        });
+      }
+    };
+
+    // Subscribe to roster query changes
+    const unsubscribe = queryClient.getQueryCache().subscribe((event) => {
+      if (event.type === 'updated' && 
+          event.query.queryKey[0] === '/api/roster' &&
+          scanResult) {
+        handleRosterChange();
+      }
+    });
+
+    return () => unsubscribe();
+  }, [scanResult, toast]);
+
+
+  const startScanning = async () => {
+    try {
+      // Reset states for fresh start
+      setIsProcessing(false);
+      setLastScanTime(0);
+      
+      const mediaStream = await navigator.mediaDevices.getUserMedia({
+        video: { 
+          facingMode: 'environment',
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
+        }
+      });
+      
+      setStream(mediaStream);
+      setIsScanning(true);
+      scanningRef.current = true;
+      setScanResult(null);
+      setAttendanceForm({ jamTidur: '', fitToWork: '', nomorLambung: '' });
+      
+      if (videoRef.current) {
+        videoRef.current.srcObject = mediaStream;
+        videoRef.current.play();
+        // Start scanning after video is ready
+        videoRef.current.onloadedmetadata = () => {
+          console.log("Camera ready, starting QR detection...");
+          requestAnimationFrame(scanQRCode);
+        };
+      }
+    } catch (error) {
+      console.error("Camera error:", error);
+      toast({
+        title: "Error Kamera",
+        description: "Gagal mengakses kamera. Pastikan browser memiliki izin kamera dan reload halaman.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const stopScanning = () => {
+    scanningRef.current = false;
+    setIsScanning(false);
+    
+    if (stream) {
+      stream.getTracks().forEach(track => track.stop());
+      setStream(null);
+    }
+    
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
+  };
+
+  const scanQRCode = useCallback(() => {
+    if (!scanningRef.current || !videoRef.current || !canvasRef.current) {
+      return;
+    }
+
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    const context = canvas.getContext('2d');
+    
+    if (!context || video.readyState !== video.HAVE_ENOUGH_DATA) {
+      if (scanningRef.current) {
+        requestAnimationFrame(scanQRCode); // Only continue if still scanning
+      }
+      return;
+    }
+
+    // Optimize canvas size for faster processing
+    const maxWidth = 480; // Reduced for faster processing
+    const maxHeight = 360;
+    const videoAspectRatio = video.videoWidth / video.videoHeight;
+    
+    let canvasWidth = Math.min(video.videoWidth, maxWidth);
+    let canvasHeight = canvasWidth / videoAspectRatio;
+    
+    if (canvasHeight > maxHeight) {
+      canvasHeight = maxHeight;
+      canvasWidth = canvasHeight * videoAspectRatio;
+    }
+    
+    canvas.width = canvasWidth;
+    canvas.height = canvasHeight;
+    context.drawImage(video, 0, 0, canvasWidth, canvasHeight);
+    
+    const imageData = context.getImageData(0, 0, canvasWidth, canvasHeight);
+    const code = jsQR(imageData.data, imageData.width, imageData.height, {
+      inversionAttempts: "attemptBoth", // Try both modes for better detection
+    });
+    
+    if (code) {
+      // Debounce QR code detection to prevent multiple scans (reduced to 500ms)
+      const now = Date.now();
+      if (now - lastScanTime < 500) { // 500ms cooldown for responsiveness
+        requestAnimationFrame(scanQRCode);
+        return;
+      }
+      setLastScanTime(now);
+      
+      console.log("🔍 RAW QR Code detected:", code.data);
+      console.log("🔍 QR Code length:", code.data?.length || 0);
+      console.log("🔍 QR Code type:", typeof code.data);
+      
+      // Check for empty or whitespace data
+      if (!code.data || code.data.trim() === '') {
+        console.log("⚠️ Empty QR data detected, continuing scan...");
+        requestAnimationFrame(scanQRCode);
+        return;
+      }
+      
+      console.log("🔍 QR Code first 200 chars:", code.data.substring(0, 200));
+      
+      // Check if this is a Driver View URL format first
+      // Format: https://domain.com/driver-view?nik=C-025660
+      let employeeIdFromUrl: string | null = null;
+      if (code.data.includes('/driver-view?nik=') || code.data.includes('?nik=')) {
+        try {
+          const url = new URL(code.data);
+          const nik = url.searchParams.get('nik');
+          if (nik) {
+            employeeIdFromUrl = nik;
+            console.log("🔍 Driver View QR detected, NIK:", nik);
+          }
+        } catch (e) {
+          // Not a valid URL, continue with token-based validation
+          console.log("⚠️ URL parsing failed, trying token-based validation");
+        }
+      }
+
+      // Process based on QR type
+      if (employeeIdFromUrl) {
+        // Stop scanning first
+        stopScanning();
+        // Process Driver View QR code (no token validation needed)
+        console.log("Processing Driver View QR for attendance:", employeeIdFromUrl);
+        validateDriverViewQR(employeeIdFromUrl);
+      } else {
+        // Try token-based QR validation
+        const qrData = validateQRData(code.data);
+        console.log("🔍 Validated QR Data:", qrData);
+        if (qrData) {
+          // Stop scanning first
+          stopScanning();
+          
+          // Process attendance QR code
+          console.log("Processing QR for attendance:", qrData);
+          validateAndProcess(qrData.id, qrData.token);
+        } else {
+          console.log("QR validation failed for data:", code.data);
+          // Don't show toast for every invalid scan, just continue scanning
+          // Only show once every 3 seconds to avoid spam
+          const lastToastTime = localStorage.getItem('lastInvalidQRToast');
+          if (!lastToastTime || now - parseInt(lastToastTime) > 3000) {
+            toast({
+              title: "QR Code Tidak Valid",
+              description: "❌ Pastikan QR Code dari sistem resmi",
+              variant: "destructive",
+            });
+            localStorage.setItem('lastInvalidQRToast', now.toString());
+          }
+        }
+      }
+    }
+    
+    // Continue scanning if still active
+    if (scanningRef.current && !isProcessing) {
+      requestAnimationFrame(scanQRCode);
+    }
+  }, [toast]);
+
+  const validateDriverViewQR = async (employeeId: string) => {
+    // Prevent multiple simultaneous validations
+    if (isProcessing) return;
+    
+    try {
+      setIsProcessing(true);
+      const result = await apiRequest("/api/attendance/validate-employee", "POST", {
+        employeeId
+      });
+      
+      if (result.valid) {
+        const currentTime = new Date().toLocaleTimeString('id-ID', {
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+        
+        // Always display roster time and shift if available
+        let displayTime;
+        if (result.roster) {
+          displayTime = `${result.roster.startTime} - ${result.roster.endTime} (${result.roster.shift})`;
+        } else {
+          // Fallback to current time with detected shift
+          const shift = determineShiftByTime(currentTime);
+          displayTime = `${currentTime} (${shift})`;
+        }
+        
+        const employeeData = {
+          employeeId: result.employee.id,
+          name: result.employee.name,
+          nomorLambung: result.employee.nomorLambung,
+          isSpareOrigin: result.employee.isSpareOrigin || false,
+          scanTime: displayTime,
+          roster: result.roster,
+          status: 'processing' as const
+        };
+        
+        setScanResult({ ...employeeData, status: 'validated' });
+        stopScanning(); // Stop scanning after successful validation
+        
+        // Show time validation warning if any
+        if (result.timeValidation?.warning) {
+          toast({
+            title: "QR Code Valid - Peringatan Waktu",
+            description: result.timeValidation.warning,
+            variant: "destructive",
+          });
+        } else if (result.roster) {
+          toast({
+            title: "Driver View QR Valid",
+            description: `✅ Data valid untuk ${result.employee.name}. Shift: ${result.roster.shift}. Silakan isi data absensi.`,
+          });
+        } else {
+          toast({
+            title: "Driver View QR Valid - Peringatan",
+            description: `⚠️ Data valid untuk ${result.employee.name}, tetapi tidak ada roster hari ini. Silakan hubungi admin.`,
+            variant: "destructive",
+          });
+        }
+      }
+    } catch (error) {
+      toast({
+        title: "Validasi Gagal",
+        description: "❌ Data karyawan tidak valid atau tidak terdaftar",
+        variant: "destructive",
+      });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const validateAndProcess = async (employeeId: string, token: string) => {
+    // Prevent multiple simultaneous validations
+    if (isProcessing) return;
+    
+    try {
+      setIsProcessing(true);
+      const result = await apiRequest("/api/qr/validate", "POST", {
+        employeeId,
+        token
+      });
+      
+      if (result.valid) {
+        const currentTime = new Date().toLocaleTimeString('id-ID', {
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+        
+        // Always display roster time and shift if available
+        let displayTime;
+        if (result.roster) {
+          displayTime = `${result.roster.startTime} - ${result.roster.endTime} (${result.roster.shift})`;
+        } else {
+          // Fallback to current time with detected shift
+          const shift = determineShiftByTime(currentTime);
+          displayTime = `${currentTime} (${shift})`;
+        }
+        
+        const employeeData = {
+          employeeId: result.employee.id,
+          name: result.employee.name,
+          nomorLambung: result.employee.nomorLambung,
+          isSpareOrigin: result.employee.isSpareOrigin || false,
+          scanTime: displayTime,
+          roster: result.roster,
+          status: 'processing' as const
+        };
+        
+        setScanResult({ ...employeeData, status: 'validated' });
+        stopScanning(); // Stop scanning after successful validation
+        
+        // Show time validation warning if any
+        if (result.timeValidation?.warning) {
+          toast({
+            title: "QR Code Valid - Peringatan Waktu",
+            description: result.timeValidation.warning,
+            variant: "destructive",
+          });
+        } else if (result.roster) {
+          toast({
+            title: "QR Code Valid",
+            description: `✅ QR Code valid untuk ${result.employee.name}. Shift: ${result.roster.shift}. Silakan isi data absensi.`,
+          });
+        } else {
+          toast({
+            title: "QR Code Valid - Peringatan",
+            description: `⚠️ QR Code valid untuk ${result.employee.name}, tetapi tidak ada roster hari ini. Silakan hubungi admin.`,
+            variant: "destructive",
+          });
+        }
+      }
+    } catch (error) {
+      toast({
+        title: "Validasi Gagal",
+        description: "❌ QR Code tidak valid atau karyawan tidak terdaftar",
+        variant: "destructive",
+      });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const proceedAfterAttendance = () => {
+    // Reset form and clear scan result after 3 seconds
+    setTimeout(() => {
+      setScanResult(null);
+      setAttendanceForm({ jamTidur: '', fitToWork: '', nomorLambung: '' });
+      // Restart scanning for next QR
+      if (videoRef.current && !scanningRef.current) {
+        startScanning();
+      }
+    }, 3000);
+  };
+
+  const updateNomorLambung = async () => {
+    // ARCHITECT FIX: Use persistent editingRoster instead of volatile scanResult
+    if (!editingRoster?.id) {
+      toast({
+        title: "Data Roster Tidak Ditemukan",
+        description: "Silakan refresh halaman dan coba lagi. Jika masalah berlanjut, hubungi administrator.",
+        variant: "destructive",
+      });
+      setShowEditNomorLambungDialog(false);
+      setEditingRoster(null); // Clear roster snapshot
+      proceedAfterAttendance();
+      return;
+    }
+
+    if (!newNomorLambung || newNomorLambung.trim() === '') {
+      toast({
+        title: "Nomor Lambung Kosong",
+        description: "Silakan isi nomor lambung atau klik 'Lewati' untuk melanjutkan tanpa update.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      setIsProcessing(true);
+      // Use editingRoster.id (persisted snapshot) instead of scanResult.roster.id
+      await apiRequest(`/api/roster/${editingRoster.id}/update-nomor-lambung`, "PATCH", {
+        actualNomorLambung: newNomorLambung
+      });
+
+      toast({
+        title: "Berhasil",
+        description: `Nomor lambung berhasil diupdate menjadi ${newNomorLambung}`,
+      });
+
+      // Invalidate roster cache
+      queryClient.invalidateQueries({ queryKey: ["/api/roster"] });
+      
+      setShowEditNomorLambungDialog(false);
+      setEditingRoster(null); // Clear roster snapshot after success
+      proceedAfterAttendance();
+    } catch (error: any) {
+      toast({
+        title: "Gagal Update",
+        description: error.message || "Gagal mengupdate nomor lambung. Silakan coba lagi.",
+        variant: "destructive",
+      });
+      // ARCHITECT FIX: Keep editingRoster populated so user can retry (don't clear on error)
+      // Only clear when dialog definitively closed (skip button or success)
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const skipNomorLambungEdit = () => {
+    setShowEditNomorLambungDialog(false);
+    setEditingRoster(null); // Clear roster snapshot when skipping
+    proceedAfterAttendance();
+  };
+
+  const processAttendance = async () => {
+    if (!scanResult || !attendanceForm.jamTidur || !attendanceForm.fitToWork || 
+        (scanResult.nomorLambung === 'SPARE' && !attendanceForm.nomorLambung)) {
+      toast({
+        title: "Data Tidak Lengkap",
+        description: scanResult?.nomorLambung === 'SPARE' 
+          ? "Silakan isi jam tidur, status fit to work, dan nomor lambung baru"
+          : "Silakan isi jam tidur dan status fit to work",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsProcessing(true);
+    setScanResult(prev => prev ? { ...prev, status: 'processing' } : null);
+    try {
+      const now = new Date();
+      const today = now.toISOString().split('T')[0];
+      // Format waktu konsisten HH:MM:SS untuk database (menggunakan waktu lokal sistem)
+      const currentTime = now.toTimeString().split(' ')[0]; // Menggunakan format HH:MM:SS yang konsisten
+
+      console.log("Processing attendance for:", scanResult.name);
+
+      const attendanceData: any = {
+        employeeId: scanResult.employeeId,
+        date: today,
+        time: currentTime,
+        jamTidur: attendanceForm.jamTidur,
+        fitToWork: attendanceForm.fitToWork,
+        status: "present"
+      };
+      
+      // Jika nomor lambung SPARE, sertakan nomor lambung baru
+      if (scanResult.nomorLambung === 'SPARE' && attendanceForm.nomorLambung) {
+        attendanceData.nomorLambungBaru = attendanceForm.nomorLambung;
+      }
+
+      const response = await fetch("/api/attendance", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(attendanceData)
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: "Unknown error" }));
+        throw new Error(errorData.message || `HTTP ${response.status}`);
+      }
+
+      // Update status to success and reset processing
+      setScanResult(prev => {
+        const updated = prev ? { ...prev, status: 'success' as const } : null;
+        console.log("📦 Attendance success - scanResult roster:", updated?.roster);
+        return updated;
+      });
+      setIsProcessing(false); // Reset processing state immediately
+      
+      toast({
+        title: "Absensi Berhasil",
+        description: `✅ Absensi berhasil dicatat untuk ${scanResult.name}`,
+      });
+
+      // Show edit nomor lambung dialog if roster exists (optional edit)
+      // ARCHITECT FIX: Persist roster snapshot and stop scanning to prevent race conditions
+      if (scanResult.roster?.id) {
+        console.log("✅ Roster found, showing edit dialog. Roster ID:", scanResult.roster.id);
+        
+        // Persist full roster snapshot (prevents loss if scanResult changes)
+        setEditingRoster({
+          id: scanResult.roster.id,
+          actualNomorLambung: scanResult.roster.actualNomorLambung,
+          plannedNomorLambung: scanResult.roster.plannedNomorLambung,
+          employeeId: scanResult.roster.employeeId,
+          date: scanResult.roster.date,
+        });
+        
+        const currentNomorLambung = scanResult.roster.actualNomorLambung || scanResult.roster.plannedNomorLambung || scanResult.nomorLambung || '';
+        setNewNomorLambung(currentNomorLambung);
+        
+        // Stop scanning while dialog is open (prevent concurrent scans)
+        stopScanning();
+        
+        setShowEditNomorLambungDialog(true);
+      } else {
+        console.log("⚠️ No roster found, skipping edit dialog");
+        // If no roster, proceed with normal flow
+        proceedAfterAttendance();
+      }
+
+      // Faster cache invalidation - do it in background
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["/api/attendance"] }),
+        queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] }),
+        queryClient.invalidateQueries({ queryKey: ["/api/dashboard/attendance-details"] }),
+        queryClient.invalidateQueries({ queryKey: ["/api/dashboard/recent-activities"] }),
+        queryClient.invalidateQueries({ queryKey: ["/api/roster"] }),
+        queryClient.invalidateQueries({ queryKey: ["/api/employees"] }), // Invalidate employees untuk nomor lambung update
+        refetchActivities() // Refresh recent activities immediately
+      ]).catch(console.error); // Don't block UI for cache updates
+
+      // Force refetch roster dengan delay untuk memastikan data employee sudah terupdate
+      if (attendanceForm.nomorLambung) {
+        console.log(`🔄 Force refetching roster after nomor lambung update for ${scanResult.name}`);
+        queryClient.invalidateQueries({ queryKey: ["/api/roster"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/employees"] });
+      }
+      
+    } catch (error: any) {
+      console.error("Auto attendance error:", error);
+      // Immediately reset processing state on error
+      setIsProcessing(false);
+      
+      let errorMessage = "Gagal memproses absensi";
+      let errorTitle = "Error";
+      
+      const errorMsg = error?.message || String(error);
+      
+      if (errorMsg) {
+        const message = errorMsg.toLowerCase();
+        
+        if (message.includes("sudah melakukan absensi")) {
+          errorTitle = "Sudah Absen Hari Ini";
+          errorMessage = `${scanResult.name} sudah melakukan absensi pada hari ini`;
+        } else if (message.includes("tidak dijadwalkan")) {
+          errorTitle = "Tidak Dijadwalkan";
+          errorMessage = `${scanResult.name} tidak dijadwalkan bekerja hari ini`;
+        } else if (message.includes("tidak ditemukan")) {
+          errorTitle = "Karyawan Tidak Ditemukan";
+          errorMessage = `Data karyawan ${scanResult.name} tidak ditemukan`;
+        } else if (message.includes("tidak sesuai dengan jadwal shift") || message.includes("absensi ditolak") || message.includes("diluar jam kerja") || message.includes("tidak sesuai shift")) {
+          errorTitle = "❌ ABSENSI DITOLAK";
+          errorMessage = errorMsg; // Use the full detailed message from server
+        } else if (message.includes("shift yang berbeda")) {
+          errorTitle = "Shift Tidak Sesuai";
+          errorMessage = `Waktu check-in tidak sesuai dengan shift yang dijadwalkan untuk ${scanResult.name}`;
+        } else {
+          errorTitle = "Gagal Memproses";
+          errorMessage = errorMsg;
+        }
+      }
+      
+      // Update status to error with message
+      setScanResult(prev => prev ? { ...prev, status: 'error', errorMessage } : null);
+      
+      toast({
+        title: errorTitle,
+        description: `❌ ${errorMessage}`,
+        variant: "destructive",
+      });
+      
+      // Immediately reset processing state to unblock UI
+      setIsProcessing(false);
+      
+      // Clear scan result after error to allow retry
+      setTimeout(() => {
+        setScanResult(null);
+        // Resume scanning after error
+        if (videoRef.current && !scanningRef.current) {
+          startScanning();
+        }
+      }, 2000);
+    }
+  };
+
+
+
+  const currentShift = getCurrentShift();
+  const currentTime = new Date().toLocaleTimeString('id-ID', {
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* Camera Scanner */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Scan QR Code</CardTitle>
+          <div className="text-sm text-gray-600 dark:text-gray-400">
+            Waktu sekarang: {currentTime} • {currentShift}
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="relative">
+            <video 
+              ref={videoRef}
+              className="w-full h-64 bg-gray-100 dark:bg-gray-700 rounded-lg object-cover"
+              autoPlay
+              muted
+              playsInline
+              data-testid="scanner-video"
+            />
+            <canvas ref={canvasRef} className="hidden" />
+            
+            {isScanning && (
+              <div className="absolute inset-0 border-2 border-primary-500 rounded-lg opacity-50 pointer-events-none">
+                <div className="absolute top-4 left-4 w-6 h-6 border-t-4 border-l-4 border-primary-500"></div>
+                <div className="absolute top-4 right-4 w-6 h-6 border-t-4 border-r-4 border-primary-500"></div>
+                <div className="absolute bottom-4 left-4 w-6 h-6 border-b-4 border-l-4 border-primary-500"></div>
+                <div className="absolute bottom-4 right-4 w-6 h-6 border-b-4 border-r-4 border-primary-500"></div>
+              </div>
+            )}
+          </div>
+          
+          <div className="flex space-x-2">
+            <Button 
+              onClick={startScanning} 
+              disabled={isScanning || isProcessing}
+              className="flex-1"
+              data-testid="start-scanner-button"
+            >
+              <Camera className="w-4 h-4 mr-2" />
+              {isScanning ? "Scanning..." : isProcessing ? "Memproses..." : "Mulai Scan"}
+            </Button>
+            <Button 
+              onClick={stopScanning} 
+              disabled={!isScanning}
+              variant="destructive"
+              className="flex-1"
+              data-testid="stop-scanner-button"
+            >
+              <CameraOff className="w-4 h-4 mr-2" />
+              Stop Scan
+            </Button>
+          </div>
+          
+          {isScanning && !isProcessing && (
+            <div className="text-sm text-center text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 p-2 rounded">
+              📱 Arahkan kamera ke QR Code untuk melakukan scan
+              <div className="text-xs mt-1 text-blue-500">
+                ⚠️ Absensi hanya diizinkan pada jam kerja: Shift 1 (04:00-10:00) • Shift 2 (16:00-22:00)
+              </div>
+            </div>
+          )}
+          
+          {isProcessing && (
+            <div className="text-sm text-center text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-900/30 p-2 rounded">
+              ⏳ Memvalidasi QR Code...
+            </div>
+          )}
+        </CardContent>
+      </Card>
+      
+      {/* Scan Result */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Hasil Scan</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {!scanResult ? (
+            <div className="text-center py-8" data-testid="scan-placeholder">
+              <div className="w-16 h-16 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Camera className="w-8 h-8 text-gray-400" />
+              </div>
+              <p className="text-gray-500 dark:text-gray-400">Siap untuk scan QR Code</p>
+            </div>
+          ) : (
+            <div className="space-y-4" data-testid="scan-result">
+              <div className={`p-4 border rounded-lg ${
+                scanResult.status === 'processing' 
+                  ? 'bg-blue-50 dark:bg-blue-900 border-blue-200 dark:border-blue-700'
+                  : scanResult.status === 'success'
+                  ? 'bg-green-50 dark:bg-green-900 border-green-200 dark:border-green-700'
+                  : scanResult.status === 'error'
+                  ? 'bg-red-50 dark:bg-red-900 border-red-200 dark:border-red-700'
+                  : 'bg-green-50 dark:bg-green-900 border-green-200 dark:border-green-700'
+              }`}>
+                <div className="flex items-center">
+                  {scanResult.status === 'processing' ? (
+                    <>
+                      <div className="w-5 h-5 mr-2 animate-spin rounded-full border-2 border-blue-300 border-t-blue-600"></div>
+                      <span className="text-blue-800 dark:text-blue-200 font-medium">Memproses Absensi...</span>
+                    </>
+                  ) : scanResult.status === 'success' ? (
+                    <>
+                      <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-300 mr-2" />
+                      <span className="text-green-800 dark:text-green-200 font-medium">Absensi Berhasil</span>
+                    </>
+                  ) : scanResult.status === 'error' ? (
+                    <>
+                      <XCircle className="w-5 h-5 text-red-600 dark:text-red-300 mr-2" />
+                      <span className="text-red-800 dark:text-red-200 font-medium">Gagal Memproses</span>
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-300 mr-2" />
+                      <span className="text-green-800 dark:text-green-200 font-medium">QR Code Valid</span>
+                    </>
+                  )}
+                </div>
+                {scanResult.status === 'error' && scanResult.errorMessage && (
+                  <div className="mt-2">
+                    <p className="text-sm text-red-600 dark:text-red-300">{scanResult.errorMessage}</p>
+                  </div>
+                )}
+              </div>
+              
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    <User className="w-4 h-4 inline mr-1" />
+                    ID Karyawan
+                  </label>
+                  <p className="text-lg font-semibold text-gray-900 dark:text-white" data-testid="scanned-employee-id">
+                    {scanResult.employeeId}
+                  </p>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Nama</label>
+                  <p className="text-lg font-semibold text-gray-900 dark:text-white" data-testid="scanned-employee-name">
+                    {scanResult.name}
+                  </p>
+                </div>
+                
+                {scanResult.nomorLambung && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Nomor Lambung</label>
+                    <p className="text-lg font-semibold text-gray-900 dark:text-white" data-testid="scanned-nomor-lambung">
+{scanResult.isSpareOrigin && scanResult.nomorLambung !== "SPARE" ? 
+                        `SPARE ${scanResult.nomorLambung}` : (scanResult.nomorLambung || '-')
+                      }
+                    </p>
+                  </div>
+                )}
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    <Clock className="w-4 h-4 inline mr-1" />
+                    Waktu & Shift
+                  </label>
+                  <p className="text-lg font-semibold text-gray-900 dark:text-white" data-testid="scan-time">
+                    {scanResult.scanTime}
+                  </p>
+                </div>
+              </div>
+              
+              {/* Form pengisian jam tidur dan fit to work - tampil setelah QR valid */}
+              {scanResult.status === 'validated' && (
+                <div className="space-y-4 border-t pt-4">
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                    Form Absensi
+                  </h3>
+                  
+                  <div className="grid grid-cols-1 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Jam Tidur <span className="text-red-500">*</span>
+                      </label>
+                      <select
+                        value={attendanceForm.jamTidur}
+                        onChange={(e) => setAttendanceForm(prev => ({ ...prev, jamTidur: e.target.value }))}
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                        data-testid="jam-tidur-select"
+                        required
+                      >
+                        <option value="">Pilih jam tidur</option>
+                        <option value="4">4</option>
+                        <option value="5">5</option>
+                        <option value="6">6</option>
+                        <option value="7">7</option>
+                        <option value="8">8</option>
+                        <option value="8+">8+</option>
+                      </select>
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Status Fit To Work <span className="text-red-500">*</span>
+                      </label>
+                      <select
+                        value={attendanceForm.fitToWork}
+                        onChange={(e) => setAttendanceForm(prev => ({ ...prev, fitToWork: e.target.value }))}
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                        data-testid="fit-to-work-select"
+                        required
+                      >
+                        <option value="">Pilih status</option>
+                        <option value="Fit To Work">Fit To Work</option>
+                        <option value="Unfit To Work">Unfit To Work</option>
+                      </select>
+                    </div>
+                    
+                    {/* Field Nomor Lambung - hanya tampil jika nomor lambung adalah SPARE */}
+                    {scanResult.nomorLambung === 'SPARE' && (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          Nomor Lambung Baru <span className="text-red-500">*</span>
+                        </label>
+                        <Input
+                          type="text"
+                          value={attendanceForm.nomorLambung || ''}
+                          onChange={(e) => setAttendanceForm(prev => ({ ...prev, nomorLambung: e.target.value }))}
+                          placeholder="Masukkan nomor lambung baru"
+                          className="w-full"
+                          data-testid="nomor-lambung-input"
+                          required={scanResult.nomorLambung === 'SPARE'}
+                        />
+                      </div>
+                    )}
+                  </div>
+                  
+                  <Button 
+                    onClick={processAttendance}
+                    disabled={
+                      !attendanceForm.jamTidur || 
+                      !attendanceForm.fitToWork || 
+                      isProcessing ||
+                      (scanResult.nomorLambung === 'SPARE' && !attendanceForm.nomorLambung)
+                    }
+                    className="w-full"
+                    data-testid="process-attendance-button"
+                  >
+                    {isProcessing ? (
+                      <>
+                        <div className="w-4 h-4 mr-2 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
+                        Memproses...
+                      </>
+                    ) : (
+                      'Proses Absensi'
+                    )}
+                  </Button>
+                </div>
+              )}
+              
+              {/* Show action buttons based on status */}
+              {(scanResult.status === 'success' || scanResult.status === 'error') && (
+                <Button 
+                  onClick={() => {
+                    setScanResult(null);
+                    setAttendanceForm({ jamTidur: '', fitToWork: '', nomorLambung: '' });
+                  }} 
+                  className="w-full"
+                  variant={scanResult.status === 'error' ? 'destructive' : 'default'}
+                  data-testid="scan-again-button"
+                >
+                  {scanResult.status === 'error' ? 'Coba Lagi' : 'Scan Lagi'}
+                </Button>
+              )}
+              
+              {scanResult.status === 'processing' && (
+                <div className="text-center py-2">
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    Sedang memproses absensi, harap tunggu...
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Recent Activities Card */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center">
+            <Activity className="w-5 h-5 mr-2" />
+            Aktivitas Absensi Terbaru
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {recentActivities?.length === 0 ? (
+            <div className="text-center py-8" data-testid="no-activities">
+              <div className="w-16 h-16 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Activity className="w-8 h-8 text-gray-400" />
+              </div>
+              <p className="text-gray-500 dark:text-gray-400">Belum ada aktivitas absensi hari ini</p>
+            </div>
+          ) : (
+            <div className="space-y-3" data-testid="recent-activities-list">
+              {recentActivities?.slice(0, 5).map((activity) => (
+                <div 
+                  key={activity.id} 
+                  className="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border"
+                  data-testid={`activity-${activity.employeeId}`}
+                >
+                  <div className="flex-1">
+                    <div className="flex items-center space-x-2">
+                      <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                      <span className="font-medium text-sm text-gray-900 dark:text-white">
+                        {activity.employeeName}
+                      </span>
+                      <span className="text-xs text-gray-500 dark:text-gray-400">
+                        ({activity.employeeId})
+                      </span>
+                    </div>
+                    <div className="flex items-center space-x-3 mt-1 text-xs text-gray-600 dark:text-gray-300">
+                      <span className="flex items-center">
+                        <Clock className="w-3 h-3 mr-1" />
+                        {activity.time}
+                      </span>
+                      <span className="flex items-center">
+                        <Moon className="w-3 h-3 mr-1" />
+                        {activity.jamTidur} jam
+                      </span>
+                      <span className="flex items-center">
+                        <Heart className="w-3 h-3 mr-1" />
+                        {activity.fitToWork}
+                      </span>
+                      <span className="flex items-center">
+                        <Calendar className="w-3 h-3 mr-1" />
+                        Hari ke-{activity.workingDays}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex flex-col items-end">
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                      activity.status === 'present' 
+                        ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200'
+                        : 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200'
+                    }`}>
+                      {activity.status === 'present' ? 'Hadir' : activity.status}
+                    </span>
+                    <span className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      {new Date(activity.createdAt).toLocaleTimeString('id-ID', {
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
+                    </span>
+                  </div>
+                </div>
+              ))}
+              
+              {recentActivities && recentActivities.length > 5 && (
+                <div className="text-center pt-2">
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    Menampilkan 5 dari {recentActivities.length} aktivitas hari ini
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Edit Nomor Lambung Dialog - Optional after check-in */}
+      <Dialog open={showEditNomorLambungDialog} onOpenChange={setShowEditNomorLambungDialog}>
+        <DialogContent data-testid="edit-nomor-lambung-dialog">
+          <DialogHeader>
+            <DialogTitle className="flex items-center">
+              <Truck className="w-5 h-5 mr-2" />
+              Update Nomor Lambung
+            </DialogTitle>
+            <DialogDescription>
+              Ada perubahan nomor lambung hari ini? Update di sini (opsional)
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="nomor-lambung-edit">Nomor Lambung Saat Ini:</Label>
+              <Input
+                id="nomor-lambung-edit"
+                data-testid="input-nomor-lambung-edit"
+                value={newNomorLambung}
+                onChange={(e) => setNewNomorLambung(e.target.value)}
+                placeholder="Contoh: DT-001"
+                disabled={isProcessing}
+              />
+            </div>
+            
+            <div className="text-sm text-gray-600 dark:text-gray-400">
+              💡 <strong>Catatan:</strong> Perubahan nomor lambung hanya untuk hari ini dan akan tercatat di roster & laporan PDF.
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={skipNomorLambungEdit}
+              disabled={isProcessing}
+              data-testid="button-skip-nomor-lambung"
+            >
+              Lewati
+            </Button>
+            <Button
+              onClick={updateNomorLambung}
+              disabled={isProcessing || !newNomorLambung}
+              data-testid="button-update-nomor-lambung"
+            >
+              {isProcessing ? "Menyimpan..." : "Update"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+    </div>
+  );
+}

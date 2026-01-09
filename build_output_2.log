@@ -1,0 +1,48 @@
+[36mvite v5.4.20 [32mbuilding for production...[36m[39m
+transforming...
+Browserslist: browsers data (caniuse-lite) is 15 months old. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+[32m✓[39m 110 modules transformed.
+[31mx[39m Build failed in 2.67s
+[31merror during build:
+[31m[vite:esbuild] Transform failed with 3 errors:
+C:/OneTalent/client/src/pages/sidak-recap.tsx:1303:2: ERROR: Top-level return cannot be used inside an ECMAScript module
+C:/OneTalent/client/src/pages/sidak-recap.tsx:1311:2: ERROR: Top-level return cannot be used inside an ECMAScript module
+C:/OneTalent/client/src/pages/sidak-recap.tsx:1322:0: ERROR: Top-level return cannot be used inside an ECMAScript module[31m
+file: [36mC:/OneTalent/client/src/pages/sidak-recap.tsx:1303:2[31m
+[33m
+[33mTop-level return cannot be used inside an ECMAScript module[33m
+1301|  
+1302|  if (isLoading) {
+1303|    return (
+   |    ^
+1304|      <div className="p-6 flex items-center justify-center min-h-[400px]">
+1305|        <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" />
+
+[33mTop-level return cannot be used inside an ECMAScript module[33m
+1309|  
+1310|  if (error) {
+1311|    return (
+   |    ^
+1312|      <div className="p-6">
+1313|        <Card className="border-red-200 bg-red-50">
+
+[33mTop-level return cannot be used inside an ECMAScript module[33m
+1320|  }
+1321|  
+1322|  return (
+   |  ^
+1323|    <div className="p-4 md:p-6 space-y-6">
+1324|      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+[31m
+    at failureErrorWithLog (C:\OneTalent\node_modules\vite\node_modules\esbuild\lib\main.js:1472:15)
+    at C:\OneTalent\node_modules\vite\node_modules\esbuild\lib\main.js:755:50
+    at responseCallbacks.<computed> (C:\OneTalent\node_modules\vite\node_modules\esbuild\lib\main.js:622:9)
+    at handleIncomingPacket (C:\OneTalent\node_modules\vite\node_modules\esbuild\lib\main.js:677:12)
+    at Socket.readFromStdout (C:\OneTalent\node_modules\vite\node_modules\esbuild\lib\main.js:600:7)
+    at Socket.emit (node:events:518:28)
+    at addChunk (node:internal/streams/readable:561:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+    at Readable.push (node:internal/streams/readable:392:5)
+    at Pipe.onStreamRead (node:internal/stream_base_commons:191:23)[39m

@@ -1,0 +1,109 @@
+// ADD THIS ENTIRE CONTENT TO THE END OF shared/schema.ts (after line 1072, before the final blank line)
+
+// ============================================================================
+// SIDAK JARAK AMAN (Safe Distance Observation)
+// ============================================================================
+
+export const sidakJarakSessions = pgTable("sidak_jarak_sessions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tanggal: varchar("tanggal").notNull(),
+  shift: varchar("shift").notNull(),
+  waktu: varchar("waktu").notNull(),
+  lokasi: text("lokasi").notNull(),
+  totalSampel: integer("total_sampel").notNull().default(0),
+  persenKepatuhan: integer("persen_kepatuhan").default(0),
+  activityPhotos: text("activity_photos").array(),
+  createdBy: varchar("created_by"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [index("IDX_jarak_sessions_created_by").on(table.createdBy)]);
+
+export const sidakJarakRecords = pgTable("sidak_jarak_records", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  sessionId: varchar("session_id").notNull().references(() => sidakJarakSessions.id, { onDelete: "cascade" }),
+  ordinal: integer("ordinal").notNull(),
+  noKendaraan: varchar("no_kendaraan").notNull(),
+  tipeUnit: varchar("tipe_unit"),
+  lokasiMuatan: varchar("lokasi_muatan"),
+  lokasiKosongan: varchar("lokasi_kosongan"),
+  nomorLambungUnit: varchar("nomor_lambung_unit"),
+  jarakAktualKedua: varchar("jarak_aktual_kedua"),
+  keteranganTandaTangan: text("keterangan_tanda_tangan"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [index("IDX_jarak_records_session").on(table.sessionId)]);
+
+export const sidakJarakObservers = pgTable("sidak_jarak_observers", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  sessionId: varchar("session_id").notNull().references(() => sidakJarakSessions.id, { onDelete: "cascade" }),
+  ordinal: integer("ordinal").notNull(),
+  nama: text("nama").notNull(),
+  perusahaan: text("perusahaan"),
+  tandaTangan: text("tanda_tangan"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [index("IDX_jarak_observers_session").on(table.sessionId)]);
+
+export const insertSidakJarakSessionSchema = createInsertSchema(sidakJarakSessions).omit({ id: true, createdAt: true, totalSampel: true });
+export const insertSidakJarakRecordSchema = createInsertSchema(sidakJarakRecords).omit({ id: true, createdAt: true });
+export const insertSidakJarakObserverSchema = createInsertSchema(sidakJarakObservers).omit({ id: true, createdAt: true });
+
+export type SidakJarakSession = typeof sidakJarakSessions.$inferSelect;
+export type InsertSidakJarakSession = z.infer<typeof insertSidakJarakSessionSchema>;
+export type SidakJarakRecord = typeof sidakJarakRecords.$inferSelect;
+export type InsertSidakJarakRecord = z.infer<typeof insertSidakJarakRecordSchema>;
+export type SidakJarakObserver = typeof sidakJarakObservers.$inferSelect;
+export type InsertSidakJarakObserver = z.infer<typeof insertSidakJarakObserverSchema>;
+
+// ============================================================================
+// SIDAK KECEPATAN (Speed Observation)
+// ============================================================================
+
+export const sidakKecepatanSessions = pgTable("sidak_kecepatan_sessions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tanggal: varchar("tanggal").notNull(),
+  shift: varchar("shift").notNull(),
+  waktu: varchar("waktu").notNull(),
+  lokasi: text("lokasi").notNull(),
+  totalSampel: integer("total_sampel").notNull().default(0),
+  subLokasi: text("sub_lokasi"),
+  batasKecepatanKph: integer("batas_kecepatan_kph"),
+  activityPhotos: text("activity_photos").array(),
+  createdBy: varchar("created_by"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [index("IDX_kecepatan_sessions_created_by").on(table.createdBy)]);
+
+export const sidakKecepatanRecords = pgTable("sidak_kecepatan_records", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  sessionId: varchar("session_id").notNull().references(() => sidakKecepatanSessions.id, { onDelete: "cascade" }),
+  ordinal: integer("ordinal").notNull(),
+  noKendaraan: varchar("no_kendaraan").notNull(),
+  tipeUnit: varchar("tipe_unit"),
+  arahKendaraanMuatan: varchar("arah_kendaraan_muatan"),
+  arahKendaraanKosongan: varchar("arah_kendaraan_kosongan"),
+  kecepatanAktualMph: integer("kecepatan_aktual_mph"),
+  kecepatanAktualKph: integer("kecepatan_aktual_kph"),
+  keterangan: text("keterangan"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [index("IDX_kecepatan_records_session").on(table.sessionId)]);
+
+export const sidakKecepatanObservers = pgTable("sidak_kecepatan_observers", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  sessionId: varchar("session_id").notNull().references(() => sidakKecepatanSessions.id, { onDelete: "cascade" }),
+  ordinal: integer("ordinal").notNull(),
+  nama: text("nama").notNull(),
+  nik: varchar("nik"),
+  perusahaan: text("perusahaan"),
+  tandaTangan: text("tanda_tangan"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [index("IDX_kecepatan_observers_session").on(table.sessionId)]);
+
+export const insertSidakKecepatanSessionSchema = createInsertSchema(sidakKecepatanSessions).omit({ id: true, createdAt: true, totalSampel: true });
+export const insertSidakKecepatanRecordSchema = createInsertSchema(sidakKecepatanRecords).omit({ id: true, createdAt: true });
+export const insertSidakKecepatanObserverSchema = createInsertSchema(sidakKecepatanObservers).omit({ id: true, createdAt: true });
+
+export type SidakKecepatanSession = typeof sidakKecepatanSessions.$inferSelect;
+export type InsertSidakKecepatanSession = z.infer<typeof insertSidakKecepatanSessionSchema>;
+export type SidakKecepatanRecord = typeof sidakKecepatanRecords.$inferSelect;
+export type InsertSidakKecepatanRecord = z.infer<typeof insertSidakKecepatanRecordSchema>;
+export type SidakKecepatanObserver = typeof sidakKecepatanObservers.$inferSelect;
+export type InsertSidakKecepatanObserver = z.infer<typeof insertSidakKecepatanObserverSchema>;
+
+// (Continue with PENCAHAYAAN, LOTO, DIGITAL, WORKSHOP in schema.ts directly...)
