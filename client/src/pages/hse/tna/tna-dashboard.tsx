@@ -70,7 +70,7 @@ export default function TnaDashboard() {
         queryKey: ["/api/hse/tna-dashboard/stats"],
     });
 
-    const { data: gaps, isLoading: gapsLoading } = useQuery<{ category: string, gap: number }[]>({
+    const { data: gaps, isLoading: gapsLoading } = useQuery<{ trainingName: string, gap: number }[]>({
         queryKey: ["/api/hse/tna-dashboard/gap-analysis"],
     });
 
@@ -119,7 +119,7 @@ export default function TnaDashboard() {
     ];
 
     const gapChartData = {
-        labels: gaps?.map(g => g.category) || [],
+        labels: gaps?.map(g => g.trainingName) || [],
         datasets: [
             {
                 label: 'Gap (Training needed)',
@@ -168,15 +168,21 @@ export default function TnaDashboard() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <Card className="col-span-2 border-none shadow-sm">
                     <CardHeader>
-                        <CardTitle>Gap Analysis by Category</CardTitle>
-                        <CardDescription>Number of unresolved training needs</CardDescription>
+                        <CardTitle>Gap Analysis by Training Name</CardTitle>
+                        <CardDescription>Top 10 Unresolved Training Needs</CardDescription>
                     </CardHeader>
                     <CardContent>
-                        <div className="h-[300px] w-full">
+                        <div className="h-[350px] w-full">
                             {gapsLoading ? (
                                 <div className="flex items-center justify-center h-full text-gray-400">Loading chart...</div>
                             ) : (
-                                <Bar options={{ maintainAspectRatio: false }} data={gapChartData} />
+                                <Bar options={{
+                                    maintainAspectRatio: false,
+                                    indexAxis: 'y' as const,
+                                    plugins: {
+                                        legend: { display: false }
+                                    }
+                                }} data={gapChartData} />
                             )}
                         </div>
                     </CardContent>
@@ -260,8 +266,8 @@ export default function TnaDashboard() {
                                             <td className="px-3 py-2 text-center">
                                                 {row.planMandatory > 0 ? (
                                                     <span className={`px-2 py-0.5 rounded text-xs font-bold ${(row.mandatoryCompliance ?? 0) >= 100 ? 'bg-green-100 text-green-700' :
-                                                            (row.mandatoryCompliance ?? 0) >= 50 ? 'bg-yellow-100 text-yellow-700' :
-                                                                'bg-red-100 text-red-700'
+                                                        (row.mandatoryCompliance ?? 0) >= 50 ? 'bg-yellow-100 text-yellow-700' :
+                                                            'bg-red-100 text-red-700'
                                                         }`}>
                                                         {row.mandatoryCompliance}%
                                                     </span>

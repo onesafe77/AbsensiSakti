@@ -7,6 +7,7 @@ import fs from 'fs';
 import path from 'path';
 import bcrypt from 'bcrypt';
 import OpenAI from "openai";
+import { differenceInDays, parseISO, isValid, format } from "date-fns";
 
 import { storage } from "./storage";
 import { ObjectStorageService, ObjectNotFoundError } from "./replit_integrations/object_storage";
@@ -376,11 +377,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get all TNA entries for dashboard table
   app.get("/api/hse/tna-dashboard/all-entries", async (req, res) => {
     try {
-      const entries = await storage.getAllTnaEntriesWithDetails();
+      const entries = await storage.getAllTnaEntriesWithDetailsV2();
+      console.log(`DEBUG: /api/hse/tna-dashboard/all-entries returning ${entries.length} entries`);
       res.json(entries);
     } catch (error) {
       console.error("Error fetching all TNA entries:", error);
       res.status(500).json({ message: "Failed to fetch TNA entries" });
+    }
+  });
+
+  // Get all raw TNA entries (individual entries with training details)
+  app.get("/api/hse/tna/all-raw-entries", async (req, res) => {
+    try {
+      const entries = await storage.getAllRawTnaEntries();
+      res.json(entries);
+    } catch (error) {
+      console.error("Error fetching raw TNA entries:", error);
+      res.status(500).json({ message: "Failed to fetch TNA entries" });
+    }
+  });
+
+  // Update single TNA entry
+  app.patch("/api/hse/tna/entries/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const updates = req.body;
+      const updated = await storage.updateTnaEntry(id, updates);
+      if (!updated) {
+        return res.status(404).json({ message: "Entry not found" });
+      }
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating TNA entry:", error);
+      res.status(500).json({ message: "Failed to update entry" });
     }
   });
 
@@ -7869,6 +7898,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get single news
+  // Generic File Upload (for Certificates, etc.)
+  const certificateUpload = multer({
+    storage: multer.diskStorage({
+      destination: function (req, file, cb) {
+        const uploadDir = path.join(process.cwd(), 'uploads', 'documents');
+        if (!fs.existsSync(uploadDir)) {
+          fs.mkdirSync(uploadDir, { recursive: true });
+        }
+        cb(null, uploadDir);
+      },
+      filename: function (req, file, cb) {
+        // Keep original extension, add unique prefix
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        cb(null, 'doc-' + uniqueSuffix + path.extname(file.originalname));
+      }
+    }),
+    limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
+    fileFilter: function (req, file, cb) {
+      // Allow common document types
+      const allowedTypes = /pdf|jpg|jpeg|png|doc|docx/;
+      const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+      const mimetype = allowedTypes.test(file.mimetype) || file.mimetype === 'application/pdf' || file.mimetype.includes('word');
+
+      if (extname) { // Rely mainly on extension as mimetype can vary
+        return cb(null, true);
+      }
+      cb(new Error('Only PDF, Word, and Images are allowed!'));
+    }
+  });
+
+  app.post("/api/upload", certificateUpload.single('file'), (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ message: "No file uploaded" });
+      }
+      const fileUrl = `/uploads/documents/${path.basename(req.file.path)}`;
+      res.json({ url: fileUrl, fileName: req.file.originalname });
+    } catch (error) {
+      console.error("Upload error:", error);
+      res.status(500).json({ message: "File upload failed" });
+    }
+  });
+
   app.get("/api/news/:id", async (req, res) => {
     try {
       const { id } = req.params;
@@ -10145,6 +10217,132 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error("Error generating Workshop PDF:", error);
       res.status(500).json({ error: "Failed to generate PDF", details: error.message });
+    }
+  });
+
+
+  // ============================================
+  // COMPETENCY MONITORING ROUTES
+  // ============================================
+
+  // Trigger Daily Monitoring Log Generation (Manual or Scheduled)
+  // Trigger Daily Monitoring Log Generation (Manual or Scheduled)
+  app.post("/api/hse/tna/entries/simple", async (req, res) => {
+    try {
+      console.log("DEBUG: POST /api/hse/tna/entries/simple called");
+      console.log("DEBUG: Payload:", JSON.stringify(req.body, null, 2));
+
+      const { employeeId, trainingId, certificateNumber, issuer, issueDate, expiryDate, evidenceFile } = req.body;
+      // Default to current year string e.g. "2026"
+      const period = new Date().getFullYear().toString();
+
+      console.log(`DEBUG: Getting summary for Employee ${employeeId}, Period ${period}`);
+      // 1. Get or Create Summary
+      const summary = await storage.createOrGetTnaSummary(employeeId, period);
+      console.log("DEBUG: Summary ID:", summary.id);
+
+      // 2. Check if entry exists for this training in this summary
+      const existingEntries = await storage.getTnaEntries(summary.id);
+      // NOTE: trainingId is a string/UUID, do NOT use parseInt
+      const existingEntry = existingEntries.find(e => e.trainingId === trainingId);
+      console.log("DEBUG: Existing Entry Found:", !!existingEntry);
+
+      let entry;
+      // Define common update data
+      const updateData = {
+        certificateNumber,
+        issuer,
+        evidenceFile, // Add evidence file URL
+        issueDate: issueDate ? format(new Date(issueDate), 'yyyy-MM-dd') : null,
+        expiryDate: expiryDate ? format(new Date(expiryDate), 'yyyy-MM-dd') : null,
+        actualStatus: 'C', // Auto-set to Complied since we are adding a cert
+        actualDate: format(new Date(), 'yyyy-MM-dd')
+      };
+
+      if (existingEntry) {
+        console.log("DEBUG: Updating existing entry", existingEntry.id);
+        // Update existing
+        entry = await storage.updateTnaEntry(existingEntry.id, updateData);
+      } else {
+        console.log("DEBUG: Creating new entry");
+        // Create new
+        entry = await storage.createTnaEntry({
+          tnaSummaryId: summary.id,
+          trainingId: trainingId,
+          planStatus: 'M', // Default Mandatory
+          ...updateData
+        });
+      }
+
+      console.log("DEBUG: Entry saved successfully:", entry.id);
+      res.json(entry);
+    } catch (error: any) {
+      console.error("Error creating simple TNA entry DETAILS:", error);
+      console.error("Stack:", error.stack);
+      res.status(500).json({ error: error.message, details: error.toString() });
+    }
+  });
+
+  app.post("/api/hse/tna/monitoring/run", async (req, res) => {
+    try {
+      console.log("Running Daily Competency Monitoring...");
+      const today = new Date();
+      const todayStr = format(today, "yyyy-MM-dd");
+
+      // Get all raw entries with certificate details
+      const allEntries = await storage.getAllRawTnaEntries();
+
+      // Filter entries relevant for monitoring (have expiry date)
+      const validEntries = allEntries.filter(e => e.expiryDate && e.id);
+
+      let processedCount = 0;
+      let insertedCount = 0;
+
+      for (const entry of validEntries) {
+        if (!entry.expiryDate) continue;
+
+        const expiry = parseISO(entry.expiryDate);
+        if (!isValid(expiry)) continue;
+
+        const diff = differenceInDays(expiry, today);
+        let status = "Aktif";
+
+        if (diff < 0) {
+          status = "Expired";
+        } else if (diff <= 30) {
+          status = "Akan Habis";
+        }
+
+        await storage.createCompetencyMonitoringLog({
+          tnaEntryId: entry.id,
+          logDate: todayStr,
+          status: status,
+          expiryDaysRemaining: diff
+        });
+
+        processedCount++;
+        insertedCount++;
+      }
+
+      res.json({
+        message: "Monitoring completed",
+        processed: processedCount,
+        inserted: insertedCount,
+        date: todayStr
+      });
+    } catch (error: any) {
+      console.error("Error running competency monitoring:", error);
+      res.status(500).json({ message: "Failed to run monitoring", error: error.message });
+    }
+  });
+
+  // Get Monitoring Logs for a specific Entry
+  app.get("/api/hse/tna/monitoring/logs/:entryId", async (req, res) => {
+    try {
+      const logs = await storage.getCompetencyMonitoringLogs(req.params.entryId);
+      res.json(logs);
+    } catch (error: any) {
+      res.status(500).json({ message: "Failed to fetch logs", error: error.message });
     }
   });
 

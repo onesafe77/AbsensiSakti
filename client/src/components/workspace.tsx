@@ -59,6 +59,8 @@ import SafetyPatrol from "@/pages/safety-patrol";
 import TrainingMaster from "@/pages/hse/tna/training-master";
 import TnaInput from "@/pages/hse/tna/tna-input";
 import TnaDashboard from "@/pages/hse/tna/tna-dashboard";
+import TnaRekap from "@/pages/hse/tna/tna-rekap";
+import CompetencyDashboard from "@/pages/hse/tna/competency-dashboard";
 import Announcements from "@/pages/announcements";
 import News from "@/pages/news";
 import NewsFeed from "@/pages/news-feed";
@@ -270,6 +272,8 @@ export function Workspace() {
               <Route path="/workspace/hse/tna/trainings" component={TrainingMaster} />
               <Route path="/workspace/hse/tna/input" component={TnaInput} />
               <Route path="/workspace/hse/tna/dashboard" component={TnaDashboard} />
+              <Route path="/workspace/hse/tna/rekap" component={TnaRekap} />
+              <Route path="/workspace/hse/tna/monitoring" component={CompetencyDashboard} />
 
               <Route component={Dashboard} />
             </Switch>

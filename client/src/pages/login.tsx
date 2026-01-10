@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Eye, EyeOff, QrCode, ArrowLeft } from "lucide-react";
-import geclLogo from "@assets/gecl-logo.jpeg";
+import oneTalentLogo from "@assets/onetalent-logo.png";
 import bgImage from "@assets/Picture1_1765606128281.jpg";
 
 const loginFormSchema = z.object({
@@ -29,6 +29,8 @@ const resetPasswordSchema = z.object({
 
 type LoginFormValues = z.infer<typeof loginFormSchema>;
 type ResetPasswordFormValues = z.infer<typeof resetPasswordSchema>;
+
+import { AnimatedDotsBackground } from "@/components/ui/animated-dots-background";
 
 export default function LoginPage() {
   const [, setLocation] = useLocation();
@@ -159,7 +161,13 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center p-3 sm:p-4 relative bg-gradient-to-br from-gray-50 via-red-50 to-rose-50 lg:bg-gradient-to-br lg:from-gray-50 lg:via-red-50 lg:to-rose-50">
+    <div className="min-h-screen w-full flex items-center justify-center p-3 sm:p-4 relative bg-gradient-to-br from-gray-50 via-red-50 to-rose-50 lg:bg-gradient-to-br lg:from-gray-50 lg:via-red-50 lg:to-rose-50 overflow-hidden">
+      {/* Animated Background - Red and Green */}
+      <AnimatedDotsBackground
+        dotColors={['rgba(220, 38, 38, 0.4)', 'rgba(34, 197, 94, 0.4)']}
+        dotCount={120}
+      />
+
       {/* Mobile Background Image */}
       <div
         className="absolute inset-0 lg:hidden"
@@ -176,13 +184,13 @@ export default function LoginPage() {
         <div className="grid lg:grid-cols-2">
           {/* Left Panel - Animated Forms */}
           <div className="p-5 sm:p-8 lg:p-12 flex flex-col justify-center relative">
-            {/* GECL Logo */}
-            <div className="flex justify-center mb-6 sm:mb-8">
-              <div className="w-16 h-16 sm:w-24 sm:h-24 rounded-xl sm:rounded-2xl overflow-hidden shadow-lg">
+            {/* OneTalent Logo */}
+            <div className="flex justify-center mb-4 sm:mb-6">
+              <div className="w-[180px] sm:w-[220px]">
                 <img
-                  src={geclLogo}
-                  alt="GECL Logo"
-                  className="w-full h-full object-cover"
+                  src={oneTalentLogo}
+                  alt="OneTalent Logo"
+                  className="w-full h-auto object-contain"
                 />
               </div>
             </div>

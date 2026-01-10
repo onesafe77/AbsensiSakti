@@ -854,11 +854,32 @@ export const tnaEntries = pgTable("tna_entries", {
   evidenceFile: text("evidence_file"), // Path to file
   notes: text("notes"), // Reason if NC, or general notes
 
+  // CERTIFICATION FIELDS (Added for Competency Monitoring)
+  certificateNumber: text("certificate_number"),
+  issuer: text("issuer"), // Lembaga Penerbit
+  issueDate: text("issue_date"), // YYYY-MM-DD
+  expiryDate: text("expiry_date"), // YYYY-MM-DD
+
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => [
   index("IDX_tna_entries_summary").on(table.tnaSummaryId),
   uniqueIndex("tna_entry_summary_training").on(table.tnaSummaryId, table.trainingId),
+  index("IDX_tna_entries_expiry").on(table.expiryDate), // Index for monitoring
+]);
+
+// Competency Monitoring Logs (Daily Snapshots)
+export const competencyMonitoringLogs = pgTable("competency_monitoring_logs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tnaEntryId: varchar("tna_entry_id").notNull().references(() => tnaEntries.id, { onDelete: "cascade" }),
+  logDate: text("log_date").notNull(), // YYYY-MM-DD (Date of monitoring)
+  status: text("status").notNull(), // "Aktif", "Akan Habis", "Expired"
+  expiryDaysRemaining: integer("expiry_days_remaining"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("IDX_comp_mon_log_date").on(table.logDate),
+  index("IDX_comp_mon_log_status").on(table.status),
+  uniqueIndex("comp_mon_log_entry_date").on(table.tnaEntryId, table.logDate), // One log per entry per day
 ]);
 
 // Schemas
@@ -880,6 +901,11 @@ export const insertTnaEntrySchema = createInsertSchema(tnaEntries).omit({
   updatedAt: true,
 });
 
+export const insertCompetencyMonitoringLogSchema = createInsertSchema(competencyMonitoringLogs).omit({
+  id: true,
+  createdAt: true,
+});
+
 // Types
 export type Training = typeof trainings.$inferSelect;
 export type InsertTraining = z.infer<typeof insertTrainingSchema>;
@@ -887,6 +913,9 @@ export type TnaSummary = typeof tnaSummaries.$inferSelect;
 export type InsertTnaSummary = z.infer<typeof insertTnaSummarySchema>;
 export type TnaEntry = typeof tnaEntries.$inferSelect;
 export type InsertTnaEntry = z.infer<typeof insertTnaEntrySchema>;
+export type CompetencyMonitoringLog = typeof competencyMonitoringLogs.$inferSelect;
+export type InsertCompetencyMonitoringLog = z.infer<typeof insertCompetencyMonitoringLogSchema>;
+
 
 // Relations
 export const tnaSummariesRelations = relations(tnaSummaries, ({ one, many }) => ({

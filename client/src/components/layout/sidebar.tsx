@@ -1,6 +1,6 @@
 import { Link, useLocation } from "wouter";
 import { cn } from "@/lib/utils";
-import { X, ChevronDown } from "lucide-react";
+import { X, ChevronDown, ChevronRight } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
 import {
   Users,
@@ -23,16 +23,18 @@ import {
   FolderOpen,
   Briefcase,
   HardHat,
+  Settings,
+  Activity
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import companyLogo from "@assets/gecl-logo.jpeg";
+import oneTalentLogo from "@assets/onetalent-logo.png";
 import { useAuth } from "@/lib/auth-context";
 import { Permission } from "@shared/rbac";
 
 export interface NavItem {
   name: string;
-  href: string;
-  icon: LucideIcon;
+  href?: string;
+  icon?: LucideIcon;
   requiredPermissions?: Permission[];
   requireAll?: boolean;
   children?: NavItem[];
@@ -59,7 +61,6 @@ export const navigationGroups: NavGroup[] = [
     items: [
       {
         name: "HR",
-        href: "#", // Dropdown container
         icon: Users,
         children: [
           { name: "Data Karyawan", href: "/workspace/employees", icon: Users, requiredPermissions: [Permission.VIEW_EMPLOYEES] },
@@ -76,24 +77,56 @@ export const navigationGroups: NavGroup[] = [
       },
       {
         name: "HSE",
-        href: "#", // Dropdown container
         icon: HardHat,
         children: [
-          { name: "Sidak", href: "/workspace/sidak", icon: ClipboardCheck, requiredPermissions: [Permission.VIEW_SIDAK] },
-          { name: "Dashboard Overspeed", href: "/workspace/hse/overspeed", icon: AlertTriangle, requiredPermissions: [Permission.VIEW_SIDAK] },
-          { name: "Dashboard Jarak Aman", href: "/workspace/hse/jarak", icon: TrendingUp, requiredPermissions: [Permission.VIEW_SIDAK] },
-          { name: "Monitoring Validasi Fatigue", href: "/workspace/hse/fatigue-validation", icon: Monitor, requiredPermissions: [Permission.VIEW_SIDAK] },
-          { name: "Evaluasi Driver", href: "/workspace/evaluasi-driver", icon: TrendingUp, requiredPermissions: [Permission.VIEW_EVALUASI] },
-          { name: "Dokumen", href: "/workspace/documents", icon: FolderOpen, requiredPermissions: [Permission.VIEW_DOCUMENTS] },
-          { name: "Rekap Sidak", href: "/workspace/sidak/rekap", icon: ClipboardCheck, requiredPermissions: [Permission.VIEW_SIDAK] },
-          { name: "Safety Patrol", href: "/workspace/safety-patrol", icon: Shield, requiredPermissions: [Permission.MANAGE_EMPLOYEES] },
-          { name: "Pengumuman", href: "/workspace/announcements", icon: Megaphone, requiredPermissions: [Permission.MANAGE_EMPLOYEES] },
-          { name: "Kelola Berita", href: "/workspace/news", icon: Newspaper, requiredPermissions: [Permission.MANAGE_EMPLOYEES] },
-          { name: "Statistik Keselamatan", href: "/workspace/hse/statistics", icon: BarChart3, requiredPermissions: [Permission.VIEW_DASHBOARD] },
-          // TNA Feature
-          { name: "TNA Input", href: "/workspace/hse/tna/input", icon: ClipboardCheck, requiredPermissions: [Permission.MANAGE_EMPLOYEES] },
-          { name: "TNA Dashboard", href: "/workspace/hse/tna/dashboard", icon: BarChart3, requiredPermissions: [Permission.VIEW_DASHBOARD] },
-          { name: "Master Training", href: "/workspace/hse/tna/trainings", icon: FolderOpen, requiredPermissions: [Permission.MANAGE_EMPLOYEES] },
+          {
+            name: "K3",
+            icon: Shield,
+            children: [
+              {
+                name: "Data Keselamatan",
+                icon: BarChart3,
+                children: [
+                  { name: "Statistik Keselamatan", href: "/workspace/hse/statistics", icon: BarChart3, requiredPermissions: [Permission.VIEW_DASHBOARD] },
+                  { name: "Dashboard Overspeed", href: "/workspace/hse/overspeed", icon: AlertTriangle, requiredPermissions: [Permission.VIEW_SIDAK] },
+                  { name: "Dashboard Jarak Aman", href: "/workspace/hse/jarak", icon: TrendingUp, requiredPermissions: [Permission.VIEW_SIDAK] },
+                  { name: "Monitoring Validasi Fatigue", href: "/workspace/hse/fatigue-validation", icon: Monitor, requiredPermissions: [Permission.VIEW_SIDAK] },
+                ]
+              },
+              {
+                name: "Kegiatan",
+                icon: Activity,
+                children: [
+                  { name: "Sidak", href: "/workspace/sidak", icon: ClipboardCheck, requiredPermissions: [Permission.VIEW_SIDAK] },
+                  { name: "Rekap Sidak", href: "/workspace/sidak/rekap", icon: ClipboardCheck, requiredPermissions: [Permission.VIEW_SIDAK] },
+                  { name: "Evaluasi Driver", href: "/workspace/evaluasi-driver", icon: TrendingUp, requiredPermissions: [Permission.VIEW_EVALUASI] },
+                  { name: "Safety Patrol", href: "/workspace/safety-patrol", icon: Shield, requiredPermissions: [Permission.MANAGE_EMPLOYEES] },
+                  // Kept items present in old menu but missed in strict list to avoid data loss, clustered in Kegiatan
+                  { name: "Pengumuman", href: "/workspace/announcements", icon: Megaphone, requiredPermissions: [Permission.MANAGE_EMPLOYEES] },
+                  { name: "Kelola Berita", href: "/workspace/news", icon: Newspaper, requiredPermissions: [Permission.MANAGE_EMPLOYEES] },
+                ]
+              },
+              {
+                name: "TNA",
+                icon: ClipboardList,
+                children: [
+                  { name: "TNA Input", href: "/workspace/hse/tna/input", icon: ClipboardCheck, requiredPermissions: [Permission.MANAGE_EMPLOYEES] },
+                  { name: "TNA Dashboard", href: "/workspace/hse/tna/dashboard", icon: BarChart3, requiredPermissions: [Permission.VIEW_DASHBOARD] },
+                  { name: "Monitoring Kompetensi", href: "/workspace/hse/tna/monitoring", icon: Monitor, requiredPermissions: [Permission.VIEW_DASHBOARD] },
+                  { name: "Rekap TNA", href: "/workspace/hse/tna/rekap", icon: FileText, requiredPermissions: [Permission.VIEW_DASHBOARD] },
+                  { name: "Master Training", href: "/workspace/hse/tna/trainings", icon: FolderOpen, requiredPermissions: [Permission.MANAGE_EMPLOYEES] },
+                ]
+              },
+              { name: "Dokumen", href: "/workspace/documents", icon: FolderOpen, requiredPermissions: [Permission.VIEW_DOCUMENTS] },
+            ]
+          },
+          {
+            name: "KO",
+            icon: Settings,
+            children: [
+              { name: "Coming Soon", href: "#", icon: AlertTriangle },
+            ]
+          }
         ]
       }
     ]
@@ -109,41 +142,39 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const [location] = useLocation();
   const { hasAnyPermission } = useAuth();
 
-  // Calculate initial expanded state based on current location
-  const initialExpanded = useMemo(() => {
-    const expanded: string[] = [];
-    navigationGroups.forEach(group => {
-      group.items.forEach(item => {
-        if (item.children) {
-          const hasActiveChild = item.children.some(child => location.startsWith(child.href));
-          if (hasActiveChild) {
-            expanded.push(item.name);
-          }
-        }
-      });
-    });
-    return expanded;
-  }, [location]); // Keep active expansion in sync or just initial? User said "Default: collapse... except active".
-
-  // We should likely update expanded menus when location changes if it enters a new group
   const [expandedMenus, setExpandedMenus] = useState<string[]>([]);
 
-  // Sync expansion with location
+  // Sync expansion with location and initial load
   useEffect(() => {
-    navigationGroups.forEach(group => {
-      group.items.forEach(item => {
+    const newExpanded: string[] = [];
+
+    const findActiveItems = (items: NavItem[]) => {
+      items.forEach(item => {
         if (item.children) {
-          // If any child matches current location, ensure parent is expanded
-          const hasActiveChild = item.children.some(child => location === child.href || location.startsWith(child.href + '/'));
-          if (hasActiveChild && !expandedMenus.includes(item.name)) {
-            setExpandedMenus(prev => [...prev, item.name]);
+          const isActive = item.children.some(child =>
+            child.href && (location === child.href || location.startsWith(child.href + '/'))
+            || (child.children && findRecursive(child))
+          );
+
+          if (isActive && !expandedMenus.includes(item.name)) {
+            setExpandedMenus(prev => prev.includes(item.name) ? prev : [...prev, item.name]);
           }
+          findActiveItems(item.children);
         }
       });
-    });
+    }
+
+    const findRecursive = (item: NavItem): boolean => {
+      if (item.href && (location === item.href || location.startsWith(item.href + '/'))) return true;
+      if (item.children) return item.children.some(c => findRecursive(c));
+      return false;
+    }
+
+    navigationGroups.forEach(group => findActiveItems(group.items));
   }, [location]);
 
-  const toggleMenu = (menuName: string) => {
+  const toggleMenu = (menuName: string, e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent bubbling
     setExpandedMenus(prev =>
       prev.includes(menuName)
         ? prev.filter(m => m !== menuName)
@@ -159,6 +190,107 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
       return item.requiredPermissions.every(p => hasAnyPermission([p]));
     }
     return hasAnyPermission(item.requiredPermissions);
+  };
+
+  // Recursive Sidebar Item Component
+  const SidebarItemRenderer = ({ item, depth = 0 }: { item: NavItem, depth?: number }) => {
+    if (!hasPermission(item)) return null;
+
+    const hasChildren = item.children && item.children.length > 0;
+    const isExpanded = expandedMenus.includes(item.name);
+    // Active if matches href exactly or is a parent of active child
+    const isActiveLink = item.href && (location === item.href || location.startsWith(item.href + '/'));
+    const IconComponent = item.icon;
+
+    // Permissions check for children (hide parent if no visible children)
+    if (hasChildren) {
+      const visibleChildren = item.children!.filter(hasPermission);
+      if (visibleChildren.length === 0) return null;
+    }
+
+    if (hasChildren) {
+      return (
+        <div className="select-none">
+          <button
+            onClick={(e) => toggleMenu(item.name, e)}
+            className={cn(
+              "flex items-center w-full rounded-xl transition-all duration-200 group text-left",
+              depth === 0 ? "px-4 py-3 mb-1" : "px-4 py-2 mb-0.5",
+              "hover:bg-gray-50 dark:hover:bg-gray-800",
+              isExpanded ? "text-gray-900 dark:text-gray-100" : "text-gray-600 dark:text-gray-400"
+            )}
+            style={{ paddingLeft: `${depth * 1.5 + 1}rem` }}
+          >
+            {IconComponent && (
+              <IconComponent className={cn(
+                "flex-shrink-0 transition-colors duration-300",
+                depth === 0 ? "w-5 h-5" : "w-4 h-4",
+                isExpanded ? "text-red-600" : "text-gray-400 group-hover:text-gray-600"
+              )} />
+            )}
+            <span className={cn(
+              "ml-3 flex-1 tracking-wide whitespace-normal leading-tight",
+              depth === 0 ? "text-[15px] font-medium" : "text-[13px] font-normal"
+            )}>
+              {item.name}
+            </span>
+            <ChevronDown className={cn(
+              "flex-shrink-0 transition-transform duration-300 ml-2",
+              depth === 0 ? "w-4 h-4" : "w-3 h-3",
+              isExpanded ? "rotate-180 text-red-500" : "text-gray-400"
+            )} />
+          </button>
+
+          <div className={cn(
+            "overflow-hidden transition-all duration-300 ease-in-out",
+            isExpanded ? "max-h-[1000px] opacity-100" : "max-h-0 opacity-0"
+          )}>
+            <div className="space-y-0.5">
+              {item.children!.map((child) => (
+                <SidebarItemRenderer key={child.name} item={child} depth={depth + 1} />
+              ))}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <Link href={item.href || "#"}
+        onClick={() => {
+          if (window.innerWidth < 1024) onClose();
+        }}
+      >
+        <div className={cn(
+          "flex items-center w-full rounded-xl transition-all duration-200 group relative",
+          depth === 0 ? "px-4 py-3 mb-1" : "px-4 py-2.5 mb-0.5",
+          "hover:bg-gray-50 dark:hover:bg-gray-800",
+          isActiveLink
+            ? "bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 font-medium shadow-sm"
+            : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200"
+        )}
+          style={{ paddingLeft: `${depth * 1.5 + 1}rem` }}
+        >
+          {isActiveLink && (
+            <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-red-500 rounded-r-full" />
+          )}
+
+          {IconComponent && (
+            <IconComponent className={cn(
+              "flex-shrink-0 transition-colors",
+              depth === 0 ? "w-5 h-5" : "w-4 h-4",
+              isActiveLink ? "text-red-600" : "text-gray-400 group-hover:text-gray-600"
+            )} />
+          )}
+          <span className={cn(
+            "ml-3 tracking-wide whitespace-normal leading-tight",
+            depth === 0 ? "text-[15px] font-medium" : "text-[13px]"
+          )}>
+            {item.name}
+          </span>
+        </div>
+      </Link>
+    );
   };
 
   const filteredGroups = navigationGroups.map(group => ({
@@ -188,26 +320,18 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           : "opacity-0 scale-95 translate-y-8 pointer-events-none"
       )}>
         {/* Logo Header */}
-        <div className="flex items-center h-16 px-4 bg-gradient-to-br from-red-600 to-red-700 dark:from-red-700 dark:to-red-800">
-          <div className="w-10 h-10 bg-white rounded-lg overflow-hidden flex items-center justify-center shadow-md flex-shrink-0">
+        <div className="flex items-center h-16 px-6 bg-transparent">
+          <div className="w-28">
             <img
-              src={companyLogo}
-              alt="GECL Logo"
-              className="w-full h-full object-contain"
+              src={oneTalentLogo}
+              alt="OneTalent Logo"
+              className="w-full h-auto object-contain"
             />
-          </div>
-          <div className="ml-3 flex-1 min-w-0">
-            <span className="text-sm font-bold text-white block truncate">
-              OneTalent
-            </span>
-            <span className="text-xs text-red-200 block truncate">
-              PT. GECL
-            </span>
           </div>
           <Button
             variant="ghost"
             size="icon"
-            className="lg:hidden h-8 w-8 text-white hover:bg-white/20 flex-shrink-0"
+            className="lg:hidden h-8 w-8 ml-auto text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800"
             onClick={onClose}
           >
             <X className="w-5 h-5" />
@@ -216,99 +340,19 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
 
         {/* Navigation Items */}
         <div className="flex flex-col h-[calc(100vh-4rem)]">
-          <nav className="flex-1 overflow-y-auto py-4 px-3">
+          <nav className="flex-1 overflow-y-auto py-4 px-3 custom-scrollbar">
             {filteredGroups.map((group, groupIndex) => (
               <div key={group.title} className={cn(groupIndex > 0 && "mt-6")}>
                 {group.title && (
-                  <p className="px-4 mb-3 text-[11px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest opacity-80">
+                  <p className="px-4 mb-2 text-[11px] font-extrabold text-gray-400 dark:text-gray-500 uppercase tracking-widest opacity-90">
                     {group.title}
                   </p>
                 )}
 
-                <div className="space-y-1.5">
-                  {group.items.map((item) => {
-                    const hasChildren = item.children && item.children.length > 0;
-                    // Determine if top-level item is active (only if it has no children, otherwise it's just a folder)
-                    const isActive = !hasChildren && (location === item.href || location.startsWith(item.href + '/'));
-                    const isExpanded = expandedMenus.includes(item.name);
-                    const IconComponent = item.icon;
-
-                    if (hasChildren) {
-                      return (
-                        <div key={item.name}>
-                          <button
-                            onClick={() => toggleMenu(item.name)}
-                            className={cn(
-                              "flex items-center w-full px-4 py-3 rounded-2xl transition-all duration-300 group select-none",
-                              "hover:bg-gray-50 dark:hover:bg-gray-800",
-                              // Parent is active if expanded or if a child is active (optional visual cue)
-                              isExpanded ? "text-gray-900 dark:text-gray-200" : "text-gray-600 dark:text-gray-400"
-                            )}
-                          >
-                            <IconComponent className={cn("w-5 h-5 flex-shrink-0 transition-colors duration-300",
-                              isExpanded ? "text-red-500" : "text-gray-400 group-hover:text-gray-600"
-                            )} />
-                            <span className="ml-3 text-[15px] flex-1 text-left tracking-wide font-medium">{item.name}</span>
-                            <ChevronDown className={cn(
-                              "w-4 h-4 text-gray-400 transition-transform duration-300",
-                              isExpanded ? "rotate-180 text-red-500" : ""
-                            )} />
-                          </button>
-
-                          {isExpanded && (
-                            <div className="mt-1 ml-4 pl-4 border-l-[1.5px] border-gray-100 dark:border-gray-800 space-y-1 py-1 animate-in slide-in-from-top-2 duration-200">
-                              {item.children!.map((child) => {
-                                // Check permissions for child items
-                                if (!hasPermission(child)) return null;
-
-                                const isChildActive = location === child.href || location.startsWith(child.href + '/');
-                                const ChildIcon = child.icon;
-                                return (
-                                  <Link
-                                    key={child.name}
-                                    href={child.href}
-                                    className={cn(
-                                      "flex items-center px-4 py-2.5 rounded-xl transition-all duration-200",
-                                      "hover:bg-gray-50 dark:hover:bg-gray-800",
-                                      isChildActive
-                                        ? "bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 font-medium shadow-sm"
-                                        : "text-gray-500 dark:text-gray-400 hover:text-gray-900"
-                                    )}
-                                    onClick={() => {
-                                      if (window.innerWidth < 1024) onClose();
-                                    }}
-                                  >
-                                    <ChildIcon className={cn("w-4 h-4 flex-shrink-0 transition-colors", isChildActive ? "text-red-500" : "text-gray-300 group-hover:text-gray-500")} />
-                                    <span className="ml-3 text-[14px] tracking-wide">{child.name}</span>
-                                  </Link>
-                                );
-                              })}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    }
-
-                    return (
-                      <Link
-                        key={item.name}
-                        href={item.href}
-                        className={cn(
-                          "flex items-center px-4 py-3.5 rounded-2xl transition-all duration-300 group mb-1 select-none",
-                          "hover:bg-gray-50 dark:hover:bg-gray-800",
-                          isActive
-                            ? "bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 font-semibold shadow-sm"
-                            : "text-gray-600 dark:text-gray-400 font-medium hover:text-gray-900 dark:hover:text-gray-200"
-                        )}
-                        onClick={() => {
-                          if (window.innerWidth < 1024) onClose();
-                        }}
-                      >
-                        <IconComponent className={cn("w-5 h-5 flex-shrink-0 transition-colors duration-300", isActive ? "text-red-600" : "text-gray-400 group-hover:text-gray-600")} />
-                        <span className="ml-3 text-[15px] tracking-wide">{item.name}</span>
-                      </Link>
-                    );
-                  })}
+                <div className="space-y-1">
+                  {group.items.map((item) => (
+                    <SidebarItemRenderer key={item.name} item={item} />
+                  ))}
                 </div>
               </div>
             ))}

@@ -12,7 +12,12 @@ import {
     CheckCircle2,
     AlertCircle,
     Search,
-    Loader2
+    Loader2,
+    BarChart3,
+    ChevronDown,
+    Edit,
+    X,
+    Check
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -71,6 +76,11 @@ export default function TnaInput() {
     // Popover states
     const [openTrainingCombobox, setOpenTrainingCombobox] = useState(false);
     const [openEmployeeCombobox, setOpenEmployeeCombobox] = useState(false);
+    const [showSavedData, setShowSavedData] = useState(false);
+
+    // Inline Editing State
+    const [editingEntry, setEditingEntry] = useState<string | null>(null);
+    const [editForm, setEditForm] = useState<{ plan: string, actual: string }>({ plan: "", actual: "" });
 
     // Fetch Lists
     const { data: trainings = [] } = useQuery<any[]>({ queryKey: ["/api/hse/trainings"] });
@@ -80,6 +90,11 @@ export default function TnaInput() {
     const { data: existingTna, isLoading: tnaLoading } = useQuery({
         queryKey: ["/api/hse/tna", selectedEmployee?.id, period],
         enabled: !!selectedEmployee?.id && !!period,
+    });
+
+    // Load all saved TNA entries for the rekap section (individual entries with training details)
+    const { data: savedEntries = [], isLoading: savedEntriesLoading } = useQuery<any[]>({
+        queryKey: ["/api/hse/tna/all-raw-entries"],
     });
 
     // DEBUG: Force invalidation once to ensure we get fresh data
@@ -185,10 +200,49 @@ export default function TnaInput() {
             queryClient.invalidateQueries({ queryKey: ["/api/hse/tna-dashboard/gap-analysis"] });
             queryClient.invalidateQueries({ queryKey: ["/api/hse/tna-dashboard/department-compliance"] });
             queryClient.invalidateQueries({ queryKey: ["/api/hse/tna-dashboard/all-entries"] });
+            queryClient.invalidateQueries({ queryKey: ["/api/hse/tna/all-raw-entries"] });
         } catch (err: any) {
             console.error("DEBUG: TNA Save Error:", err);
             console.error("DEBUG: Error Response:", err?.message || err);
             toast({ title: "Error", description: `Failed to save TNA data: ${err?.message || 'Unknown error'}`, variant: "destructive" });
+        }
+    };
+
+    const startEditing = (entry: any) => {
+        setEditingEntry(entry.id);
+        setEditForm({
+            plan: entry.planStatus,
+            actual: entry.actualStatus || ""
+        });
+    };
+
+    const cancelEditing = () => {
+        setEditingEntry(null);
+        setEditForm({ plan: "", actual: "" });
+    };
+
+    const saveEditing = async (id: string) => {
+        try {
+            await apiRequest(`/api/hse/tna/entries/${id}`, "PATCH", {
+                planStatus: editForm.plan,
+                actualStatus: editForm.actual || null,
+            });
+
+            toast({ title: "Success", description: "Entry updated successfully" });
+            setEditingEntry(null);
+
+            // Invalidate queries to refresh all views
+            queryClient.invalidateQueries({ queryKey: ["/api/hse/tna/all-raw-entries"] });
+            queryClient.invalidateQueries({ queryKey: ["/api/hse/tna-dashboard/all-entries"] });
+            queryClient.invalidateQueries({ queryKey: ["/api/hse/tna-dashboard/stats"] });
+            queryClient.invalidateQueries({ queryKey: ["/api/hse/tna-dashboard/gap-analysis"] });
+            queryClient.invalidateQueries({ queryKey: ["/api/hse/tna-dashboard/department-compliance"] });
+
+            if (selectedEmployee) {
+                queryClient.invalidateQueries({ queryKey: ["/api/hse/tna", selectedEmployee.id, period] });
+            }
+        } catch (error) {
+            toast({ title: "Error", description: "Failed to update entry", variant: "destructive" });
         }
     };
 
@@ -444,9 +498,8 @@ export default function TnaInput() {
                                                 <Button
                                                     variant="ghost"
                                                     size="icon"
-                                                    className="h-8 w-8 text-gray-400 hover:text-red-500 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-all"
                                                     onClick={() => removeRow(row.id)}
-                                                    disabled={row.isMandatory}
+                                                    className="h-8 w-8 text-gray-400 hover:text-red-500 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-all"
                                                 >
                                                     <Trash2 className="w-4 h-4" />
                                                 </Button>
@@ -459,6 +512,142 @@ export default function TnaInput() {
                     </div>
                 </Card>
             </div>
+
+            {/* Section: Data TNA Tersimpan */}
+            <Card className="border-none shadow-sm mt-6 bg-white dark:bg-zinc-900/50">
+                <div
+                    className="p-4 flex items-center justify-between cursor-pointer hover:bg-gray-50 dark:hover:bg-zinc-800/50 transition-colors"
+                    onClick={() => setShowSavedData(!showSavedData)}
+                >
+                    <div className="flex items-center gap-3">
+                        <div className="p-2 rounded-lg bg-blue-50 dark:bg-blue-900/20">
+                            <BarChart3 className="w-5 h-5 text-blue-600" />
+                        </div>
+                        <div>
+                            <h3 className="font-semibold text-gray-800 dark:text-gray-200">Data TNA Tersimpan</h3>
+                            <p className="text-xs text-gray-500">Lihat semua data TNA dari semua karyawan</p>
+                        </div>
+                    </div>
+                    <ChevronDown className={cn("w-5 h-5 text-gray-400 transition-transform", showSavedData && "rotate-180")} />
+                </div>
+
+                {showSavedData && (
+                    <div className="border-t border-gray-100 dark:border-zinc-800">
+                        <div className="p-4">
+                            {savedEntriesLoading ? (
+                                <div className="text-center py-8 text-gray-400">
+                                    <Loader2 className="w-5 h-5 animate-spin mx-auto mb-2" />
+                                    Loading data...
+                                </div>
+                            ) : savedEntries && savedEntries.length > 0 ? (
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-sm">
+                                        <thead>
+                                            <tr className="border-b bg-gray-50 dark:bg-zinc-900">
+                                                <th className="px-3 py-2.5 text-left font-medium text-gray-600 text-xs w-[15%]">Category</th>
+                                                <th className="px-3 py-2.5 text-left font-medium text-gray-600 text-xs w-[30%]">Training Name</th>
+                                                <th className="px-3 py-2.5 text-center font-medium text-gray-600 text-xs w-[10%]">PLAN</th>
+                                                <th className="px-3 py-2.5 text-center font-medium text-gray-600 text-xs w-[15%]">ACTUAL</th>
+                                                <th className="px-3 py-2.5 text-left font-medium text-gray-600 text-xs w-[20%]">Karyawan</th>
+                                                <th className="px-3 py-2.5 text-center font-medium text-gray-600 text-xs w-[10%]">Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {savedEntries.map((row: any, idx: number) => (
+                                                <tr key={`${row.id}_${idx}`} className="border-b hover:bg-gray-50 dark:hover:bg-zinc-900/50">
+                                                    <td className="px-3 py-2 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                        {row.trainingCategory}
+                                                    </td>
+                                                    <td className="px-3 py-2">
+                                                        <span className="font-semibold text-sm text-gray-800 dark:text-gray-200">{row.trainingName}</span>
+                                                    </td>
+                                                    <td className="px-3 py-2 text-center">
+                                                        {editingEntry === row.id ? (
+                                                            <Select
+                                                                value={editForm.plan}
+                                                                onValueChange={(v) => setEditForm({ ...editForm, plan: v })}
+                                                            >
+                                                                <SelectTrigger className="w-[70px] mx-auto h-7 text-xs">
+                                                                    <SelectValue />
+                                                                </SelectTrigger>
+                                                                <SelectContent>
+                                                                    <SelectItem value="M">M</SelectItem>
+                                                                    <SelectItem value="D">D</SelectItem>
+                                                                </SelectContent>
+                                                            </Select>
+                                                        ) : (
+                                                            <span className={cn(
+                                                                "px-3 py-1 rounded text-xs font-bold",
+                                                                row.planStatus === 'M' ? "bg-red-50 text-red-600" : "bg-orange-50 text-orange-600"
+                                                            )}>
+                                                                {row.planStatus}
+                                                            </span>
+                                                        )}
+                                                    </td>
+                                                    <td className="px-3 py-2 text-center">
+                                                        {editingEntry === row.id ? (
+                                                            <Select
+                                                                value={editForm.actual}
+                                                                onValueChange={(v) => setEditForm({ ...editForm, actual: v })}
+                                                            >
+                                                                <SelectTrigger className="w-[100px] mx-auto h-7 text-xs">
+                                                                    <SelectValue placeholder="-" />
+                                                                </SelectTrigger>
+                                                                <SelectContent>
+                                                                    <SelectItem value="C">Complied</SelectItem>
+                                                                    <SelectItem value="NC">Not Yet</SelectItem>
+                                                                </SelectContent>
+                                                            </Select>
+                                                        ) : (
+                                                            row.actualStatus === 'C' ? (
+                                                                <span className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium bg-green-50 text-green-700 border border-green-200">
+                                                                    <CheckCircle2 className="w-3 h-3" /> Complied
+                                                                </span>
+                                                            ) : row.actualStatus === 'NC' ? (
+                                                                <span className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium bg-zinc-100 text-zinc-600 border border-zinc-200">
+                                                                    <AlertCircle className="w-3 h-3" /> Not Yet
+                                                                </span>
+                                                            ) : (
+                                                                <span className="text-gray-400">-</span>
+                                                            )
+                                                        )}
+                                                    </td>
+                                                    <td className="px-3 py-2 text-xs text-gray-500">
+                                                        <div className="flex flex-col">
+                                                            <span className="font-medium text-gray-700">{row.employeeName}</span>
+                                                            <span className="text-[10px] text-gray-400">{row.department}</span>
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-3 py-2 text-center">
+                                                        {editingEntry === row.id ? (
+                                                            <div className="flex items-center justify-center gap-1">
+                                                                <Button size="icon" variant="ghost" className="h-7 w-7 text-green-600 hover:text-green-700 hover:bg-green-50" onClick={() => saveEditing(row.id)}>
+                                                                    <Check className="w-4 h-4" />
+                                                                </Button>
+                                                                <Button size="icon" variant="ghost" className="h-7 w-7 text-red-600 hover:text-red-700 hover:bg-red-50" onClick={cancelEditing}>
+                                                                    <X className="w-4 h-4" />
+                                                                </Button>
+                                                            </div>
+                                                        ) : (
+                                                            <Button size="icon" variant="ghost" className="h-7 w-7 text-gray-400 hover:text-blue-600 hover:bg-blue-50" onClick={() => startEditing(row)}>
+                                                                <Edit className="w-4 h-4" />
+                                                            </Button>
+                                                        )}
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            ) : (
+                                <div className="text-center py-8 text-gray-400">
+                                    Belum ada data TNA tersimpan. Mulai dengan menambahkan data di atas.
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
+            </Card>
         </div>
     );
 }

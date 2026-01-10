@@ -125,6 +125,8 @@ import {
   sidakApdSessions,
   sidakApdRecords,
   sidakApdObservers,
+  type InsertTnaEntry,
+  type TnaEntry,
 
   sidakSeatbeltObservers,
   sidakRambuSessions,
@@ -180,7 +182,8 @@ import {
   type Training, type InsertTraining,
   type TnaSummary, type InsertTnaSummary,
   type TnaEntry, type InsertTnaEntry,
-  trainings, tnaSummaries, tnaEntries
+  type CompetencyMonitoringLog, type InsertCompetencyMonitoringLog,
+  trainings, tnaSummaries, tnaEntries, competencyMonitoringLogs
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { drizzle } from "drizzle-orm/neon-http";
@@ -443,11 +446,19 @@ export interface IStorage {
   getTrainings(): Promise<Training[]>;
   createTraining(training: InsertTraining): Promise<Training>;
   getTnaSummary(employeeId: string, period: string): Promise<TnaSummary | undefined>;
+  createOrGetTnaSummary(employeeId: string, period: string): Promise<TnaSummary>;
   createTnaSummary(summary: InsertTnaSummary): Promise<TnaSummary>;
   getTnaEntries(summaryId: string): Promise<TnaEntry[]>;
-  upsertTnaEntry(entry: InsertTnaEntry): Promise<TnaEntry>;
+  getAllTnaEntriesWithDetailsV2(): Promise<any[]>; // For overall dashboard
+  createTnaEntry(entry: InsertTnaEntry): Promise<TnaEntry>;
+  getAllRawTnaEntries(): Promise<any[]>;
+  updateTnaEntry(id: string, entry: Partial<InsertTnaEntry>): Promise<TnaEntry>;
+  deleteTnaEntry(entryId: string): Promise<void>;
   getTnaDashboardStats(): Promise<any>;
-  getTnaGapAnalysis(): Promise<any>;
+
+  // Competency Monitoring
+  createCompetencyMonitoringLog(log: InsertCompetencyMonitoringLog): Promise<CompetencyMonitoringLog>;
+  getCompetencyMonitoringLogs(tnaEntryId: string): Promise<CompetencyMonitoringLog[]>;
 }
 
 export class MemStorage {
@@ -1397,6 +1408,54 @@ export class MemStorage {
   async deleteSafetyPatrolTemplate(id: string): Promise<boolean> {
     throw new Error("Safety Patrol Template not implemented in MemStorage. Use DrizzleStorage.");
   }
+
+  // TNA Methods
+  async getTrainings(): Promise<Training[]> {
+    throw new Error("TNA not implemented in MemStorage. Use DrizzleStorage.");
+  }
+  async createTraining(training: InsertTraining): Promise<Training> {
+    throw new Error("TNA not implemented in MemStorage. Use DrizzleStorage.");
+  }
+  async getTnaSummary(employeeId: string, period: string): Promise<TnaSummary | undefined> {
+    return Array.from(this.tnaSummaries.values()).find(
+      s => s.employeeId === employeeId && s.period === period
+    );
+  }
+
+  async createOrGetTnaSummary(employeeId: string, period: string): Promise<TnaSummary> {
+    const existing = await this.getTnaSummary(employeeId, period);
+    if (existing) return existing;
+    // Helper to get employee department
+    const emp = await this.getEmployee(employeeId);
+    return this.createTnaSummary({
+      employeeId,
+      period,
+      status: 'Draft',
+      department: emp?.department || null
+    });
+  }
+
+  async createTnaSummary(summary: InsertTnaSummary): Promise<TnaSummary> {
+    throw new Error("TNA not implemented in MemStorage. Use DrizzleStorage.");
+  }
+  async getTnaEntries(summaryId: string): Promise<TnaEntry[]> {
+    throw new Error("TNA not implemented in MemStorage. Use DrizzleStorage.");
+  }
+  async getAllTnaEntriesWithDetails(): Promise<any[]> {
+    throw new Error("TNA not implemented in MemStorage. Use DrizzleStorage.");
+  }
+
+  async getAllRawTnaEntries(): Promise<any[]> {
+    throw new Error("TNA not implemented in MemStorage. Use DrizzleStorage.");
+  }
+
+  // Competency Monitoring
+  async createCompetencyMonitoringLog(log: InsertCompetencyMonitoringLog): Promise<CompetencyMonitoringLog> {
+    throw new Error("Competency Monitoring not implemented in MemStorage. Use DrizzleStorage.");
+  }
+  async getCompetencyMonitoringLogs(tnaEntryId: string): Promise<CompetencyMonitoringLog[]> {
+    throw new Error("Competency Monitoring not implemented in MemStorage. Use DrizzleStorage.");
+  }
 }
 
 // DrizzleStorage implementation using PostgreSQL
@@ -1772,7 +1831,7 @@ export class DrizzleStorage implements IStorage {
 
       // Batch fetch all existing leave balances
       const currentYear = new Date().getFullYear();
-      const allBalances = await db.select().from(leaveBalances).where(eq(leaveBalances.year, currentYear));
+      const allBalances = await this.db.select().from(leaveBalances).where(eq(leaveBalances.year, currentYear));
       const balanceMap = new Map(allBalances.map(balance => [balance.employeeId, balance]));
 
       // Prepare data for bulk operations
@@ -3059,6 +3118,22 @@ export class DrizzleStorage implements IStorage {
     return newSummary;
   }
 
+
+
+  async createOrGetTnaSummary(employeeId: string, period: string): Promise<TnaSummary> {
+    const existing = await this.getTnaSummary(employeeId, period);
+    if (existing) return existing;
+
+    // Note: department logic removed as it's not in tnaSummaries schema
+    // CreatedBy is required, defaulting to SYSTEM for auto-generated summaries
+    return this.createTnaSummary({
+      employeeId,
+      period,
+      status: 'Draft',
+      createdBy: 'SYSTEM'
+    });
+  }
+
   async getTnaEntries(summaryId: string): Promise<any[]> {
     return await this.db.select({
       ...tnaEntries,
@@ -3071,30 +3146,158 @@ export class DrizzleStorage implements IStorage {
       .where(eq(tnaEntries.tnaSummaryId, summaryId));
   }
 
-  async upsertTnaEntry(entry: InsertTnaEntry): Promise<TnaEntry> {
-    // Check if exists
-    const [existing] = await this.db.select().from(tnaEntries)
-      .where(and(
-        eq(tnaEntries.tnaSummaryId, entry.tnaSummaryId),
-        eq(tnaEntries.trainingId, entry.trainingId)
-      ));
+  async createTnaEntry(entry: InsertTnaEntry): Promise<TnaEntry> {
+    const [newEntry] = await this.db.insert(tnaEntries).values(entry).returning();
+    return newEntry;
+  }
 
-    if (existing) {
-      const [updated] = await this.db.update(tnaEntries)
-        .set({
-          planStatus: entry.planStatus,
-          actualStatus: entry.actualStatus,
-          actualDate: entry.actualDate,
-          notes: entry.notes,
-          updatedAt: new Date()
-        })
-        .where(eq(tnaEntries.id, existing.id))
-        .returning();
-      return updated;
-    } else {
-      const [inserted] = await this.db.insert(tnaEntries).values(entry).returning();
-      return inserted;
+  async updateTnaEntry(id: string, entry: Partial<InsertTnaEntry>): Promise<TnaEntry> {
+    const [updated] = await this.db.update(tnaEntries)
+      .set({ ...entry, updatedAt: new Date() })
+      .where(eq(tnaEntries.id, id))
+      .returning();
+    return updated;
+  }
+
+  async getAllTnaEntriesWithDetailsV2(): Promise<any[]> {
+    console.log("DEBUG: getAllTnaEntriesWithDetails CALLED");
+    // Get all TNA entries with employee names and training details
+    const entries = await this.db.select({
+      id: tnaEntries.id,
+      planStatus: tnaEntries.planStatus,
+      actualStatus: tnaEntries.actualStatus,
+      actualDate: tnaEntries.actualDate,
+      notes: tnaEntries.notes,
+      createdAt: tnaEntries.createdAt,
+      updatedAt: tnaEntries.updatedAt,
+      // Training info
+      trainingId: tnaEntries.trainingId,
+      trainingName: trainings.name,
+      trainingCategory: trainings.category,
+      isMandatory: trainings.isMandatory,
+      // Summary info
+      tnaSummaryId: tnaEntries.tnaSummaryId,
+      period: tnaSummaries.period,
+      summaryStatus: tnaSummaries.status,
+      employeeId: tnaSummaries.employeeId,
+      // Certificate Fields
+      certificateNumber: tnaEntries.certificateNumber,
+      issuer: tnaEntries.issuer,
+      issueDate: tnaEntries.issueDate,
+      expiryDate: tnaEntries.expiryDate,
+      evidenceFile: tnaEntries.evidenceFile,
+    })
+      .from(tnaEntries)
+      .leftJoin(trainings, eq(tnaEntries.trainingId, trainings.id))
+      .leftJoin(tnaSummaries, eq(tnaEntries.tnaSummaryId, tnaSummaries.id))
+      .orderBy(desc(tnaEntries.createdAt));
+
+    // Get employee names and positions
+    const employeeIds = [...new Set(entries.map(e => e.employeeId).filter(Boolean))];
+    const employeeList = employeeIds.length > 0
+      ? await this.db.select({ id: employees.id, name: employees.name, department: employees.department, position: employees.position })
+        .from(employees)
+        .where(inArray(employees.id, employeeIds as string[]))
+      : [];
+
+    const employeeMap = new Map(employeeList.map(e => [e.id, e]));
+
+    // Aggregate by (employeeId, period) - Single Source of Truth
+    const aggregated: Record<string, any> = {};
+
+    entries.forEach(entry => {
+      const key = `${entry.employeeId}_${entry.period}`;
+
+      if (!aggregated[key]) {
+        aggregated[key] = {
+          employeeId: entry.employeeId,
+          employeeName: employeeMap.get(entry.employeeId ?? '')?.name || 'Unknown',
+          position: employeeMap.get(entry.employeeId ?? '')?.position || '-',
+          department: employeeMap.get(entry.employeeId ?? '')?.department || '-',
+          period: entry.period,
+          planMandatory: 0,  // Count of Plan = M
+          planDevelopment: 0, // Count of Plan = D
+          actualComplied: 0,  // Count of Actual = C
+          actualNotComplied: 0, // Count of Actual = NC
+          trainings: []
+        };
+      }
+
+      // Count plan and actual statuses
+      if (entry.planStatus === 'M') {
+        aggregated[key].planMandatory++;
+      } else if (entry.planStatus === 'D') {
+        aggregated[key].planDevelopment++;
+      }
+
+      if (entry.actualStatus === 'C') {
+        aggregated[key].actualComplied++;
+      } else if (entry.actualStatus === 'NC') {
+        aggregated[key].actualNotComplied++;
+      }
+
+      aggregated[key].trainings.push({
+        id: entry.id,
+        trainingId: entry.trainingId,
+        trainingName: entry.trainingName,
+        trainingCategory: entry.trainingCategory,
+        isMandatory: entry.isMandatory,
+        planStatus: entry.planStatus,
+        actualStatus: entry.actualStatus,
+        actualDate: entry.actualDate,
+        notes: entry.notes,
+        createdAt: entry.createdAt,
+        updatedAt: entry.updatedAt,
+        // Certificate Fields
+        certificateNumber: entry.certificateNumber,
+        issuer: entry.issuer,
+        issueDate: entry.issueDate,
+        expiryDate: entry.expiryDate,
+        evidenceFile: entry.evidenceFile,
+      });
+    });
+
+    // Convert aggregated object to array and calculate compliance
+    return Object.values(aggregated).map((summary: any) => {
+      console.log("DEBUG: Summary keys:", Object.keys(summary));
+      const totalPlan = summary.planMandatory + summary.planDevelopment;
+      const mandatoryCompliance = summary.planMandatory > 0
+        ? Math.round((summary.actualComplied / summary.planMandatory) * 100)
+        : 0;
+      const overallCompliance = totalPlan > 0
+        ? Math.round((summary.actualComplied / totalPlan) * 100)
+        : 0;
+
+      return {
+        ...summary,
+        mandatoryCompliance,
+        overallCompliance,
+      };
+    }).sort((a, b) => {
+      // Sort by employee name for consistent display
+      if (a.employeeName < b.employeeName) return -1;
+      if (a.employeeName > b.employeeName) return 1;
+      return 0;
+    });
+  }
+
+  async createTnaEntry(entry: InsertTnaEntry): Promise<TnaEntry> {
+    const [inserted] = await this.db.insert(tnaEntries).values(entry).returning();
+    return inserted;
+  }
+
+  async updateTnaEntry(id: string, entry: Partial<InsertTnaEntry>): Promise<TnaEntry> {
+    const [updated] = await this.db.update(tnaEntries)
+      .set({
+        ...entry,
+        updatedAt: new Date()
+      })
+      .where(eq(tnaEntries.id, id))
+      .returning();
+    if (!updated) {
+      throw new Error(`TNA Entry with ID ${id} not found for update.`);
     }
+    return updated;
   }
 
   async deleteTnaEntry(entryId: string): Promise<void> {
@@ -3102,95 +3305,215 @@ export class DrizzleStorage implements IStorage {
   }
 
   async getTnaDashboardStats(): Promise<any> {
-    // Simplified MVP Stats from actual database
+    // Single Source of Truth: All statistics derived from All TNA Entries
+    // We fetch details to ensure we have the same basis as the main table
     const allEntries = await this.db.select({
       id: tnaEntries.id,
       planStatus: tnaEntries.planStatus,
       actualStatus: tnaEntries.actualStatus,
-      trainingName: trainings.name,
       trainingCategory: trainings.category,
       isMandatory: trainings.isMandatory
     }).from(tnaEntries)
       .leftJoin(trainings, eq(tnaEntries.trainingId, trainings.id));
 
-    // Mandatory = entries where planStatus is 'M' (set by user in TNA Input)
+    // 1. Mandatory Compliance KPI
+    // Formula: (Total Actual C (where Plan=M) / Total Plan M) * 100
     const totalMandatory = allEntries.filter(e => e.planStatus === 'M').length;
     const totalMandatoryComplied = allEntries.filter(e => e.planStatus === 'M' && e.actualStatus === 'C').length;
+    const mandatoryCompliance = totalMandatory ? Math.round((totalMandatoryComplied / totalMandatory) * 100) : 0;
 
-    const overallPlan = allEntries.filter(e => ['M', 'D'].includes(e.planStatus)).length;
-    const overallComplied = allEntries.filter(e => e.actualStatus === 'C').length;
-
-    // Open Development = Plan D but not yet Complete (C)
-    const openDevelopment = allEntries.filter(e => e.planStatus === 'D' && e.actualStatus !== 'C').length;
-
-    // Data Errors = entries with actual status but no plan status
-    const dataErrors = allEntries.filter(e => !e.planStatus && e.actualStatus).length;
-
-    return {
-      mandatoryCompliance: totalMandatory ? Math.round((totalMandatoryComplied / totalMandatory) * 100) : 0,
-      overallCompliance: overallPlan ? Math.round((overallComplied / overallPlan) * 100) : 0,
-      openDevelopment,
-      dataErrors,
-      totalEntries: allEntries.length,
-      totalMandatory,
-      totalComplied: overallComplied
-    };
-  }
-
-  async getTnaGapAnalysis(): Promise<any> {
-    // Calculate real gaps by training category
-    const allEntries = await this.db.select({
-      id: tnaEntries.id,
-      planStatus: tnaEntries.planStatus,
-      actualStatus: tnaEntries.actualStatus,
-      trainingCategory: trainings.category
-    }).from(tnaEntries)
-      .leftJoin(trainings, eq(tnaEntries.trainingId, trainings.id));
-
-    // Group by category and count gaps (planned but not completed)
-    const categoryGaps: Record<string, number> = {};
-
-    allEntries.forEach(entry => {
-      const category = entry.trainingCategory || "Uncategorized";
-      if (['M', 'D'].includes(entry.planStatus) && entry.actualStatus !== 'C') {
-        categoryGaps[category] = (categoryGaps[category] || 0) + 1;
-      }
-    });
-
-    // Convert to array format for chart
-    return Object.entries(categoryGaps).map(([category, gap]) => ({
-      category,
-      gap
-    }));
-  }
-
-  async getTnaDepartmentCompliance(): Promise<any> {
-    // Get all TNA entries with employee department info
-    const allEntries = await this.db.select({
-      id: tnaEntries.id,
-      planStatus: tnaEntries.planStatus,
-      actualStatus: tnaEntries.actualStatus,
-      employeeId: tnaSummaries.employeeId
-    }).from(tnaEntries)
-      .leftJoin(tnaSummaries, eq(tnaEntries.tnaSummaryId, tnaSummaries.id));
-
-    // For now, return a simple compliance based on actual data
-    // In production, this would join with employees table to group by department
+    // 2. Overall Compliance KPI
+    // Formula: (Total Actual C (M+D) / Total Plan (M+D)) * 100
+    // Note: Plan D count is included in "Total Plan" here
     const totalPlan = allEntries.filter(e => ['M', 'D'].includes(e.planStatus)).length;
     const totalComplied = allEntries.filter(e => e.actualStatus === 'C').length;
     const overallCompliance = totalPlan ? Math.round((totalComplied / totalPlan) * 100) : 0;
 
-    // Return based on actual data or defaults
-    if (allEntries.length === 0) {
-      return [];
-    }
+    // 3. Open Mandatory (Sisa Target)
+    // Formula: Total Plan M - Total Actual C (where Plan=M)
+    // This represents straightforwardly how many mandatory trainings are pending
+    const openMandatory = totalMandatory - totalMandatoryComplied;
 
-    // Simple breakdown - using overall compliance for all departments initially
-    // This can be enhanced with real department grouping
-    return [
-      { department: "HSE", compliance: overallCompliance },
-      { department: "Overall", compliance: overallCompliance }
-    ];
+    // 4. Data Errors
+    // Entries with Actual Status but NO Plan Status - shouldn't happen in healthy system
+    const dataErrors = allEntries.filter(e => !e.planStatus && e.actualStatus).length;
+
+    // Open Development (for reference, though not a main KPI requested)
+    const openDevelopment = allEntries.filter(e => e.planStatus === 'D' && e.actualStatus !== 'C').length;
+
+    return {
+      mandatoryCompliance,
+      overallCompliance,
+      openMandatory,
+      dataErrors,
+      openDevelopment,
+      totalPlan
+    };
+  }
+
+  // Competency Monitoring Implementation
+  async createCompetencyMonitoringLog(log: InsertCompetencyMonitoringLog): Promise<CompetencyMonitoringLog> {
+    const [savedLog] = await this.db.insert(competencyMonitoringLogs)
+      .values(log)
+      .onConflictDoUpdate({
+        target: [competencyMonitoringLogs.tnaEntryId, competencyMonitoringLogs.logDate],
+        set: { status: log.status, expiryDaysRemaining: log.expiryDaysRemaining }
+      })
+      .returning();
+    return savedLog;
+  }
+
+  async getCompetencyMonitoringLogs(tnaEntryId: string): Promise<CompetencyMonitoringLog[]> {
+    return await this.db.select()
+      .from(competencyMonitoringLogs)
+      .where(eq(competencyMonitoringLogs.tnaEntryId, tnaEntryId))
+      .orderBy(desc(competencyMonitoringLogs.logDate));
+  }
+
+  async getTnaGapAnalysis(): Promise<any> {
+    // Gap Analysis by Training Name (Refined based on User Request)
+    // CRITICAL REQUIREMENT: GAP = PLAN (M) - ACTUAL (C)
+    // We only care about Mandatory plans that are NOT yet Complied.
+
+    const allEntries = await this.db.select({
+      planStatus: tnaEntries.planStatus,
+      actualStatus: tnaEntries.actualStatus,
+      trainingName: trainings.name
+    }).from(tnaEntries)
+      .leftJoin(trainings, eq(tnaEntries.trainingId, trainings.id));
+
+    const trainingGaps: Record<string, number> = {};
+
+    allEntries.forEach(entry => {
+      // Default name if missing
+      const name = entry.trainingName || "Unknown Training";
+
+      // LOGIC: Gap exists if Plan is 'M' AND Actual is NOT 'C'
+      // We purposefully EXCLUDE 'D' from this gap analysis as requested
+      if (entry.planStatus === 'M' && entry.actualStatus !== 'C') {
+        trainingGaps[name] = (trainingGaps[name] || 0) + 1;
+      }
+    });
+
+    // Convert to array format for Recharts
+    // Sort by GAP count descending to show biggest problems first
+    // Limit to Top 10 to avoid overcrowding the chart
+    return Object.entries(trainingGaps)
+      .map(([trainingName, gap]) => ({
+        trainingName,
+        gap
+      }))
+      .sort((a, b) => b.gap - a.gap)
+      .slice(0, 10);
+  }
+
+  async getTnaDepartmentCompliance(): Promise<any> {
+    // Department Compliance
+    // We need to join with employees to get the department
+    const allEntries = await this.db.select({
+      planStatus: tnaEntries.planStatus,
+      actualStatus: tnaEntries.actualStatus,
+      department: employees.department
+    }).from(tnaEntries)
+      .leftJoin(tnaSummaries, eq(tnaEntries.tnaSummaryId, tnaSummaries.id))
+      .leftJoin(employees, eq(tnaSummaries.employeeId, employees.id));
+
+    const deptStats: Record<string, { planM: number, compliedM: number }> = {};
+
+    allEntries.forEach(entry => {
+      const dept = entry.department || "Unknown";
+
+      if (!deptStats[dept]) {
+        deptStats[dept] = { planM: 0, compliedM: 0 };
+      }
+
+      // We calculate MANDATORY compliance for departments
+      // as this is the standard metric for compliance reports
+      if (entry.planStatus === 'M') {
+        deptStats[dept].planM++;
+        if (entry.actualStatus === 'C') {
+          deptStats[dept].compliedM++;
+        }
+      }
+    });
+
+    return Object.entries(deptStats)
+      .map(([department, stats]) => {
+        const compliance = stats.planM ? Math.round((stats.compliedM / stats.planM) * 100) : 0;
+        // Optionally return target? Assuming 100% target for now or frontend handles it
+        return {
+          department,
+          compliance,
+          target: 100 // Standard target
+        };
+      })
+      .sort((a, b) => b.compliance - a.compliance); // Sort mostly compliant first? or worst? usually worst first to focus. Let's do lowest compliance first? No, usually highest to lowest. Let's do Ascending? No, user usually wants to see who is good or bad. Let's default to high->low.
+  }
+
+  async getAllRawTnaEntries(): Promise<any[]> {
+    // Returns individual TNA entries with training details for the saved data table
+    const entries = await this.db.select({
+      id: tnaEntries.id,
+      planStatus: tnaEntries.planStatus,
+      actualStatus: tnaEntries.actualStatus,
+      actualDate: tnaEntries.actualDate,
+      notes: tnaEntries.notes,
+      createdAt: tnaEntries.createdAt,
+      // Certificate details
+      certificateNumber: tnaEntries.certificateNumber,
+      issuer: tnaEntries.issuer,
+      issueDate: tnaEntries.issueDate,
+      expiryDate: tnaEntries.expiryDate,
+      // Training details
+      trainingId: tnaEntries.trainingId,
+      trainingName: trainings.name,
+      trainingCategory: trainings.category,
+      // Employee details via summary
+      tnaSummaryId: tnaEntries.tnaSummaryId,
+      period: tnaSummaries.period,
+      employeeId: tnaSummaries.employeeId
+    })
+      .from(tnaEntries)
+      .leftJoin(trainings, eq(tnaEntries.trainingId, trainings.id))
+      .leftJoin(tnaSummaries, eq(tnaEntries.tnaSummaryId, tnaSummaries.id));
+
+    // Get all employees and create a map
+    const allEmployees = await this.db.select({
+      id: employees.id,
+      name: employees.name,
+      department: employees.department,
+      position: employees.position
+    }).from(employees);
+
+    const employeeMap = new Map(allEmployees.map(e => [e.id, e]));
+
+    // Sort by createdAt descending (newest first) in JS
+    const result = entries.map(entry => ({
+      id: entry.id,
+      employeeId: entry.employeeId,
+      employeeName: employeeMap.get(entry.employeeId ?? '')?.name || 'Unknown',
+      position: employeeMap.get(entry.employeeId ?? '')?.position || '-',
+      department: employeeMap.get(entry.employeeId ?? '')?.department || '-',
+      period: entry.period,
+      trainingCategory: entry.trainingCategory || 'Uncategorized',
+      trainingName: entry.trainingName || 'Unknown',
+      planStatus: entry.planStatus,
+      actualStatus: entry.actualStatus,
+      actualDate: entry.actualDate,
+      // Pass through cert details
+      certificateNumber: entry.certificateNumber,
+      issuer: entry.issuer,
+      issueDate: entry.issueDate,
+      expiryDate: entry.expiryDate,
+      createdAt: entry.createdAt
+    }));
+
+    // Sort by createdAt descending
+    return result.sort((a, b) => {
+      const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return dateB - dateA;
+    });
   }
 
   async getAllTnaEntriesWithDetails(): Promise<any[]> {
