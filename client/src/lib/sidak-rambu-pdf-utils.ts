@@ -43,7 +43,7 @@ export async function generateSidakRambuPdf(data: SidakRambuData): Promise<jsPDF
         pdf.setFont('helvetica', 'bold');
         pdf.setFontSize(10);
         pdf.setTextColor(0, 0, 0);
-        pdf.text('PT BORNEO INDOBARA', margin, yPosition + 6);
+        pdf.text('PT. Goden Energi Cemerlang Lesrari', margin, yPosition + 6);
     }
 
     // Form Code
@@ -86,7 +86,7 @@ export async function generateSidakRambuPdf(data: SidakRambuData): Promise<jsPDF
     // Subtitle
     pdf.setFontSize(7);
     pdf.setFont('helvetica', 'italic');
-    pdf.text('Formulir ini digunakan sebagai catatan hasil inspeksi kepatuhan rambu-rambu lalu lintas yang dilaksanakan di PT Borneo Indobara', pageWidth / 2, yPosition + 2, { align: 'center' });
+    pdf.text('Formulir ini digunakan sebagai catatan hasil inspeksi kepatuhan rambu-rambu lalu lintas yang dilaksanakan di PT. Goden Energi Cemerlang Lesrari', pageWidth / 2, yPosition + 2, { align: 'center' });
     yPosition += 4;
 
     // ==================== INFO TABLE ====================

@@ -61,6 +61,9 @@ import TnaInput from "@/pages/hse/tna/tna-input";
 import TnaDashboard from "@/pages/hse/tna/tna-dashboard";
 import TnaRekap from "@/pages/hse/tna/tna-rekap";
 import CompetencyDashboard from "@/pages/hse/tna/competency-dashboard";
+import MonitoringKompetensi from "@/pages/hse/tna/monitoring-kompetensi";
+import DocumentControl from "@/pages/hse/k3/document-control";
+import DocumentDetail from "@/pages/hse/k3/document-detail";
 import Announcements from "@/pages/announcements";
 import News from "@/pages/news";
 import NewsFeed from "@/pages/news-feed";
@@ -273,7 +276,11 @@ export function Workspace() {
               <Route path="/workspace/hse/tna/input" component={TnaInput} />
               <Route path="/workspace/hse/tna/dashboard" component={TnaDashboard} />
               <Route path="/workspace/hse/tna/rekap" component={TnaRekap} />
-              <Route path="/workspace/hse/tna/monitoring" component={CompetencyDashboard} />
+              <Route path="/workspace/hse/tna/monitoring" component={MonitoringKompetensi} />
+
+              {/* Document Control Routes */}
+              <Route path="/workspace/hse/k3/document-control" component={DocumentControl} />
+              <Route path="/workspace/hse/k3/document/:id" component={DocumentDetail} />
 
               <Route component={Dashboard} />
             </Switch>

@@ -85,7 +85,7 @@ export async function generateSidakSeatbeltPdf(data: SidakSeatbeltData): Promise
         pdf.setFont('helvetica', 'bold');
         pdf.setFontSize(10);
         pdf.setTextColor(0, 0, 0);
-        pdf.text('PT BORNEO INDOBARA', margin, yPosition + 6);
+        pdf.text('PT. Goden Energi Cemerlang Lesrari', margin, yPosition + 6);
     }
 
     // Form code on top-right
@@ -111,7 +111,7 @@ export async function generateSidakSeatbeltPdf(data: SidakSeatbeltData): Promise
     // Subtitle
     pdf.setFontSize(8);
     pdf.setFont('helvetica', 'italic');
-    pdf.text('Formulir ini digunakan sebagai catatan hasil pengecekan seat belt yang dilaksanakan di PT Borneo Indobara', pageWidth / 2, yPosition + 2, { align: 'center' });
+    pdf.text('Formulir ini digunakan sebagai catatan hasil pengecekan seat belt yang dilaksanakan di PT. Goden Energi Cemerlang Lesrari', pageWidth / 2, yPosition + 2, { align: 'center' });
 
     yPosition += 4;
 

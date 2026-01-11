@@ -287,7 +287,7 @@ export default function SidakSeatbeltForm() {
             nama: employee.name,
             nik: employee.id,
             nomorLambung: employee.nomorLambung || "",
-            perusahaan: employee.investorGroup || "PT Borneo Indobara"
+            perusahaan: employee.investorGroup || "PT. Goden Energi Cemerlang Lesrari"
         }));
         setNameSearch(employee.name);
         setSearchOpen(false);

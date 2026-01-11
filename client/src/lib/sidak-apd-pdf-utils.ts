@@ -28,7 +28,7 @@ export async function generateSidakApdPdf(data: SidakApdData): Promise<jsPDF> {
     } catch {
         pdf.setFont('helvetica', 'bold');
         pdf.setFontSize(10);
-        pdf.text('PT BORNEO INDOBARA', margin, yPosition + 6);
+        pdf.text('PT. Goden Energi Cemerlang Lesrari', margin, yPosition + 6);
     }
 
     pdf.setFont('helvetica', 'normal');

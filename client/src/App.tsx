@@ -5,7 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/hooks/use-theme";
 import { AuthProvider } from "@/lib/auth-context";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
-import { RootRedirect } from "@/components/RootRedirect";
+
 import { Suspense, lazy } from "react";
 import { Route, Switch, useLocation } from "wouter";
 import { LoadingScreen } from "@/components/ui/loading-screen";
@@ -17,27 +17,38 @@ const DriverView = lazy(() => import("@/pages/driver-view"));
 const LoginPage = lazy(() => import("@/pages/login"));
 const ResetPasswordPage = lazy(() => import("@/pages/reset-password"));
 
+const LandingPage = lazy(() => import("@/pages/landing-page"));
+
 /**
  * Router component dengan landing page dan workspace
  */
 function Router() {
   const [currentPath] = useLocation();
   const urlParams = new URLSearchParams(window.location.search);
-  
+
   // Prioritaskan workspace routes - selalu render Workspace untuk path yang dimulai dengan /workspace
   // Wrap dengan ProtectedRoute untuk authentication
   if (currentPath.startsWith('/workspace')) {
     return (
       <ProtectedRoute>
         <Suspense fallback={<LoadingScreen isLoading={true} />}>
-          <Workspace key={currentPath} />
+          <Workspace key={currentPath + window.location.search} />
         </Suspense>
       </ProtectedRoute>
     );
   }
-  
+
   return (
     <Switch>
+      {/* Landing Page Route - Public Root */}
+      <Route path="/">
+        {() => (
+          <Suspense fallback={<LoadingScreen isLoading={true} />}>
+            <LandingPage />
+          </Suspense>
+        )}
+      </Route>
+
       {/* Login Route - Public */}
       <Route path="/login">
         {() => (
@@ -46,7 +57,7 @@ function Router() {
           </Suspense>
         )}
       </Route>
-      
+
       {/* Reset Password Route - Must be outside workspace but still protected */}
       <Route path="/reset-password">
         {() => (
@@ -66,7 +77,7 @@ function Router() {
           return <div>Processing QR code...</div>;
         }}
       </Route>
-      
+
       {/* Mobile Driver dan Driver View - render langsung tanpa guard */}
       <Route path="/mobile-driver">
         {() => (
@@ -96,7 +107,7 @@ function Router() {
           </Suspense>
         )}
       </Route>
-      
+
       {/* Meeting Scanner Route */}
       <Route path="/meeting-scanner">
         {() => {
@@ -109,7 +120,7 @@ function Router() {
           return <div>Redirecting to meeting scanner...</div>;
         }}
       </Route>
-      
+
       {/* QR Redirect */}
       <Route path="/qr-redirect">
         {() => {
@@ -117,13 +128,13 @@ function Router() {
           if (qrData) {
             try {
               const parsedData = JSON.parse(decodeURIComponent(qrData));
-              
+
               // Handle meeting QR codes
               if (parsedData.type === "meeting" && parsedData.token) {
                 window.location.href = `/workspace/meeting-scanner?token=${parsedData.token}`;
                 return <div>Redirecting to meeting scanner...</div>;
               }
-              
+
               // Handle employee attendance QR codes
               if (parsedData.id) {
                 window.location.href = `/mobile-driver?nik=${parsedData.id}`;
@@ -136,22 +147,19 @@ function Router() {
           return <div>Invalid QR code data</div>;
         }}
       </Route>
-      
-      {/* Root - Redirect based on auth status */}
-      <Route path="/">
-        {() => <RootRedirect />}
-      </Route>
-      
+
+
+
       {/* Catch-all redirect untuk direct access ke workspace pages */}
       <Route path="/:rest*">
         {(params) => {
           const currentPath = params['rest*'] ? `/${params['rest*']}` : '/';
-          
+
           // Jangan redirect halaman publik (driver-view, mobile-driver)
           if (currentPath === '/driver-view' || currentPath === '/mobile-driver') {
             return <div>Page not found</div>;
           }
-          
+
           // Redirect ke workspace dengan path yang sama
           if (currentPath !== '/') {
             window.location.replace(`/workspace${currentPath}${window.location.search}`);

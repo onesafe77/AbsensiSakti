@@ -1,8 +1,8 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import type { 
-  SidakFatigueSession, 
-  SidakFatigueRecord, 
+import type {
+  SidakFatigueSession,
+  SidakFatigueRecord,
   SidakFatigueObserver,
   SidakRosterSession,
   SidakRosterRecord,
@@ -53,34 +53,34 @@ export async function generateSidakFatiguePdf(data: SidakFatigueData): Promise<j
       pdf.setFont('helvetica', 'bold');
       pdf.setFontSize(11);
       pdf.setTextColor(0, 0, 139);
-      pdf.text('PT BORNEO INDOBARA', margin, yPosition + 6);
+      pdf.text('PT. Goden Energi Cemerlang Lesrari', margin, yPosition + 6);
     }
-    
+
     // Form code at top right
     pdf.setFont('helvetica', 'normal');
     pdf.setFontSize(9);
     pdf.setTextColor(0, 0, 0);
     pdf.text('BIB – HSE – ES – F – 3.02 – 16', pageWidth - margin, yPosition + 4, { align: 'right' });
-    
+
     yPosition += 12;
-    
+
     // Main title with gray background
     const titleYStart = yPosition;
     pdf.setFillColor(220, 220, 220);
     pdf.rect(margin, titleYStart, pageWidth - (margin * 2), 8, 'F');
-    
+
     pdf.setFont('helvetica', 'bold');
     pdf.setFontSize(14);
     pdf.setTextColor(0, 0, 0);
     pdf.text('OBSERVASI PENGECEKAN KELELAHAN', pageWidth / 2, titleYStart + 5.5, { align: 'center' });
-    
+
     yPosition += 10;
-    
+
     // Subtitle
     pdf.setFontSize(8);
     pdf.setFont('helvetica', 'normal');
-    pdf.text('Formulir ini digunakan sebagai catatan hasil pengecekan kelelahan yang dilaksanakan di PT Borneo Indobara', pageWidth / 2, yPosition + 2, { align: 'center' });
-    
+    pdf.text('Formulir ini digunakan sebagai catatan hasil pengecekan kelelahan yang dilaksanakan di PT. Goden Energi Cemerlang Lesrari', pageWidth / 2, yPosition + 2, { align: 'center' });
+
     yPosition += 4;
 
     // ==================== INFO SECTION TABLE ====================
@@ -89,7 +89,7 @@ export async function generateSidakFatiguePdf(data: SidakFatigueData): Promise<j
       ['Waktu', `${data.session.waktuMulai} sampai ${data.session.waktuSelesai}`, 'Total Sampel', data.records.length.toString()],
       ['Area / Departemen', `${data.session.area} / ${data.session.departemen}`, '', '']
     ];
-    
+
     autoTable(pdf, {
       startY: yPosition,
       body: infoTableData,
@@ -111,22 +111,22 @@ export async function generateSidakFatiguePdf(data: SidakFatigueData): Promise<j
       },
       margin: { left: margin, right: margin },
     });
-    
+
     return (pdf as any).lastAutoTable.finalY + 2;
   };
 
   // Helper function to draw employee table for a chunk of records
   const drawEmployeeTable = (records: SidakFatigueRecord[], startIndex: number, yStart: number): number => {
     const tableHeaders = [
-      ['No', 'Nama / NIK', 'Jabatan', 'No.\nLambung', 
-       'Jam tidur\nkaryawan\nsebelum\nbekerja\n(jam)', 'Jam\nMonitoring',
-       'Ada\nkonsumsi\nobat', 'Ada\nmasalah\npribadi', 'Pemeriksaan\nrespon\nkaryawan', 
-       'Pemeriksaan\nkonsentrasi\nkaryawan', 'Pemeriksaan\nkesehatan\nkaryawan', 
-       'Karyawan\nsiap untuk\nbekerja', 'Fit Untuk\nBekerja',
-       'Tanda\nTangan\nPekerja',
-       'Istirahat\nSebentar\ndan\nDimonitor\nkembali', 
-       'Pekerja\ndiistirahatkan\n(> 1 Jam) -\nKonseling',
-       'Tidak\nDiijinkan\nuntuk\nKembali\nBekerja\n(Konseling)']
+      ['No', 'Nama / NIK', 'Jabatan', 'No.\nLambung',
+        'Jam tidur\nkaryawan\nsebelum\nbekerja\n(jam)', 'Jam\nMonitoring',
+        'Ada\nkonsumsi\nobat', 'Ada\nmasalah\npribadi', 'Pemeriksaan\nrespon\nkaryawan',
+        'Pemeriksaan\nkonsentrasi\nkaryawan', 'Pemeriksaan\nkesehatan\nkaryawan',
+        'Karyawan\nsiap untuk\nbekerja', 'Fit Untuk\nBekerja',
+        'Tanda\nTangan\nPekerja',
+        'Istirahat\nSebentar\ndan\nDimonitor\nkembali',
+        'Pekerja\ndiistirahatkan\n(> 1 Jam) -\nKonseling',
+        'Tidak\nDiijinkan\nuntuk\nKembali\nBekerja\n(Konseling)']
     ];
 
     const tableData = records.map((record, index) => [
@@ -150,7 +150,7 @@ export async function generateSidakFatiguePdf(data: SidakFatigueData): Promise<j
     ]);
 
     const availableWidth = pageWidth - (margin * 2);
-    
+
     autoTable(pdf, {
       startY: yStart,
       head: tableHeaders,
@@ -211,7 +211,7 @@ export async function generateSidakFatiguePdf(data: SidakFatigueData): Promise<j
             }
           }
         }
-        
+
         const booleanColumns = [6, 7, 8, 9, 10, 11, 12, 14, 15, 16];
         if (booleanColumns.includes(cellData.column.index) && cellData.section === 'body') {
           const cellText = cellData.cell.text[0];
@@ -219,12 +219,12 @@ export async function generateSidakFatiguePdf(data: SidakFatigueData): Promise<j
             const x = cellData.cell.x + cellData.cell.width / 2;
             const y = cellData.cell.y + cellData.cell.height / 2;
             const size = 1.8;
-            
+
             pdf.setLineWidth(0.3);
             pdf.setDrawColor(0, 0, 0);
-            
-            pdf.line(x - size, y, x - size/3, y + size);
-            pdf.line(x - size/3, y + size, x + size, y - size);
+
+            pdf.line(x - size, y, x - size / 3, y + size);
+            pdf.line(x - size / 3, y + size, x + size, y - size);
           }
         }
       }
@@ -294,7 +294,7 @@ export async function generateSidakFatiguePdf(data: SidakFatigueData): Promise<j
           const rowIndex = cellData.row.index;
           const observerIndex = cellData.column.index === 3 ? rowIndex : rowIndex + 3;
           const observer = data.observers[observerIndex];
-          
+
           if (observer?.signatureDataUrl) {
             try {
               const format = observer.signatureDataUrl.includes('image/png') ? 'PNG' : 'JPEG';
@@ -302,7 +302,7 @@ export async function generateSidakFatiguePdf(data: SidakFatigueData): Promise<j
               const cellY = cellData.cell.y;
               const cellWidth = cellData.cell.width;
               const cellHeight = cellData.cell.height;
-              
+
               pdf.addImage(
                 observer.signatureDataUrl,
                 format,
@@ -353,17 +353,17 @@ export async function generateSidakFatiguePdf(data: SidakFatigueData): Promise<j
     }
 
     let yPosition = margin;
-    
+
     // Draw header and info section
     yPosition = drawHeaderAndInfo(yPosition);
-    
+
     // Draw employee table for this chunk
     const startIndex = pageIndex * EMPLOYEES_PER_PAGE;
     yPosition = drawEmployeeTable(chunks[pageIndex], startIndex, yPosition);
-    
+
     // Add observer signatures on every page (identical format)
     drawObserverSignatures(yPosition);
-    
+
     // Draw footer with page numbers
     drawFooter(pageIndex + 1, totalPages);
   }
@@ -380,27 +380,27 @@ export async function downloadSidakFatigueAsJpg(data: SidakFatigueData, filename
   if (typeof window === 'undefined' || typeof document === 'undefined') {
     throw new Error('JPG download can only be executed in browser environment');
   }
-  
+
   try {
     // Import PDF.js from legacy build (better Vite compatibility)
     const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf');
-    
+
     // Import bundled worker as URL (Vite will handle this properly)
     const workerSrc = await import('pdfjs-dist/legacy/build/pdf.worker.min.mjs?url');
-    
+
     // Configure PDF.js to use bundled worker
     pdfjsLib.GlobalWorkerOptions.workerSrc = workerSrc.default;
-    
+
     // Generate the PDF
     const pdf = await generateSidakFatiguePdf(data);
-    
+
     // Get PDF as array buffer
     const pdfArrayBuffer = pdf.output('arraybuffer');
-    
+
     // Load PDF with PDF.js
     const loadingTask = pdfjsLib.getDocument({ data: pdfArrayBuffer });
     const pdfDocument = await loadingTask.promise;
-    
+
     const totalPages = pdfDocument.numPages;
     const scale = 2.5;
 
@@ -408,27 +408,27 @@ export async function downloadSidakFatigueAsJpg(data: SidakFatigueData, filename
     const downloadPage = async (pageNum: number): Promise<void> => {
       const page = await pdfDocument.getPage(pageNum);
       const viewport = page.getViewport({ scale });
-      
+
       const canvas = document.createElement('canvas');
       const context = canvas.getContext('2d');
-      
+
       if (!context) {
         throw new Error('Could not get canvas context');
       }
-      
+
       canvas.width = viewport.width;
       canvas.height = viewport.height;
-      
+
       context.fillStyle = '#ffffff';
       context.fillRect(0, 0, canvas.width, canvas.height);
-      
+
       const renderContext = {
         canvasContext: context,
         viewport: viewport,
       };
-      
+
       await page.render(renderContext).promise;
-      
+
       return new Promise((resolve, reject) => {
         canvas.toBlob(
           (blob) => {
@@ -436,12 +436,12 @@ export async function downloadSidakFatigueAsJpg(data: SidakFatigueData, filename
               reject(new Error('Failed to create JPG blob'));
               return;
             }
-            
+
             // Create filename with page number if multiple pages
-            const pageFilename = totalPages > 1 
+            const pageFilename = totalPages > 1
               ? filename.replace('.jpg', `_Page${pageNum}.jpg`).replace('.jpeg', `_Page${pageNum}.jpeg`)
               : filename;
-            
+
             const url = URL.createObjectURL(blob);
             const link = document.createElement('a');
             link.href = url;
@@ -450,7 +450,7 @@ export async function downloadSidakFatigueAsJpg(data: SidakFatigueData, filename
             link.click();
             document.body.removeChild(link);
             URL.revokeObjectURL(url);
-            
+
             resolve();
           },
           'image/jpeg',
@@ -500,7 +500,7 @@ export async function generateSidakRosterPdf(data: SidakRosterData): Promise<jsP
       img.onerror = reject;
       img.src = '/assets/logo.png';
     });
-    
+
     // Add logo to top-left corner with proper dimensions
     pdf.addImage(logoImg, 'PNG', margin, margin, 45, 10);
   } catch (error) {
@@ -508,7 +508,7 @@ export async function generateSidakRosterPdf(data: SidakRosterData): Promise<jsP
     pdf.setFont('helvetica', 'bold');
     pdf.setFontSize(10);
     pdf.setTextColor(0, 0, 0);
-    pdf.text('PT BORNEO INDOBARA', margin, yPosition + 6);
+    pdf.text('PT. Goden Energi Cemerlang Lesrari', margin, yPosition + 6);
   }
 
   // Form code on top-right
@@ -516,26 +516,26 @@ export async function generateSidakRosterPdf(data: SidakRosterData): Promise<jsP
   pdf.setFontSize(9);
   pdf.setTextColor(0, 0, 0);
   pdf.text('BIB – HSE – PPO – F – xxx - xx', pageWidth - margin, yPosition + 4, { align: 'right' });
-  
+
   yPosition += 12; // Space after logo for proper layout
-  
+
   // Main title with gray background
   const titleYStart = yPosition;
   pdf.setFillColor(220, 220, 220); // Gray background
   pdf.rect(margin, titleYStart, pageWidth - (margin * 2), 8, 'F');
-  
+
   pdf.setFont('helvetica', 'bold');
   pdf.setFontSize(14);
   pdf.setTextColor(0, 0, 0);
   pdf.text('SIDAK ROSTER/ GILIR KERJA', pageWidth / 2, titleYStart + 5.5, { align: 'center' });
-  
+
   yPosition += 10;
-  
+
   // Subtitle - center aligned italic
   pdf.setFontSize(8);
   pdf.setFont('helvetica', 'italic');
   pdf.text('Membandingkan antara data absensi karyawan dengan plan roster', pageWidth / 2, yPosition + 2, { align: 'center' });
-  
+
   yPosition += 4; // Reduced spacing before info table
 
   // ==================== INFO SECTION (2-column layout) ====================
@@ -546,7 +546,7 @@ export async function generateSidakRosterPdf(data: SidakRosterData): Promise<jsP
     ['Jam Pelaksanaan', data.session.jamPelaksanaan || '', 'Departemen', data.session.departemen || ''],
     ['Shift', data.session.shift || '', 'Lokasi', data.session.lokasi || '']
   ];
-  
+
   autoTable(pdf, {
     startY: yPosition,
     body: infoTableData,
@@ -595,7 +595,7 @@ export async function generateSidakRosterPdf(data: SidakRosterData): Promise<jsP
 
   // Calculate exact available width for table
   const availableWidth = pageWidth - (margin * 2); // 277mm
-  
+
   autoTable(pdf, {
     startY: yPosition,
     head: tableHeaders,
@@ -640,14 +640,14 @@ export async function generateSidakRosterPdf(data: SidakRosterData): Promise<jsP
           const x = cellData.cell.x + cellData.cell.width / 2;
           const y = cellData.cell.y + cellData.cell.height / 2;
           const size = 1.8;
-          
+
           pdf.setLineWidth(0.3);
           pdf.setDrawColor(0, 0, 0);
-          
+
           // First line: bottom-left to middle
-          pdf.line(x - size, y, x - size/3, y + size);
+          pdf.line(x - size, y, x - size / 3, y + size);
           // Second line: middle to top-right
-          pdf.line(x - size/3, y + size, x + size, y - size);
+          pdf.line(x - size / 3, y + size, x + size, y - size);
         }
       }
     }
@@ -722,7 +722,7 @@ export async function generateSidakRosterPdf(data: SidakRosterData): Promise<jsP
         // Column 3 = left observer (0, 1, 2), Column 7 = right observer (3, 4, 5)
         const observerIndex = cellData.column.index === 3 ? rowIndex : rowIndex + 3;
         const observer = data.observers[observerIndex];
-        
+
         if (observer?.signatureDataUrl) {
           try {
             const format = observer.signatureDataUrl.includes('image/png') ? 'PNG' : 'JPEG';
@@ -730,7 +730,7 @@ export async function generateSidakRosterPdf(data: SidakRosterData): Promise<jsP
             const cellY = cellData.cell.y;
             const cellWidth = cellData.cell.width;
             const cellHeight = cellData.cell.height;
-            
+
             pdf.addImage(
               observer.signatureDataUrl,
               format,
@@ -769,58 +769,58 @@ export async function downloadSidakRosterAsJpg(data: SidakRosterData, filename: 
   if (typeof window === 'undefined' || typeof document === 'undefined') {
     throw new Error('JPG download can only be executed in browser environment');
   }
-  
+
   try {
     // Import PDF.js from legacy build (better Vite compatibility)
     const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf');
-    
+
     // Import bundled worker as URL (Vite will handle this properly)
     // Note: Using .mjs extension as that's what's available in legacy build
     const workerSrc = await import('pdfjs-dist/legacy/build/pdf.worker.min.mjs?url');
-    
+
     // Configure PDF.js to use bundled worker
     pdfjsLib.GlobalWorkerOptions.workerSrc = workerSrc.default;
-    
+
     // Generate the PDF
     const pdf = await generateSidakRosterPdf(data);
-    
+
     // Get PDF as array buffer
     const pdfArrayBuffer = pdf.output('arraybuffer');
-    
+
     // Load PDF with PDF.js
     const loadingTask = pdfjsLib.getDocument({ data: pdfArrayBuffer });
     const pdfDocument = await loadingTask.promise;
-    
+
     // Get the first page
     const page = await pdfDocument.getPage(1);
-    
+
     // Set render scale for high quality (2-3x for crisp output)
     const scale = 2.5;
     const viewport = page.getViewport({ scale });
-    
+
     // Create canvas
     const canvas = document.createElement('canvas');
     const context = canvas.getContext('2d');
-    
+
     if (!context) {
       throw new Error('Could not get canvas context');
     }
-    
+
     canvas.width = viewport.width;
     canvas.height = viewport.height;
-    
+
     // Fill white background
     context.fillStyle = '#ffffff';
     context.fillRect(0, 0, canvas.width, canvas.height);
-    
+
     // Render PDF page to canvas
     const renderContext = {
       canvasContext: context,
       viewport: viewport,
     };
-    
+
     await page.render(renderContext).promise;
-    
+
     // Convert canvas to JPG blob
     return new Promise((resolve, reject) => {
       canvas.toBlob(
@@ -829,7 +829,7 @@ export async function downloadSidakRosterAsJpg(data: SidakRosterData, filename: 
             reject(new Error('Failed to create JPG blob'));
             return;
           }
-          
+
           // Download
           const url = URL.createObjectURL(blob);
           const link = document.createElement('a');
@@ -839,7 +839,7 @@ export async function downloadSidakRosterAsJpg(data: SidakRosterData, filename: 
           link.click();
           document.body.removeChild(link);
           URL.revokeObjectURL(url);
-          
+
           resolve();
         },
         'image/jpeg',

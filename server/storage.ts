@@ -183,12 +183,15 @@ import {
   type TnaSummary, type InsertTnaSummary,
   type TnaEntry, type InsertTnaEntry,
   type CompetencyMonitoringLog, type InsertCompetencyMonitoringLog,
-  trainings, tnaSummaries, tnaEntries, competencyMonitoringLogs
+  type KompetensiMonitoring, type InsertKompetensiMonitoring,
+  trainings, tnaSummaries, tnaEntries, competencyMonitoringLogs, kompetensiMonitoring,
+  changeRequests, type ChangeRequest, documentMasterlist, documentVersions,
+  documentDisposalRecords, type DocumentDisposalRecord, type InsertDocumentDisposalRecord
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { drizzle } from "drizzle-orm/neon-http";
 import { neon } from "@neondatabase/serverless";
-import { eq, and, inArray, desc, asc } from "drizzle-orm";
+import { eq, and, inArray, desc, asc, getTableColumns } from "drizzle-orm";
 import { sql as drizzleSql } from "drizzle-orm";
 import { db } from "./db";
 import PDFDocument from "pdfkit";
@@ -459,6 +462,14 @@ export interface IStorage {
   // Competency Monitoring
   createCompetencyMonitoringLog(log: InsertCompetencyMonitoringLog): Promise<CompetencyMonitoringLog>;
   getCompetencyMonitoringLogs(tnaEntryId: string): Promise<CompetencyMonitoringLog[]>;
+
+  // MONITORING KOMPETENSI (NEW)
+  getKompetensiMonitoring(): Promise<KompetensiMonitoring[]>;
+  getKompetensiMonitoringById(id: string): Promise<KompetensiMonitoring | undefined>;
+  createKompetensiMonitoring(data: InsertKompetensiMonitoring): Promise<KompetensiMonitoring>;
+  updateKompetensiMonitoring(id: string, data: Partial<InsertKompetensiMonitoring>): Promise<KompetensiMonitoring | undefined>;
+  deleteKompetensiMonitoring(id: string): Promise<boolean>;
+  deleteTnaEntry(id: string): Promise<boolean>;
 }
 
 export class MemStorage {
@@ -493,6 +504,28 @@ export class MemStorage {
 
     // Initialize with sample data
     this.initializeSampleData();
+  }
+
+  // MONITORING KOMPETENSI STUBS
+  async getKompetensiMonitoring(): Promise<KompetensiMonitoring[]> {
+    throw new Error("Not implemented in MemStorage");
+  }
+  async getKompetensiMonitoringById(id: string): Promise<KompetensiMonitoring | undefined> {
+    throw new Error("Not implemented in MemStorage");
+  }
+  async createKompetensiMonitoring(data: InsertKompetensiMonitoring): Promise<KompetensiMonitoring> {
+    throw new Error("Not implemented in MemStorage");
+  }
+  async updateKompetensiMonitoring(id: string, data: Partial<InsertKompetensiMonitoring>): Promise<KompetensiMonitoring | undefined> {
+    throw new Error("Monitoring Kompetensi not implemented in MemStorage. Use DrizzleStorage.");
+  }
+
+  async deleteKompetensiMonitoring(id: string): Promise<boolean> {
+    throw new Error("Monitoring Kompetensi not implemented in MemStorage. Use DrizzleStorage.");
+  }
+
+  async deleteTnaEntry(id: string): Promise<boolean> {
+    throw new Error("TNA Entry delete not implemented in MemStorage. Use DrizzleStorage.");
   }
 
   private initializeSampleData() {
@@ -3939,7 +3972,7 @@ export class DrizzleStorage implements IStorage {
 
         // Footer
         doc.fontSize(7).font('Helvetica')
-          .text('PT Borneo Indobara - HSE Department', margin, pageHeight - 50, {
+          .text('PT. Goden Energi Cemerlang Lesrari - HSE Department', margin, pageHeight - 50, {
             width: contentWidth,
             align: 'center'
           });
@@ -4087,7 +4120,7 @@ export class DrizzleStorage implements IStorage {
 
         // Subtitle
         doc.font('Helvetica').fontSize(9)
-          .text('Formulir ini digunakan sebagai catatan hasil pengamatan APD yang dilaksanakan di PT Borneo Indobara',
+          .text('Formulir ini digunakan sebagai catatan hasil pengamatan APD yang dilaksanakan di PT. Goden Energi Cemerlang Lesrari',
             margin + 20, margin + headerHeight + 28, {
             width: contentWidth - 40,
             align: 'center'
@@ -5325,7 +5358,7 @@ export class DrizzleStorage implements IStorage {
 
         // Subtitle
         doc.font('Helvetica').fontSize(9)
-          .text('Formulir ini digunakan sebagai catatan hasil inspeksi penggunaan aplikasi digital di PT Borneo Indobara',
+          .text('Formulir ini digunakan sebagai catatan hasil inspeksi penggunaan aplikasi digital di PT. Goden Energi Cemerlang Lesrari',
             margin + 20, margin + headerHeight + 28, {
             width: contentWidth - 40,
             align: 'center'
@@ -5576,7 +5609,7 @@ export class DrizzleStorage implements IStorage {
 
         // Subtitle
         doc.font('Helvetica').fontSize(9)
-          .text('Formulir ini digunakan sebagai catatan hasil inspeksi kondisi peralatan workshop di PT Borneo Indobara',
+          .text('Formulir ini digunakan sebagai catatan hasil inspeksi kondisi peralatan workshop di PT. Goden Energi Cemerlang Lesrari',
             margin + 20, margin + headerHeight + 28, {
             width: contentWidth - 40,
             align: 'center'
@@ -5959,6 +5992,712 @@ export class DrizzleStorage implements IStorage {
 
 
 
+  // MONITORING KOMPETENSI
+  async getKompetensiMonitoring(): Promise<KompetensiMonitoring[]> {
+    return await db.select().from(kompetensiMonitoring).orderBy(desc(kompetensiMonitoring.createdAt));
+  }
+
+  async getKompetensiMonitoringById(id: string): Promise<KompetensiMonitoring | undefined> {
+    const [record] = await db.select().from(kompetensiMonitoring).where(eq(kompetensiMonitoring.id, id));
+    return record;
+  }
+
+  async createKompetensiMonitoring(data: InsertKompetensiMonitoring): Promise<KompetensiMonitoring> {
+    const [record] = await db.insert(kompetensiMonitoring).values(data).returning();
+    return record;
+  }
+
+  async updateKompetensiMonitoring(id: string, data: Partial<InsertKompetensiMonitoring>): Promise<KompetensiMonitoring | undefined> {
+    const [record] = await db.update(kompetensiMonitoring).set({ ...data, updatedAt: new Date() }).where(eq(kompetensiMonitoring.id, id)).returning();
+    return record;
+  }
+
+  async deleteKompetensiMonitoring(id: string): Promise<boolean> {
+    const [deleted] = await db.delete(kompetensiMonitoring).where(eq(kompetensiMonitoring.id, id)).returning();
+    return !!deleted;
+  }
+
+  async deleteTnaEntry(id: string): Promise<boolean> {
+    const [deleted] = await db
+      .delete(tnaEntries)
+      .where(eq(tnaEntries.id, id))
+      .returning();
+    return !!deleted;
+  }
+
+  // ============================================
+  // DOCUMENT MASTERLIST STORAGE METHODS
+  // ============================================
+
+  async getDocumentMasterlist(): Promise<any[]> {
+    try {
+      const result = await db.execute(drizzleSql`
+        SELECT dm.*, dv.file_path 
+        FROM document_masterlist dm
+        LEFT JOIN document_versions dv ON dm.id = dv.document_id 
+          AND dm.current_version = dv.version_number 
+          AND dm.current_revision = dv.revision_number
+        ORDER BY dm.created_at DESC
+      `);
+      return result.rows || [];
+    } catch (error) {
+      console.error("Error fetching document masterlist:", error);
+      return [];
+    }
+  }
+
+  async getDocumentById(id: string): Promise<any | undefined> {
+    try {
+      const result = await db.execute(drizzleSql`
+        SELECT * FROM document_masterlist WHERE id = ${id}
+      `);
+      return result.rows?.[0];
+    } catch (error) {
+      console.error("Error fetching document by id:", error);
+      return undefined;
+    }
+  }
+
+  async addDocumentVersion(data: any): Promise<any> {
+    try {
+      console.log("[STORAGE] Adding document version with data:", JSON.stringify(data, null, 2));
+
+      // 1. Insert into document_versions
+      console.log("[STORAGE] Inserting into document_versions...");
+      const [newVersion] = await db.insert(documentVersions).values({
+        documentId: data.documentId,
+        versionNumber: data.versionNumber,
+        revisionNumber: data.revisionNumber,
+        fileName: data.fileName,
+        filePath: data.filePath,
+        fileSize: data.fileSize,
+        mimeType: data.mimeType,
+        uploadedBy: data.uploadedBy,
+        uploadedByName: data.uploadedByName,
+        changesNote: data.changesNote,
+        status: "DRAFT"
+      }).returning();
+      console.log("[STORAGE] Insert successful, ID:", newVersion.id);
+
+      // 2. Update masterlist current version references
+      console.log("[STORAGE] Updating documentMasterlist...");
+      try {
+        await db.update(documentMasterlist)
+          .set({
+            currentVersion: data.versionNumber,
+            currentRevision: data.revisionNumber,
+            updatedAt: new Date()
+          })
+          .where(eq(documentMasterlist.id, data.documentId));
+        console.log("[STORAGE] Masterlist updated.");
+      } catch (updateError) {
+        console.error("[STORAGE] Error updating masterlist:", updateError);
+        // We do not throw here to allow the version to be returned, 
+        // but ideally we should transactionalize this. 
+        // For debugging, we just log it.
+      }
+
+      return newVersion;
+    } catch (error) {
+      console.error("[STORAGE] Critical error adding document version:", error);
+      throw error;
+    }
+  }
+
+  async createDocumentMasterlist(data: any): Promise<any> {
+    const result = await db.execute(drizzleSql`
+      INSERT INTO document_masterlist (
+        document_code, title, category, department,
+        current_version, current_revision,
+        owner_id, owner_name,
+        lifecycle_status, control_type,
+        effective_date, next_review_date, expiry_date,
+        sign_required, description, created_by
+      ) VALUES (
+        ${data.documentCode}, ${data.title}, ${data.category}, ${data.department},
+        ${data.currentVersion || 1}, ${data.currentRevision || 0},
+        ${data.ownerId}, ${data.ownerName},
+        ${data.lifecycleStatus || 'DRAFT'}, ${data.controlType || 'CONTROLLED'},
+        ${data.effectiveDate || null}, ${data.nextReviewDate || null}, ${data.expiryDate || null},
+        ${data.signRequired !== false}, ${data.description || null}, ${data.createdBy}
+      ) RETURNING *
+    `);
+    return result.rows?.[0];
+  }
+
+  async updateDocumentMasterlist(id: string, data: any): Promise<any | undefined> {
+    // Build dynamic update - only update provided fields
+    const updates: string[] = [];
+    const values: any[] = [];
+
+    if (data.title !== undefined) { updates.push(`title = '${data.title}'`); }
+    if (data.category !== undefined) { updates.push(`category = '${data.category}'`); }
+    if (data.department !== undefined) { updates.push(`department = '${data.department}'`); }
+    if (data.lifecycleStatus !== undefined) { updates.push(`lifecycle_status = '${data.lifecycleStatus}'`); }
+    if (data.effectiveDate !== undefined) { updates.push(`effective_date = '${data.effectiveDate}'`); }
+    if (data.nextReviewDate !== undefined) { updates.push(`next_review_date = '${data.nextReviewDate}'`); }
+
+    updates.push(`updated_at = NOW()`);
+
+    const result = await db.execute(drizzleSql.raw(`
+      UPDATE document_masterlist 
+      SET ${updates.join(', ')}
+      WHERE id = '${id}'
+      RETURNING *
+    `));
+    return result.rows?.[0];
+  }
+
+  async deleteDocumentMasterlist(id: string): Promise<boolean> {
+    const result = await db.execute(drizzleSql`
+      DELETE FROM document_masterlist WHERE id = ${id} RETURNING id
+    `);
+    return (result.rows?.length || 0) > 0;
+  }
+
+  async getDocumentVersions(documentId: string): Promise<any[]> {
+    try {
+      const result = await db.execute(drizzleSql`
+        SELECT * FROM document_versions 
+        WHERE document_id = ${documentId}
+        ORDER BY version_number DESC, revision_number DESC
+      `);
+      return result.rows || [];
+    } catch (error) {
+      console.error("Error fetching document versions:", error);
+      return [];
+    }
+  }
+
+  async createDocumentVersion(documentId: string, data: any): Promise<any> {
+    const result = await db.execute(drizzleSql`
+      INSERT INTO document_versions (
+        document_id, version_number, revision_number,
+        file_name, file_path, file_size, mime_type,
+        status, changes_note,
+        uploaded_by, uploaded_by_name
+      ) VALUES (
+        ${documentId}, ${data.versionNumber || 1}, ${data.revisionNumber || 0},
+        ${data.fileName}, ${data.filePath}, ${data.fileSize || null}, ${data.mimeType || 'application/pdf'},
+        ${data.status || 'DRAFT'}, ${data.changesNote || null},
+        ${data.uploadedBy}, ${data.uploadedByName}
+      ) RETURNING *
+    `);
+    return result.rows?.[0];
+  }
+
+  // ============================================
+  // APPROVAL WORKFLOW STORAGE METHODS (Phase 2)
+  // ============================================
+
+  async submitDocumentForReview(documentId: string, data: any): Promise<any> {
+    // 1. Update document status to IN_REVIEW
+    await db.execute(drizzleSql`
+      UPDATE document_masterlist 
+      SET lifecycle_status = 'IN_REVIEW', updated_at = NOW()
+      WHERE id = ${documentId}
+    `);
+
+    // 2. Create approval record
+    const approvalResult = await db.execute(drizzleSql`
+      INSERT INTO document_approvals (
+        document_id, version_id, workflow_name, 
+        total_steps, current_step, status,
+        initiated_by, initiated_by_name
+      ) VALUES (
+        ${documentId}, ${documentId}, ${data.workflowName},
+        1, 1, 'PENDING',
+        ${data.initiatedBy}, ${data.initiatedByName}
+      ) RETURNING *
+    `);
+
+    const approval = approvalResult.rows?.[0];
+    if (!approval) throw new Error("Failed to create approval");
+
+    // 3. Create approval step
+    const stepResult = await db.execute(drizzleSql`
+      INSERT INTO document_approval_steps (
+        approval_id, step_number, step_name, mode, quorum_required, status
+      ) VALUES (
+        ${approval.id}, 1, 'Review', 'SERIAL', 1, 'IN_PROGRESS'
+      ) RETURNING *
+    `);
+
+    const step = stepResult.rows?.[0];
+    if (!step) throw new Error("Failed to create step");
+
+    // 4. Add assignees
+    for (const approver of data.approvers) {
+      await db.execute(drizzleSql`
+        INSERT INTO document_step_assignees (
+          step_id, assignee_id, assignee_name, assignee_position,
+          deadline
+        ) VALUES (
+          ${step.id}, ${approver.id}, ${approver.name}, ${approver.position || null},
+          ${data.deadline ? new Date(data.deadline) : null}
+        )
+      `);
+    }
+
+    return approval;
+  }
+
+  async getApprovalInbox(userId: string): Promise<any[]> {
+    try {
+      const result = await db.execute(drizzleSql`
+        SELECT 
+          dsa.id as assignee_id,
+          dsa.assignee_name,
+          dsa.decision,
+          dsa.deadline,
+          dsa.created_at as assigned_at,
+          das.step_name,
+          da.workflow_name,
+          da.status as approval_status,
+          dm.id as document_id,
+          dm.document_code,
+          dm.title,
+          dm.category,
+          dm.department,
+          da.initiated_by_name as submitted_by,
+          dv.file_path
+        FROM document_step_assignees dsa
+        JOIN document_approval_steps das ON dsa.step_id = das.id
+        JOIN document_approvals da ON das.approval_id = da.id
+        JOIN document_masterlist dm ON da.document_id = dm.id
+        JOIN document_versions dv ON da.version_id = dv.id
+        WHERE dsa.assignee_id = ${userId}
+          AND dsa.decision IS NULL
+          AND das.status = 'IN_PROGRESS'
+        ORDER BY dsa.created_at DESC
+      `);
+      return result.rows || [];
+    } catch (error) {
+      console.error("Error fetching approval inbox:", error);
+      return [];
+    }
+  }
+
+  async processApprovalDecision(assigneeId: string, data: any): Promise<any> {
+    // 1. Update assignee decision
+    await db.execute(drizzleSql`
+      UPDATE document_step_assignees 
+      SET decision = ${data.decision}, 
+          comments = ${data.comments || null},
+          decided_at = NOW()
+      WHERE id = ${assigneeId}
+    `);
+
+    // 2. Get the step and check if all assignees have decided
+    const stepResult = await db.execute(drizzleSql`
+      SELECT das.*, dsa.step_id, da.document_id
+      FROM document_step_assignees dsa
+      JOIN document_approval_steps das ON dsa.step_id = das.id
+      JOIN document_approvals da ON das.approval_id = da.id
+      WHERE dsa.id = ${assigneeId}
+    `);
+
+    const stepInfo = stepResult.rows?.[0];
+    if (!stepInfo) return { success: false };
+
+    // 3. Check pending assignees for this step
+    const pendingResult = await db.execute(drizzleSql`
+      SELECT COUNT(*) as pending FROM document_step_assignees 
+      WHERE step_id = ${stepInfo.step_id} AND decision IS NULL
+    `);
+
+    const pendingCount = parseInt(pendingResult.rows?.[0]?.pending || "0");
+
+    // 4. If rejected, mark document as rejected
+    if (data.decision === "REJECTED") {
+      await db.execute(drizzleSql`
+        UPDATE document_masterlist 
+        SET lifecycle_status = 'DRAFT', updated_at = NOW()
+        WHERE id = ${stepInfo.document_id}
+      `);
+
+      await db.execute(drizzleSql`
+        UPDATE document_approvals 
+        SET status = 'REJECTED', final_decision = 'REJECTED', completed_at = NOW()
+        WHERE document_id = ${stepInfo.document_id} AND status = 'PENDING'
+      `);
+    }
+    // 5. If all approved and no pending, complete the approval
+    else if (pendingCount === 0 && data.decision === "APPROVED") {
+      await db.execute(drizzleSql`
+        UPDATE document_masterlist 
+        SET lifecycle_status = 'APPROVED', updated_at = NOW()
+        WHERE id = ${stepInfo.document_id}
+      `);
+
+      await db.execute(drizzleSql`
+        UPDATE document_approvals 
+        SET status = 'APPROVED', final_decision = 'APPROVED', completed_at = NOW()
+        WHERE document_id = ${stepInfo.document_id} AND status = 'PENDING'
+      `);
+
+      await db.execute(drizzleSql`
+        UPDATE document_approval_steps 
+        SET status = 'COMPLETED', completed_at = NOW()
+        WHERE id = ${stepInfo.step_id}
+      `);
+    }
+
+    return { success: true, decision: data.decision };
+  }
+
+  async getDocumentApprovals(documentId: string): Promise<any[]> {
+    try {
+      const result = await db.execute(drizzleSql`
+        SELECT da.*, 
+          json_agg(
+            json_build_object(
+              'assignee_name', dsa.assignee_name,
+              'decision', dsa.decision,
+              'comments', dsa.comments,
+              'decided_at', dsa.decided_at
+            )
+          ) as assignees
+        FROM document_approvals da
+        LEFT JOIN document_approval_steps das ON da.id = das.approval_id
+        LEFT JOIN document_step_assignees dsa ON das.id = dsa.step_id
+        WHERE da.document_id = ${documentId}
+        GROUP BY da.id
+        ORDER BY da.initiated_at DESC
+      `);
+      return result.rows || [];
+    } catch (error) {
+      console.error("Error fetching document approvals:", error);
+      return [];
+    }
+  }
+
+  // ============================================
+  // DISTRIBUTION STORAGE METHODS (Phase 3)
+  // ============================================
+
+  async distributeDocument(documentId: string, data: any): Promise<any> {
+    // Get the latest version ID
+    const versionResult = await db.execute(drizzleSql`
+      SELECT id FROM document_versions WHERE document_id = ${documentId}
+      ORDER BY version_number DESC, revision_number DESC LIMIT 1
+    `);
+    const versionId = versionResult.rows?.[0]?.id || documentId;
+
+    // Create distribution records for each recipient
+    const results = [];
+    for (const recipient of data.recipients) {
+      const result = await db.execute(drizzleSql`
+        INSERT INTO document_distributions (
+          document_id, version_id,
+          recipient_id, recipient_name, recipient_department,
+          is_mandatory, deadline,
+          distributed_by
+        ) VALUES (
+          ${documentId}, ${versionId},
+          ${recipient.id}, ${recipient.name}, ${recipient.department || null},
+          ${data.isMandatory}, ${data.deadline || null},
+          ${data.distributedBy}
+        ) RETURNING *
+      `);
+      results.push(result.rows?.[0]);
+    }
+
+    return { success: true, count: results.length };
+  }
+
+  async getMyDocuments(userId: string): Promise<any[]> {
+    try {
+      const result = await db.execute(drizzleSql`
+        SELECT 
+          dd.id as distribution_id,
+          dd.is_read,
+          dd.read_at,
+          dd.acknowledged_at,
+          dd.deadline,
+          dd.is_mandatory,
+          dm.id as document_id,
+          dm.document_code,
+          dm.title,
+          dm.category,
+          dm.department,
+          dm.lifecycle_status,
+          dv.file_path
+        FROM document_distributions dd
+        JOIN document_masterlist dm ON dd.document_id = dm.id
+        JOIN document_versions dv ON dd.version_id = dv.id
+        WHERE dd.recipient_id = ${userId}
+        ORDER BY dd.distributed_at DESC
+      `);
+      return result.rows || [];
+    } catch (error) {
+      console.error("Error fetching my documents:", error);
+      return [];
+    }
+  }
+
+  async acknowledgeDocument(distributionId: string, data: any): Promise<any> {
+    const result = await db.execute(drizzleSql`
+      UPDATE document_distributions 
+      SET 
+        is_read = true,
+        read_at = COALESCE(read_at, NOW()),
+        acknowledged_at = NOW(),
+        ip_address = ${data.ipAddress || null},
+        user_agent = ${data.userAgent || null}
+      WHERE id = ${distributionId}
+      RETURNING *
+    `);
+    return result.rows?.[0];
+  }
+
+  async getDocumentDistributions(documentId: string): Promise<any[]> {
+    try {
+      const result = await db.execute(drizzleSql`
+        SELECT 
+          dd.*,
+          CASE 
+            WHEN dd.acknowledged_at IS NOT NULL THEN 'acknowledged'
+            WHEN dd.read_at IS NOT NULL THEN 'read'
+            ELSE 'pending'
+          END as status
+        FROM document_distributions dd
+        WHERE dd.document_id = ${documentId}
+        ORDER BY dd.distributed_at DESC
+      `);
+      return result.rows || [];
+    } catch (error) {
+      console.error("Error fetching distributions:", error);
+      return [];
+    }
+  }
+
+  async publishDocument(documentId: string): Promise<any> {
+    const result = await db.execute(drizzleSql`
+      UPDATE document_masterlist 
+      SET lifecycle_status = 'PUBLISHED', updated_at = NOW()
+      WHERE id = ${documentId} AND lifecycle_status = 'APPROVED'
+      RETURNING *
+    `);
+
+    if (!result.rows?.[0]) {
+      throw new Error("Document not found or not in APPROVED status");
+    }
+
+    return result.rows[0];
+  }
+
+  // ============================================
+  // EXTERNAL DOCUMENTS STORAGE (Phase 5)
+  // ============================================
+
+  async getExternalDocuments(): Promise<any[]> {
+    try {
+      const result = await db.execute(drizzleSql`
+        SELECT * FROM external_documents ORDER BY created_at DESC
+      `);
+      return result.rows || [];
+    } catch (error) {
+      console.error("Error fetching external documents:", error);
+      return [];
+    }
+  }
+
+  async createExternalDocument(data: any): Promise<any> {
+    const result = await db.execute(drizzleSql`
+      INSERT INTO external_documents (
+        document_code, title, source, issued_by,
+        version_number, issue_date, next_review_date,
+        file_type, file_url, file_name,
+        status, distribution_required,
+        owner_id, owner_name, department,
+        notes, created_by
+      ) VALUES (
+        ${data.documentCode}, ${data.title}, ${data.source}, ${data.issuedBy || null},
+        ${data.versionNumber || null}, ${data.issueDate || null}, ${data.nextReviewDate || null},
+        ${data.fileType || 'LINK'}, ${data.fileUrl || null}, ${data.fileName || null},
+        ${data.status || 'ACTIVE'}, ${data.distributionRequired || false},
+        ${data.ownerId || null}, ${data.ownerName || null}, ${data.department || null},
+        ${data.notes || null}, ${data.createdBy}
+      ) RETURNING *
+    `);
+    return result.rows?.[0];
+  }
+
+  async updateExternalDocument(id: string, data: any): Promise<any> {
+    const updates: string[] = [];
+    if (data.title !== undefined) updates.push(`title = '${data.title}'`);
+    if (data.source !== undefined) updates.push(`source = '${data.source}'`);
+    if (data.status !== undefined) updates.push(`status = '${data.status}'`);
+    if (data.nextReviewDate !== undefined) updates.push(`next_review_date = '${data.nextReviewDate}'`);
+    if (data.fileUrl !== undefined) updates.push(`file_url = '${data.fileUrl}'`);
+    updates.push(`updated_at = NOW()`);
+
+    const result = await db.execute(drizzleSql.raw(`
+      UPDATE external_documents SET ${updates.join(', ')} WHERE id = '${id}' RETURNING *
+    `));
+    return result.rows?.[0];
+  }
+
+  async deleteExternalDocument(id: string): Promise<boolean> {
+    await db.execute(drizzleSql`DELETE FROM external_documents WHERE id = ${id}`);
+    return true;
+  }
+
+  // ============================================
+  // ESIGN STORAGE (Phase 5)
+  // ============================================
+
+  async createEsignRequest(documentId: string, data: any): Promise<any> {
+    // Get latest version
+    const versionResult = await db.execute(drizzleSql`
+      SELECT id FROM document_versions WHERE document_id = ${documentId}
+      ORDER BY version_number DESC, revision_number DESC LIMIT 1
+    `);
+    const versionId = versionResult.rows?.[0]?.id || documentId;
+
+    // Update document status to ESIGN_PENDING
+    await db.execute(drizzleSql`
+      UPDATE document_masterlist SET lifecycle_status = 'ESIGN_PENDING', updated_at = NOW()
+      WHERE id = ${documentId}
+    `);
+
+    // Create eSign request
+    const result = await db.execute(drizzleSql`
+      INSERT INTO esign_requests (
+        document_id, version_id, approval_id,
+        provider, signer_id, signer_name, signer_position,
+        status, created_by
+      ) VALUES (
+        ${documentId}, ${versionId}, ${data.approvalId || null},
+        ${data.provider || 'uSign'}, ${data.signerId}, ${data.signerName}, ${data.signerPosition || null},
+        'PENDING', ${data.createdBy}
+      ) RETURNING *
+    `);
+    return result.rows?.[0];
+  }
+
+  async getEsignRequests(documentId: string): Promise<any[]> {
+    try {
+      const result = await db.execute(drizzleSql`
+        SELECT * FROM esign_requests WHERE document_id = ${documentId}
+        ORDER BY requested_at DESC
+      `);
+      return result.rows || [];
+    } catch (error) {
+      console.error("Error fetching esign requests:", error);
+      return [];
+    }
+  }
+
+  async updateEsignStatus(externalRequestId: string, data: any): Promise<any> {
+    const result = await db.execute(drizzleSql`
+      UPDATE esign_requests SET
+        status = ${data.status},
+        signed_file_path = ${data.signedFileUrl || null},
+        signed_at = ${data.status === 'SIGNED' ? drizzleSql`NOW()` : null},
+        failed_reason = ${data.failedReason || null}
+      WHERE external_request_id = ${externalRequestId}
+      RETURNING *
+    `);
+
+    // If signed, update document status
+    if (data.status === 'SIGNED' && result.rows?.[0]) {
+      const req = result.rows[0];
+      await db.execute(drizzleSql`
+        UPDATE document_masterlist SET lifecycle_status = 'SIGNED', updated_at = NOW()
+        WHERE id = ${req.document_id}
+      `);
+
+      // Update version with signed file
+      if (data.signedFileUrl) {
+        await db.execute(drizzleSql`
+          UPDATE document_versions SET signed_file_path = ${data.signedFileUrl}, signed_at = NOW()
+          WHERE id = ${req.version_id}
+        `);
+      }
+    }
+
+    return result.rows?.[0];
+  }
+
+  async retryEsignRequest(requestId: string): Promise<any> {
+    const result = await db.execute(drizzleSql`
+      UPDATE esign_requests SET
+        status = 'PENDING',
+        retry_count = retry_count + 1,
+        last_retry_at = NOW(),
+        failed_reason = NULL
+      WHERE id = ${requestId}
+      RETURNING *
+    `);
+    return result.rows?.[0];
+  }
+
+  // ============================================
+  // CHANGE REQUESTS
+  // ============================================
+
+  async createChangeRequest(data: any): Promise<ChangeRequest> {
+    const result = await db.insert(changeRequests).values(data).returning();
+    return result[0];
+  }
+
+  async getChangeRequests(documentId: string): Promise<ChangeRequest[]> {
+    return db
+      .select()
+      .from(changeRequests)
+      .where(eq(changeRequests.documentId, documentId))
+      .orderBy(desc(changeRequests.requestedAt));
+  }
+
+  async updateChangeRequestStatus(id: string, updateData: any): Promise<ChangeRequest> {
+    const result = await db
+      .update(changeRequests)
+      .set({
+        ...updateData,
+        // If approved, set completedAt
+        completedAt: updateData.status === "COMPLETED" || updateData.status === "APPROVED" ? new Date() : undefined,
+      })
+      .where(eq(changeRequests.id, id))
+      .returning();
+    return result[0];
+  }
+
+  async getPendingChangeRequests(): Promise<any[]> {
+    // Join with document masterlist to get title and code
+    const result = await db
+      .select({
+        ...getTableColumns(changeRequests),
+        documentCode: documentMasterlist.documentCode,
+        documentTitle: documentMasterlist.title,
+        documentCategory: documentMasterlist.category,
+        filePath: documentVersions.filePath,
+      })
+      .from(changeRequests)
+      .innerJoin(documentMasterlist, eq(changeRequests.documentId, documentMasterlist.id))
+      .leftJoin(documentVersions, and(
+        eq(documentMasterlist.id, documentVersions.documentId),
+        eq(documentMasterlist.currentVersion, documentVersions.versionNumber),
+        eq(documentMasterlist.currentRevision, documentVersions.revisionNumber)
+      ))
+      .where(eq(changeRequests.status, "PENDING"))
+      .orderBy(desc(changeRequests.requestedAt));
+
+    return result;
+  }
+
+  async getDisposalRecords(): Promise<DocumentDisposalRecord[]> {
+    return db
+      .select()
+      .from(documentDisposalRecords)
+      .orderBy(desc(documentDisposalRecords.disposedAt));
+  }
+
+  async createDisposalRecord(data: InsertDocumentDisposalRecord): Promise<DocumentDisposalRecord> {
+    const result = await db.insert(documentDisposalRecords).values(data).returning();
+    return result[0];
+  }
 }
 
 // Use DrizzleStorage for PostgreSQL database

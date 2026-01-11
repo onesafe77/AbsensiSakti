@@ -20,7 +20,7 @@ export default function SidakDashboard() {
             </h1>
           </div>
           <p className="text-gray-600 dark:text-gray-400 text-sm md:text-lg max-w-2xl mx-auto">
-            Sistem Inspeksi Data Karyawan PT Borneo Indobara
+            Sistem Inspeksi Data Karyawan PT. Goden Energi Cemerlang Lesrari
           </p>
         </div>
 
@@ -196,7 +196,7 @@ export default function SidakDashboard() {
                   </span>
                 </div>
                 <p className="text-sm text-gray-500 dark:text-gray-400 line-clamp-2">
-                  Observasi kepatuhan rambu lalu lintas untuk kendaraan di area PT Borneo Indobara.
+                  Observasi kepatuhan rambu lalu lintas untuk kendaraan di area PT. Goden Energi Cemerlang Lesrari.
                 </p>
               </div>
 

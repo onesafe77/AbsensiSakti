@@ -3,8 +3,24 @@ import express, { type Request, Response, NextFunction } from "express";
 import compression from "compression";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import { storage } from "./storage";
 
 const app = express();
+
+// EMERGENCY DEBUG ROUTE - DELETE TNA
+app.post("/api/hse/tna/delete-entry", async (req, res) => {
+  try {
+    console.log("EMERGENCY ROUTE HIT:", req.body);
+    if (!req.body.id) return res.status(400).json({ error: "No ID" });
+    const success = await storage.deleteTnaEntry(req.body.id);
+    if (!success) return res.status(404).json({ error: "Not found" });
+    res.json({ success: true, method: "emergency" });
+  } catch (e: any) {
+    console.error("EMERGENCY ROUTE ERROR:", e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
 console.log("SERVER RESTARTING... UPDATED ROUTES LOADING...");
 
 
@@ -40,10 +56,6 @@ app.use((req, res, next) => {
       let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
       if (capturedJsonResponse) {
         logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
-      }
-
-      if (logLine.length > 80) {
-        logLine = logLine.slice(0, 79) + "…";
       }
 
       log(logLine);

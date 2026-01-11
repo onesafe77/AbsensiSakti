@@ -15,8 +15,8 @@ export function SeatbeltFormPreview({ session, records, observers }: {
             {/* Header */}
             <div className="text-center border-b pb-3">
                 <h2 className="text-lg font-bold">SIDAK SEAT BELT</h2>
-                <p className="text-gray-600">PT Borneo Indobara</p>
-                <p className="text-xs text-gray-500">Formulir ini digunakan sebagai catatan hasil pengecekan seat belt yang dilaksanakan di PT Borneo Indobara</p>
+                <p className="text-gray-600">PT. Goden Energi Cemerlang Lesrari</p>
+                <p className="text-xs text-gray-500">Formulir ini digunakan sebagai catatan hasil pengecekan seat belt yang dilaksanakan di PT. Goden Energi Cemerlang Lesrari</p>
             </div>
 
             {/* Session Info */}

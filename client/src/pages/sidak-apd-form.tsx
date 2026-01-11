@@ -63,7 +63,7 @@ const initialDraftData: ApdDraftData = {
         tanggal: new Date().toISOString().split('T')[0],
         waktu: "",
         shift: "Shift 1",
-        perusahaan: "PT Borneo Indobara",
+        perusahaan: "PT. Goden Energi Cemerlang Lesrari",
         departemen: "HSE",
         lokasi: ""
     },

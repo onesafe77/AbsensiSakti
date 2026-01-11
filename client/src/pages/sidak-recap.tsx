@@ -286,7 +286,7 @@ function FatigueFormPreview({ session, records, observers }: {
       {/* Header */}
       <div className="text-center border-b pb-3">
         <h2 className="text-lg font-bold">FORM PEMERIKSAAN FATIGUE</h2>
-        <p className="text-gray-600">PT Borneo Indobara</p>
+        <p className="text-gray-600">PT. Goden Energi Cemerlang Lesrari</p>
       </div>
 
       {/* Session Info */}
@@ -391,7 +391,7 @@ function RambuFormPreview({ session, records, observers }: {
       {/* Header */}
       <div className="text-center border-b pb-3">
         <h2 className="text-lg font-bold">OBSERVASI KEPATUHAN RAMBU</h2>
-        <p className="text-gray-600">PT Borneo Indobara - HSE Department</p>
+        <p className="text-gray-600">PT. Goden Energi Cemerlang Lesrari - HSE Department</p>
       </div>
 
       {/* Session Info */}
@@ -533,7 +533,7 @@ function RosterFormPreview({ session, records, observers }: {
       {/* Header */}
       <div className="text-center border-b pb-3">
         <h2 className="text-lg font-bold">FORM PEMERIKSAAN KESESUAIAN ROSTER</h2>
-        <p className="text-gray-600">PT Borneo Indobara</p>
+        <p className="text-gray-600">PT. Goden Energi Cemerlang Lesrari</p>
       </div>
 
       {/* Session Info */}
@@ -638,7 +638,7 @@ function AntrianFormPreview({ session, records, observers }: {
       {/* Header */}
       <div className="text-center border-b pb-3">
         <h2 className="text-lg font-bold">FORM OBSERVASI ANTRIAN UNIT</h2>
-        <p className="text-gray-600">PT Borneo Indobara</p>
+        <p className="text-gray-600">PT. Goden Energi Cemerlang Lesrari</p>
       </div>
 
       {/* Session Info */}
@@ -720,7 +720,7 @@ function JarakFormPreview({ session, records, observers }: {
       {/* Header */}
       <div className="text-center border-b pb-3">
         <h2 className="text-lg font-bold">FORM OBSERVASI JARAK AMAN</h2>
-        <p className="text-gray-600">PT Borneo Indobara</p>
+        <p className="text-gray-600">PT. Goden Energi Cemerlang Lesrari</p>
       </div>
 
       {/* Session Info */}
@@ -796,7 +796,7 @@ function KecepatanFormPreview({ session, records, observers }: {
     <div className="space-y-4 p-4 bg-white text-black text-sm">
       <div className="text-center border-b pb-3">
         <h2 className="text-lg font-bold">OBSERVASI KECEPATAN BERKENDARA</h2>
-        <p className="text-gray-600">PT Borneo Indobara</p>
+        <p className="text-gray-600">PT. Goden Energi Cemerlang Lesrari</p>
       </div>
 
       <div className="grid grid-cols-2 gap-4 text-sm border p-3 rounded">
@@ -868,7 +868,7 @@ function PencahayaanFormPreview({ session, records, observers }: {
     <div className="space-y-4 p-4 bg-white text-black text-sm">
       <div className="text-center border-b pb-3">
         <h2 className="text-lg font-bold">PEMERIKSAAN PENCAHAYAAN</h2>
-        <p className="text-gray-600">PT Borneo Indobara</p>
+        <p className="text-gray-600">PT. Goden Energi Cemerlang Lesrari</p>
       </div>
 
       <div className="grid grid-cols-2 gap-4 text-sm border p-3 rounded">
@@ -940,7 +940,7 @@ function LotoFormPreview({ session, records, observers }: {
     <div className="space-y-4 p-4 bg-white text-black text-sm">
       <div className="text-center border-b pb-3">
         <h2 className="text-lg font-bold uppercase">INSPEKSI KEPATUHAN LOTO (LOCK OUT TAG OUT)</h2>
-        <p className="text-gray-600 font-medium">PT Borneo Indobara</p>
+        <p className="text-gray-600 font-medium">PT. Goden Energi Cemerlang Lesrari</p>
       </div>
 
       <div className="grid grid-cols-2 gap-4 text-sm border p-3 rounded bg-gray-50/50">
@@ -1018,7 +1018,7 @@ function DigitalFormPreview({ session, records, observers }: {
     <div className="space-y-4 p-4 bg-white text-black text-sm font-sans">
       <div className="text-center border-b-2 border-blue-600 pb-3">
         <h2 className="text-xl font-extrabold text-blue-800">INSPEKSI PENGAWAS DIGITAL</h2>
-        <p className="text-gray-600 font-semibold">PT Borneo Indobara</p>
+        <p className="text-gray-600 font-semibold">PT. Goden Energi Cemerlang Lesrari</p>
       </div>
 
       <div className="grid grid-cols-2 gap-4 text-sm border p-4 rounded-xl bg-blue-50/30">
@@ -1105,7 +1105,7 @@ function WorkshopFormPreview({ session, records, observers }: {
     <div className="space-y-4 p-4 bg-white text-black text-sm font-sans">
       <div className="text-center border-b-2 border-orange-600 pb-3">
         <h2 className="text-xl font-extrabold text-orange-800">CHECKLIST PERALATAN WORKSHOP</h2>
-        <p className="text-gray-600 font-semibold">PT Borneo Indobara</p>
+        <p className="text-gray-600 font-semibold">PT. Goden Energi Cemerlang Lesrari</p>
       </div>
 
       <div className="grid grid-cols-2 gap-4 text-sm border p-4 rounded-xl bg-orange-50/30">

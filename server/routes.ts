@@ -67,8 +67,8 @@ import {
   insertTnaSummarySchema,
   insertTnaEntrySchema,
   trainings,
-  tnaSummaries,
-  tnaEntries
+  tnaEntries,
+  insertKompetensiMonitoringSchema
 } from "@shared/schema";
 import { PushNotificationService } from "./push-notification";
 import { createUserWithRole, Role, Permission, ROLE_PERMISSIONS, getRoleFromPosition } from "@shared/rbac";
@@ -259,9 +259,56 @@ function clearAllCaches() {
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Configure multer for file uploads
+  const upload = multer({
+    dest: 'uploads/',
+    limits: { fileSize: 10 * 1024 * 1024 } // 10MB limit
+  });
+
+  // Ensure uploads directory exists
+  if (!fs.existsSync('uploads')) {
+    fs.mkdirSync('uploads');
+  }
   // ============================================
   // TNA Routes (Moved to top for priority)
   // ============================================
+
+  // Delete TNA Entry (High Priority - Alternative Method using POST)
+  app.post("/api/hse/tna/delete-entry", async (req, res) => {
+    try {
+      if (!req.body.id) {
+        return res.status(400).json({ error: "ID is required" });
+      }
+      console.log(`[DELETE-POST] Request for TNA Entry ID: ${req.body.id}`);
+      const success = await storage.deleteTnaEntry(req.body.id);
+      if (!success) {
+        console.log(`[DELETE-POST] Failed - ID ${req.body.id} not found`);
+        return res.status(404).json({ error: "Not found" });
+      }
+      console.log(`[DELETE-POST] Success for ID ${req.body.id}`);
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("Error deleting TNA entry (POST):", error);
+      res.status(500).json({ error: "Internal server error", details: error.message });
+    }
+  });
+
+  // Delete TNA Entry (High Priority)
+  app.delete("/api/hse/tna/entries/:id", async (req, res) => {
+    try {
+      console.log(`[DELETE] Request for TNA Entry ID: ${req.params.id}`);
+      const success = await storage.deleteTnaEntry(req.params.id);
+      if (!success) {
+        console.log(`[DELETE] Failed - ID ${req.params.id} not found in DB`);
+        return res.status(404).json({ error: "Not found" });
+      }
+      console.log(`[DELETE] Success for ID ${req.params.id}`);
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("Error deleting TNA entry:", error);
+      res.status(500).json({ error: "Internal server error", details: error.message });
+    }
+  });
 
   app.get("/api/hse/trainings", async (req, res) => {
     try {
@@ -10221,6 +10268,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
 
+  // Delete TNA Entry
+  app.delete("/api/hse/tna/entries/:id", async (req, res) => {
+    try {
+      const success = await storage.deleteTnaEntry(req.params.id);
+      if (!success) {
+        return res.status(404).json({ error: "Not found" });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting TNA entry:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   // ============================================
   // COMPETENCY MONITORING ROUTES
   // ============================================
@@ -10347,6 +10408,662 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
 
+  // ============================================
+  // NEW MONITORING KOMPETENSI ROUTES
+  // ============================================
+
+  app.get("/api/monitoring-kompetensi", async (req, res) => {
+    try {
+      const data = await storage.getKompetensiMonitoring();
+      res.json(data);
+    } catch (error) {
+      console.error("Error fetching monitoring kompetensi:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.post("/api/monitoring-kompetensi", async (req, res) => {
+    try {
+      const parsed = insertKompetensiMonitoringSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: parsed.error });
+      }
+      const data = await storage.createKompetensiMonitoring(parsed.data);
+      res.status(201).json(data);
+    } catch (error) {
+      console.error("Error creating monitoring kompetensi:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.patch("/api/monitoring-kompetensi/:id", async (req, res) => {
+    try {
+      const parsed = insertKompetensiMonitoringSchema.partial().safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: parsed.error });
+      }
+      const data = await storage.updateKompetensiMonitoring(req.params.id, parsed.data);
+      if (!data) return res.status(404).json({ error: "Not found" });
+      res.json(data);
+    } catch (error) {
+      console.error("Error updating monitoring kompetensi:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.delete("/api/monitoring-kompetensi/:id", async (req, res) => {
+    try {
+      console.log(`[DELETE] Request for ID: ${req.params.id}`);
+      const success = await storage.deleteKompetensiMonitoring(req.params.id);
+      console.log(`[DELETE] Result for ID ${req.params.id}: ${success}`);
+
+      if (!success) {
+        return res.status(404).json({ error: `Not found. ID: ${req.params.id}` });
+      }
+      res.json({ success: true, message: "Deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting monitoring kompetensi:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.get("/api/kompetensi/files/:filename", async (req, res) => {
+    const filename = req.params.filename;
+    // Basic sanitization
+    if (!filename || filename.includes('..') || filename.includes('/') || filename.includes('\\')) {
+      return res.status(400).send('Invalid filename');
+    }
+
+    const filePath = path.join(process.cwd(), 'uploads', 'kompetensi', filename);
+
+    if (fs.existsSync(filePath)) {
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', 'inline'); // Open in browser
+      res.sendFile(filePath);
+    } else {
+      res.status(404).send('File not found');
+    }
+  });
+
+  // ============================================
+  // DOCUMENT MASTERLIST ROUTES (HSE K3)
+  // ============================================
+
+  // Get all documents in masterlist
+  app.get("/api/document-masterlist", async (req, res) => {
+    try {
+      const data = await storage.getDocumentMasterlist();
+      res.json(data);
+    } catch (error) {
+      console.error("Error fetching document masterlist:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Get single document with versions
+  app.get("/api/document-masterlist/:id", async (req, res) => {
+    try {
+      const document = await storage.getDocumentById(req.params.id);
+      if (!document) {
+        return res.status(404).json({ error: "Document not found" });
+      }
+
+      const versions = await storage.getDocumentVersions(req.params.id);
+      res.json({ document, versions });
+    } catch (error) {
+      console.error("Error fetching document:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Create new document in masterlist
+  app.post("/api/document-masterlist", async (req, res) => {
+    const logPath = path.join(process.cwd(), 'server_debug.log');
+    try {
+      fs.appendFileSync(logPath, `[${new Date().toISOString()}] CREATE-DOC Attempt: ${JSON.stringify(req.body)}\n`);
+      console.log("[CREATE-DOC] Request body:", JSON.stringify(req.body, null, 2));
+      const data = await storage.createDocumentMasterlist(req.body);
+      fs.appendFileSync(logPath, `[${new Date().toISOString()}] CREATE-DOC Success\n`);
+      console.log("[CREATE-DOC] Document created successfully");
+      res.status(201).json(data);
+    } catch (error: any) {
+      fs.appendFileSync(logPath, `[${new Date().toISOString()}] CREATE-DOC Error: ${error.message}\nStack: ${error.stack}\n`);
+      console.error("[CREATE-DOC] Error creating document:");
+      console.dir(error, { depth: null });
+      if (error?.message?.includes('unique')) {
+        return res.status(400).json({ error: "Kode dokumen sudah ada" });
+      }
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Update document metadata
+  app.patch("/api/document-masterlist/:id", async (req, res) => {
+    try {
+      const data = await storage.updateDocumentMasterlist(req.params.id, req.body);
+      if (!data) return res.status(404).json({ error: "Not found" });
+      res.json(data);
+    } catch (error) {
+      console.error("Error updating document:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Delete document (and all versions)
+  app.delete("/api/document-masterlist/:id", async (req, res) => {
+    try {
+      const success = await storage.deleteDocumentMasterlist(req.params.id);
+      if (!success) return res.status(404).json({ error: "Not found" });
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting document:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // ============================================
+  // APPROVAL WORKFLOW ROUTES (Phase 2)
+  // ============================================
+
+  // Submit document for review
+  app.post("/api/document-masterlist/:id/submit", async (req, res) => {
+    try {
+      const { approvers, deadline, workflowName } = req.body;
+
+      if (!approvers || approvers.length === 0) {
+        return res.status(400).json({ error: "Minimal harus ada 1 approver" });
+      }
+
+      // Create approval request
+      const approval = await storage.submitDocumentForReview(req.params.id, {
+        approvers,
+        deadline,
+        workflowName: workflowName || "Standard Approval",
+        initiatedBy: req.body.initiatedBy,
+        initiatedByName: req.body.initiatedByName,
+      });
+
+      res.status(201).json(approval);
+    } catch (error: any) {
+      console.error("Error submitting document:", error);
+      res.status(500).json({ error: error?.message || "Internal server error" });
+    }
+  });
+
+  // Get approval inbox for current user
+  app.get("/api/approval-inbox", async (req, res) => {
+    try {
+      const userId = req.query.userId as string;
+      if (!userId) {
+        return res.status(400).json({ error: "User ID required" });
+      }
+
+      const inbox = await storage.getApprovalInbox(userId);
+
+      // Get pending change requests (visible to all admins/approvers for now)
+      const changeRequestsInfo = await storage.getPendingChangeRequests();
+
+      // Normalize and combine
+      const unifiedInbox = [
+        ...inbox.map(item => ({ ...item, type: "APPROVAL" })),
+        ...changeRequestsInfo.map(cr => ({
+          ...cr,
+          type: "CHANGE_REQUEST",
+          title: cr.documentTitle,
+          document_code: cr.documentCode,
+          step_name: "Change Request Review",
+          sender_name: cr.requestedByName,
+          received_at: cr.requestedAt,
+          // Map ID to create a unique key if needed, or keep original IDs
+          requestId: cr.id // Change Request ID
+        }))
+      ];
+
+      // Sort by received/requested date desc
+      unifiedInbox.sort((a: any, b: any) => {
+        const dateA = new Date(a.received_at || a.requestedAt).getTime();
+        const dateB = new Date(b.received_at || b.requestedAt).getTime();
+        return dateB - dateA;
+      });
+
+      res.json(unifiedInbox);
+    } catch (error) {
+      console.error("Error fetching approval inbox:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Approve or Reject
+  app.post("/api/approvals/:assigneeId/decide", async (req, res) => {
+    try {
+      const { decision, comments } = req.body;
+
+      if (!decision || !["APPROVED", "REJECTED"].includes(decision)) {
+        return res.status(400).json({ error: "Invalid decision" });
+      }
+
+      const result = await storage.processApprovalDecision(req.params.assigneeId, {
+        decision,
+        comments,
+      });
+
+      res.json(result);
+    } catch (error) {
+      console.error("Error processing approval:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Get all approvals for a document
+  app.get("/api/document-masterlist/:id/approvals", async (req, res) => {
+    try {
+      const approvals = await storage.getDocumentApprovals(req.params.id);
+      res.json(approvals);
+    } catch (error) {
+      console.error("Error fetching approvals:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // ============================================
+  // DISTRIBUTION ROUTES (Phase 3)
+  // ============================================
+
+  // Distribute document to recipients
+  app.post("/api/document-masterlist/:id/distribute", async (req, res) => {
+    try {
+      const { recipients, deadline, isMandatory } = req.body;
+
+      if (!recipients || recipients.length === 0) {
+        return res.status(400).json({ error: "Minimal harus ada 1 penerima" });
+      }
+
+      const result = await storage.distributeDocument(req.params.id, {
+        recipients,
+        deadline,
+        isMandatory: isMandatory !== false,
+        distributedBy: req.body.distributedBy,
+      });
+
+      res.status(201).json(result);
+    } catch (error: any) {
+      console.error("Error distributing document:", error);
+      res.status(500).json({ error: error?.message || "Internal server error" });
+    }
+  });
+
+  // Get documents distributed to current user
+  app.get("/api/my-documents", async (req, res) => {
+    try {
+      const userId = req.query.userId as string;
+      if (!userId) {
+        return res.status(400).json({ error: "User ID required" });
+      }
+
+      const docs = await storage.getMyDocuments(userId);
+      res.json(docs);
+    } catch (error) {
+      console.error("Error fetching my documents:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Acknowledge document receipt
+  app.post("/api/distributions/:id/acknowledge", async (req, res) => {
+    try {
+      const result = await storage.acknowledgeDocument(req.params.id, {
+        ipAddress: req.ip,
+        userAgent: req.get('user-agent'),
+      });
+
+      res.json(result);
+    } catch (error) {
+      console.error("Error acknowledging document:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Get distribution status for a document
+  app.get("/api/document-masterlist/:id/distributions", async (req, res) => {
+    try {
+      const distributions = await storage.getDocumentDistributions(req.params.id);
+      res.json(distributions);
+    } catch (error) {
+      console.error("Error fetching distributions:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Publish document (move from APPROVED to PUBLISHED)
+  app.post("/api/document-masterlist/:id/publish", async (req, res) => {
+    try {
+      const result = await storage.publishDocument(req.params.id);
+      res.json(result);
+    } catch (error) {
+      console.error("Error publishing document:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // ============================================
+  // EXTERNAL DOCUMENT REGISTER (Phase 5)
+  // ============================================
+
+  // Get all external documents
+  app.get("/api/external-documents", async (req, res) => {
+    try {
+      const data = await storage.getExternalDocuments();
+      res.json(data);
+    } catch (error) {
+      console.error("Error fetching external documents:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Create external document
+  app.post("/api/external-documents", async (req, res) => {
+    try {
+      const data = await storage.createExternalDocument(req.body);
+      res.status(201).json(data);
+    } catch (error) {
+      console.error("Error creating external document:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Update external document
+  app.patch("/api/external-documents/:id", async (req, res) => {
+    try {
+      const data = await storage.updateExternalDocument(req.params.id, req.body);
+      res.json(data);
+    } catch (error) {
+      console.error("Error updating external document:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Delete external document
+  app.delete("/api/external-documents/:id", async (req, res) => {
+    try {
+      await storage.deleteExternalDocument(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting external document:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // ============================================
+  // ESIGN ROUTES (Phase 5)
+  // ============================================
+
+  // Create eSign request
+  app.post("/api/document-masterlist/:id/esign", async (req, res) => {
+    try {
+      const result = await storage.createEsignRequest(req.params.id, req.body);
+      res.status(201).json(result);
+    } catch (error: any) {
+      console.error("Error creating esign request:", error);
+      res.status(500).json({ error: error?.message || "Internal server error" });
+    }
+  });
+
+  // Get eSign status for a document
+  app.get("/api/document-masterlist/:id/esign", async (req, res) => {
+    try {
+      const data = await storage.getEsignRequests(req.params.id);
+      res.json(data);
+    } catch (error) {
+      console.error("Error fetching esign requests:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // uSign webhook callback (for status updates)
+  app.post("/api/webhooks/usign", async (req, res) => {
+    try {
+      const { requestId, status, signedFileUrl, failedReason } = req.body;
+
+      if (!requestId || !status) {
+        return res.status(400).json({ error: "Missing requestId or status" });
+      }
+
+      const result = await storage.updateEsignStatus(requestId, {
+        status,
+        signedFileUrl,
+        failedReason,
+      });
+
+      res.json({ success: true, result });
+    } catch (error) {
+      console.error("Error processing uSign webhook:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Retry failed eSign request
+  app.post("/api/esign/:id/retry", async (req, res) => {
+    try {
+      const result = await storage.retryEsignRequest(req.params.id);
+      res.json(result);
+    } catch (error) {
+      console.error("Error retrying esign request:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // ============================================
+  // DOCUMENT VERSION ROUTES
+  // ============================================
+
+  // GET List Versions - Safe endpoint as requested
+  app.get("/api/document-masterlist/:id/versions", async (req, res) => {
+    try {
+      const documentId = req.params.id;
+      if (!documentId) {
+        return res.status(400).json({ error: "Invalid document ID" });
+      }
+
+      const currentDoc = await storage.getDocumentById(documentId);
+      if (!currentDoc) {
+        return res.status(404).json({ error: "Document not found" });
+      }
+
+      // Safe access to versions, returning empty array if undefined
+      // @ts-ignore
+      const versions = currentDoc.versions || [];
+
+      res.status(200).json({
+        document_id: documentId,
+        versions: versions
+      });
+    } catch (error) {
+      console.error("Error fetching document versions:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.post("/api/document-masterlist/:id/versions", (req, res, next) => {
+    upload.single('document')(req, res, (err) => {
+      if (err instanceof multer.MulterError) {
+        console.error("[UPLOAD] Multer error:", err);
+        return res.status(400).json({ error: `Upload error: ${err.message}` });
+      } else if (err) {
+        console.error("[UPLOAD] Unknown upload error:", err);
+        return res.status(500).json({ error: `Upload failed: ${err.message}` });
+      }
+      // Everything went fine
+      next();
+    });
+  }, async (req, res) => {
+    const logPath = path.join(process.cwd(), 'server_debug.log');
+    try {
+      fs.appendFileSync(logPath, `[${new Date().toISOString()}] UPLOAD Version Attempt for ${req.params.id}\n`);
+      console.log(`[UPLOAD] Starting upload for ID: ${req.params.id}`);
+      const documentId = req.params.id;
+      if (!documentId) {
+        console.error("[UPLOAD] Invalid document ID");
+        return res.status(400).json({ error: "Invalid document ID" });
+      }
+
+      if (!req.file) {
+        console.error("[UPLOAD] No file received");
+        fs.appendFileSync(logPath, `[${new Date().toISOString()}] UPLOAD Error: No file\n`);
+        return res.status(400).json({ error: "No file uploaded" });
+      }
+      console.log(`[UPLOAD] File received: ${req.file.originalname} (${req.file.size} bytes)`);
+      fs.appendFileSync(logPath, `[${new Date().toISOString()}] UPLOAD File Info: ${req.file.originalname}\n`);
+
+      const { uploadedBy, uploadedByName } = req.body;
+      const fileUrl = `/uploads/${req.file.filename}`;
+
+      // Get current document to determine next version
+      console.log("[UPLOAD] Fetching current document...");
+      const currentDoc = await storage.getDocumentById(documentId);
+      if (!currentDoc) {
+        console.error("[UPLOAD] Document not found in DB");
+        fs.appendFileSync(logPath, `[${new Date().toISOString()}] UPLOAD Error: Doc not found ${documentId}\n`);
+        return res.status(404).json({ error: "Document not found" });
+      }
+      console.log(`[UPLOAD] Current document found: ${currentDoc.documentCode} v${currentDoc.current_version}`);
+
+      // Calculate next version (simple revision increment for now)
+      const currentVersion = currentDoc.current_version || 1;
+      const currentRevision = currentDoc.current_revision || 0;
+      const nextRevision = currentRevision + 1;
+
+      console.log(`[UPLOAD] Creating new version v${currentVersion}.${nextRevision}`);
+
+      const newVersionPayload = {
+        documentId: documentId,
+        versionNumber: currentVersion,
+        revisionNumber: nextRevision,
+        filePath: fileUrl,
+        fileName: req.file.originalname,
+        fileSize: req.file.size,
+        mimeType: req.file.mimetype,
+        uploadedBy: uploadedBy || "SYSTEM",
+        uploadedByName: uploadedByName || "System",
+        changesNote: `Upload versi baru v${currentVersion}.${nextRevision}`,
+        createdAt: new Date()
+      };
+
+      const newVersion = await storage.addDocumentVersion(newVersionPayload);
+      console.log("[UPLOAD] Version created successfully");
+      fs.appendFileSync(logPath, `[${new Date().toISOString()}] UPLOAD Success\n`);
+
+      res.status(201).json({
+        ok: true,
+        version: newVersion
+      });
+    } catch (error: any) {
+      fs.appendFileSync(logPath, `[${new Date().toISOString()}] UPLOAD Error: ${error.message}\nStack: ${error.stack}\n`);
+      console.error("[UPLOAD] Error uploading document version:");
+      console.dir(error, { depth: null });
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // ============================================
+  // CHANGE REQUEST ROUTES
+  // ============================================
+
+  // Create Change Request
+  app.post("/api/document-masterlist/:id/change-request", async (req, res) => {
+    try {
+      const data = {
+        ...req.body,
+        documentId: req.params.id,
+      };
+      const result = await storage.createChangeRequest(data);
+      res.json(result);
+    } catch (error) {
+      console.error("Error creating change request:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Get Change Requests for a Document
+  app.get("/api/document-masterlist/:id/change-requests", async (req, res) => {
+    try {
+      const result = await storage.getChangeRequests(req.params.id);
+      res.json(result);
+    } catch (error) {
+      console.error("Error fetching change requests:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Update Change Request Status
+  app.patch("/api/change-requests/:id/status", async (req, res) => {
+    try {
+      const result = await storage.updateChangeRequestStatus(req.params.id, req.body);
+      res.json(result);
+    } catch (error) {
+      console.error("Error updating change request:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // ============================================
+  // RECORD CONTROL ROUTES
+  // ============================================
+
+  // Get Disposal Records
+  app.get("/api/disposal-records", async (req, res) => {
+    try {
+      const records = await storage.getDisposalRecords();
+      res.json(records);
+    } catch (error) {
+      console.error("Error fetching disposal records:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Create Disposal Record
+  app.post("/api/disposal-records", async (req, res) => {
+    try {
+      const record = await storage.createDisposalRecord(req.body);
+      res.status(201).json(record);
+    } catch (error) {
+      console.error("Error creating disposal record:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Get Retention Candidates
+  app.get("/api/documents/retention-candidates", async (req, res) => {
+    try {
+      const allDocs = await storage.getDocumentMasterlist();
+
+      const candidates = allDocs.filter((doc: any) => {
+        if (doc.lifecycle_status !== "PUBLISHED" && doc.lifecycle_status !== "OBSOLETE") return false;
+        if (!doc.publish_date || !doc.retention_period) return false;
+
+        const publishDate = new Date(doc.publish_date);
+        const retentionDate = new Date(publishDate);
+        retentionDate.setFullYear(retentionDate.getFullYear() + doc.retention_period);
+
+        // Return if retention date is in the past OR within next 30 days
+        const limitDate = new Date();
+        limitDate.setDate(limitDate.getDate() + 30);
+
+        return retentionDate <= limitDate;
+      }).map((doc: any) => {
+        const publishDate = new Date(doc.publish_date);
+        const retentionDate = new Date(publishDate);
+        retentionDate.setFullYear(retentionDate.getFullYear() + doc.retention_period);
+        return { ...doc, retentionDate };
+      });
+
+      res.json(candidates);
+    } catch (error) {
+      console.error("Error fetching retention candidates:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
+

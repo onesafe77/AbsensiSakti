@@ -24,7 +24,9 @@ import {
   Briefcase,
   HardHat,
   Settings,
-  Activity
+  Activity,
+  Clock,
+  User
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import oneTalentLogo from "@assets/onetalent-logo.png";
@@ -117,7 +119,18 @@ export const navigationGroups: NavGroup[] = [
                   { name: "Master Training", href: "/workspace/hse/tna/trainings", icon: FolderOpen, requiredPermissions: [Permission.MANAGE_EMPLOYEES] },
                 ]
               },
-              { name: "Dokumen", href: "/workspace/documents", icon: FolderOpen, requiredPermissions: [Permission.VIEW_DOCUMENTS] },
+              {
+                name: "Dokumen",
+                icon: FolderOpen,
+                children: [
+                  { name: "Masterlist", href: "/workspace/hse/k3/document-control", icon: FileText, requiredPermissions: [Permission.VIEW_DOCUMENTS] },
+                  { name: "Document Control", href: "/workspace/hse/k3/document-control?tab=control", icon: Shield, requiredPermissions: [Permission.VIEW_DOCUMENTS] },
+                  { name: "Approval Inbox", href: "/workspace/hse/k3/document-control?tab=inbox", icon: Clock, requiredPermissions: [Permission.VIEW_DOCUMENTS] },
+                  { name: "Dokumen Saya", href: "/workspace/hse/k3/document-control?tab=distribution", icon: User, requiredPermissions: [Permission.VIEW_DOCUMENTS] },
+                  { name: "External Register", href: "/workspace/hse/k3/document-control?tab=external", icon: FolderOpen, requiredPermissions: [Permission.VIEW_DOCUMENTS] },
+                  { name: "Record Control", href: "/workspace/hse/k3/document-control?tab=records", icon: ClipboardList, requiredPermissions: [Permission.VIEW_DOCUMENTS] },
+                ]
+              },
             ]
           },
           {
@@ -140,7 +153,26 @@ interface SidebarProps {
 
 export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const [location] = useLocation();
+  const [search, setSearch] = useState(window.location.search);
   const { hasAnyPermission } = useAuth();
+
+  // Sync search state on navigation
+  useEffect(() => {
+    const handlePopState = () => setSearch(window.location.search);
+    window.addEventListener("popstate", handlePopState);
+
+    // Monkey-patch pushState to catch wouter's navigation
+    const originalPushState = history.pushState;
+    history.pushState = function () {
+      originalPushState.apply(this, arguments as any);
+      setSearch(window.location.search);
+    };
+
+    return () => {
+      window.removeEventListener("popstate", handlePopState);
+      history.pushState = originalPushState;
+    };
+  }, []);
 
   const [expandedMenus, setExpandedMenus] = useState<string[]>([]);
 
@@ -198,8 +230,31 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
 
     const hasChildren = item.children && item.children.length > 0;
     const isExpanded = expandedMenus.includes(item.name);
-    // Active if matches href exactly or is a parent of active child
-    const isActiveLink = item.href && (location === item.href || location.startsWith(item.href + '/'));
+    // Active if matches href exactly (including query) or is a parent of active child
+    const currentFullHref = location + search;
+    const isActiveLink = item.href && (() => {
+      // 1. Exact match of full URL (path + search)
+      if (currentFullHref === item.href) return true;
+
+      // 2. If item.href has query params, STRICTLY check if they differ
+      if (item.href.includes('?')) {
+        return currentFullHref === item.href;
+      }
+
+      // 3. If item.href has NO query params (e.g. Masterlist), 
+      // ONLY match if the current location has NO query params (or strict base match)
+      // This prevents "Masterlist" from being active when "Document Control" (?tab=control) is active
+      if (!item.href.includes('?') && location === item.href) {
+        // If current location has search params, this 'base' item should NOT be active 
+        // unless it's a parent, but here we are leaf nodes.
+        // UNLESS the item logic specifically allows it. 
+        // For Masterlist logic: /workspace/.../document-control should NOT match /workspace/.../document-control?tab=control
+        if (search && search !== '?tab=masterlist') return false;
+        return true;
+      }
+
+      return false;
+    })();
     const IconComponent = item.icon;
 
     // Permissions check for children (hide parent if no visible children)

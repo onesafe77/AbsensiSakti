@@ -1662,3 +1662,514 @@ export type SidakWorkshopRecord = typeof sidakWorkshopRecords.$inferSelect;
 export type InsertSidakWorkshopRecord = z.infer<typeof insertSidakWorkshopRecordSchema>;
 export type SidakWorkshopObserver = typeof sidakWorkshopObservers.$inferSelect;
 export type InsertSidakWorkshopObserver = z.infer<typeof insertSidakWorkshopObserverSchema>;
+
+// ============================================
+// MONITORING KOMPETENSI & SERTIFIKASI
+// ============================================
+
+export const kompetensiMonitoring = pgTable("kompetensi_sertifikat_monitoring", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  employeeId: varchar("employee_id").references(() => employees.id),
+  // De-normalized fields for easier querying/export even if employee deleted
+  employeeName: text("employee_name"),
+  department: text("department"),
+  position: text("position"),
+
+  trainingName: text("nama_kompetensi").notNull(),
+  trainingCategory: text("kategori").notNull(),
+
+  certificateNumber: text("no_sertifikat"),
+  issuer: text("lembaga"),
+
+  issueDate: text("tgl_terbit").notNull(), // YYYY-MM-DD
+  validityYears: integer("masa_berlaku_tahun").notNull(), // 1-7
+  expiryDate: text("tgl_expired").notNull(), // Calculated, YYYY-MM-DD
+
+  monitoringStatus: text("monitoring_harian_status").default("Aktif"), // Aktif, Warning, Expired
+
+  // NEW FIELDS
+  appointmentNumber: text("no_surat_penunjukan"),
+  evidencePdfPath: text("bukti_penunjukan_pdf"), // Path to file
+
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+  createdBy: varchar("created_by"), // NIK
+}, (table) => [
+  index("IDX_kompetensi_expiry").on(table.expiryDate),
+  index("IDX_kompetensi_employee").on(table.employeeId),
+]);
+
+export const insertKompetensiMonitoringSchema = createInsertSchema(kompetensiMonitoring).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type KompetensiMonitoring = typeof kompetensiMonitoring.$inferSelect;
+export type InsertKompetensiMonitoring = z.infer<typeof insertKompetensiMonitoringSchema>;
+
+// ============================================
+// DOCUMENT CONTROL SYSTEM (HSE K3)
+// Full-featured document management with versioning, approval workflows, and distribution
+// ============================================
+
+// Document lifecycle statuses
+export const documentLifecycleStatuses = [
+  "DRAFT",
+  "IN_REVIEW",
+  "APPROVED",
+  "ESIGN_PENDING",
+  "SIGNED",
+  "PUBLISHED",
+  "ARCHIVED",
+  "OBSOLETE"
+] as const;
+export type DocumentLifecycleStatus = typeof documentLifecycleStatuses[number];
+
+// Document control types
+export const documentControlTypes = ["CONTROLLED", "UNCONTROLLED"] as const;
+export type DocumentControlType = typeof documentControlTypes[number];
+
+// Document Masterlist - Core document metadata
+export const documentMasterlist = pgTable("document_masterlist", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  documentCode: varchar("document_code").notNull().unique(), // e.g., "HSE-SOP-001"
+  title: text("title").notNull(),
+  category: text("category").notNull(), // One of documentCategories
+  department: text("department").notNull(),
+
+  // Current version info (denormalized for quick access)
+  currentVersion: integer("current_version").notNull().default(1),
+  currentRevision: integer("current_revision").notNull().default(0),
+
+  // Ownership
+  ownerId: varchar("owner_id").notNull().references(() => employees.id),
+  ownerName: text("owner_name").notNull(),
+
+  // Status
+  lifecycleStatus: text("lifecycle_status").notNull().default("DRAFT"),
+  controlType: text("control_type").notNull().default("CONTROLLED"),
+
+  // Dates
+  effectiveDate: text("effective_date"), // YYYY-MM-DD
+  nextReviewDate: text("next_review_date"), // YYYY-MM-DD
+  expiryDate: text("expiry_date"), // YYYY-MM-DD (if applicable)
+
+  // Approval config
+  signRequired: boolean("sign_required").notNull().default(true),
+
+  // Metadata
+  description: text("description"),
+  keywords: text("keywords").array(),
+
+  createdBy: varchar("created_by").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("IDX_doc_masterlist_code").on(table.documentCode),
+  index("IDX_doc_masterlist_category").on(table.category),
+  index("IDX_doc_masterlist_department").on(table.department),
+  index("IDX_doc_masterlist_status").on(table.lifecycleStatus),
+  index("IDX_doc_masterlist_owner").on(table.ownerId),
+]);
+
+// Document Versions - Revision history
+export const documentVersions = pgTable("document_versions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  documentId: varchar("document_id").notNull().references(() => documentMasterlist.id, { onDelete: "cascade" }),
+
+  versionNumber: integer("version_number").notNull(),
+  revisionNumber: integer("revision_number").notNull().default(0),
+
+  // File info
+  fileName: text("file_name").notNull(),
+  filePath: text("file_path").notNull(),
+  fileSize: integer("file_size"),
+  mimeType: text("mime_type").default("application/pdf"),
+
+  // Signed file (if applicable)
+  signedFilePath: text("signed_file_path"),
+  signedAt: timestamp("signed_at"),
+
+  // Version status
+  status: text("status").notNull().default("DRAFT"), // DRAFT, PENDING_APPROVAL, APPROVED, SIGNED, ACTIVE, SUPERSEDED
+
+  // Change tracking
+  changesNote: text("changes_note"),
+
+  uploadedBy: varchar("uploaded_by").notNull(),
+  uploadedByName: text("uploaded_by_name").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("IDX_doc_versions_document").on(table.documentId),
+  index("IDX_doc_versions_status").on(table.status),
+]);
+
+// Approval Workflow Definition
+export const documentApprovals = pgTable("document_approvals", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  documentId: varchar("document_id").notNull().references(() => documentMasterlist.id, { onDelete: "cascade" }),
+  versionId: varchar("version_id").notNull().references(() => documentVersions.id, { onDelete: "cascade" }),
+
+  // Workflow config
+  workflowName: text("workflow_name"),
+  totalSteps: integer("total_steps").notNull().default(1),
+  currentStep: integer("current_step").notNull().default(1),
+
+  // Overall status
+  status: text("status").notNull().default("PENDING"), // PENDING, IN_PROGRESS, APPROVED, REJECTED, CANCELLED
+
+  initiatedBy: varchar("initiated_by").notNull(),
+  initiatedByName: text("initiated_by_name").notNull(),
+  initiatedAt: timestamp("initiated_at").defaultNow(),
+  completedAt: timestamp("completed_at"),
+
+  // Result
+  finalDecision: text("final_decision"), // APPROVED, REJECTED
+  finalNotes: text("final_notes"),
+}, (table) => [
+  index("IDX_doc_approvals_document").on(table.documentId),
+  index("IDX_doc_approvals_status").on(table.status),
+]);
+
+// Approval Steps
+export const documentApprovalSteps = pgTable("document_approval_steps", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  approvalId: varchar("approval_id").notNull().references(() => documentApprovals.id, { onDelete: "cascade" }),
+
+  stepNumber: integer("step_number").notNull(),
+  stepName: text("step_name"),
+
+  // Mode: SERIAL (one by one) or PARALLEL (all at once)
+  mode: text("mode").notNull().default("SERIAL"),
+
+  // Quorum: minimum approvals needed (for parallel mode)
+  quorumRequired: integer("quorum_required").notNull().default(1),
+  quorumAchieved: integer("quorum_achieved").notNull().default(0),
+
+  status: text("status").notNull().default("PENDING"), // PENDING, IN_PROGRESS, COMPLETED, SKIPPED
+
+  createdAt: timestamp("created_at").defaultNow(),
+  completedAt: timestamp("completed_at"),
+}, (table) => [
+  index("IDX_doc_approval_steps_approval").on(table.approvalId),
+]);
+
+// Step Assignees (who needs to approve)
+export const documentStepAssignees = pgTable("document_step_assignees", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  stepId: varchar("step_id").notNull().references(() => documentApprovalSteps.id, { onDelete: "cascade" }),
+
+  // Assignee (from employees)
+  assigneeId: varchar("assignee_id").notNull().references(() => employees.id),
+  assigneeName: text("assignee_name").notNull(),
+  assigneePosition: text("assignee_position"),
+
+  // Action taken
+  decision: text("decision"), // APPROVED, REJECTED, null = pending
+  comments: text("comments"),
+  decidedAt: timestamp("decided_at"),
+
+  // Notification tracking
+  notifiedAt: timestamp("notified_at"),
+  deadline: timestamp("deadline"),
+
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("IDX_doc_step_assignees_step").on(table.stepId),
+  index("IDX_doc_step_assignees_assignee").on(table.assigneeId),
+]);
+
+// Document Distributions (Read & Understood)
+export const documentDistributions = pgTable("document_distributions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  documentId: varchar("document_id").notNull().references(() => documentMasterlist.id, { onDelete: "cascade" }),
+  versionId: varchar("version_id").notNull().references(() => documentVersions.id),
+
+  // Recipient
+  recipientId: varchar("recipient_id").notNull().references(() => employees.id),
+  recipientName: text("recipient_name").notNull(),
+  recipientDepartment: text("recipient_department"),
+
+  // Distribution config
+  isMandatory: boolean("is_mandatory").notNull().default(true),
+  deadline: text("deadline"), // YYYY-MM-DD
+
+  // Read status
+  isRead: boolean("is_read").notNull().default(false),
+  readAt: timestamp("read_at"),
+  acknowledgedAt: timestamp("acknowledged_at"), // "I understand" clicked
+
+  // Tracking
+  ipAddress: text("ip_address"),
+  userAgent: text("user_agent"),
+
+  distributedBy: varchar("distributed_by").notNull(),
+  distributedAt: timestamp("distributed_at").defaultNow(),
+}, (table) => [
+  index("IDX_doc_distributions_document").on(table.documentId),
+  index("IDX_doc_distributions_recipient").on(table.recipientId),
+  index("IDX_doc_distributions_is_read").on(table.isRead),
+]);
+
+// Document Export Logs (Uncontrolled Copy tracking)
+export const documentExportLogs = pgTable("document_export_logs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  documentId: varchar("document_id").notNull().references(() => documentMasterlist.id),
+  versionId: varchar("version_id").notNull().references(() => documentVersions.id),
+
+  action: text("action").notNull(), // DOWNLOAD, PRINT, VIEW
+
+  exportedBy: varchar("exported_by").notNull().references(() => employees.id),
+  exportedByName: text("exported_by_name").notNull(),
+
+  watermarkText: text("watermark_text"), // The watermark applied
+
+  ipAddress: text("ip_address"),
+  userAgent: text("user_agent"),
+
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("IDX_doc_export_logs_document").on(table.documentId),
+  index("IDX_doc_export_logs_exported_by").on(table.exportedBy),
+]);
+
+// Document Audit Trail
+export const documentAuditLogs = pgTable("document_audit_logs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  documentId: varchar("document_id").notNull().references(() => documentMasterlist.id),
+
+  action: text("action").notNull(), // CREATED, UPDATED, VERSION_UPLOADED, SUBMITTED, APPROVED, REJECTED, SIGNED, PUBLISHED, DISTRIBUTED, ARCHIVED
+  details: jsonb("details"), // Additional action details
+
+  performedBy: varchar("performed_by").notNull(),
+  performedByName: text("performed_by_name").notNull(),
+
+  ipAddress: text("ip_address"),
+
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("IDX_doc_audit_logs_document").on(table.documentId),
+  index("IDX_doc_audit_logs_created_at").on(table.createdAt),
+]);
+
+// eSign Requests (uSign Integration)
+export const esignRequests = pgTable("esign_requests", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  documentId: varchar("document_id").notNull().references(() => documentMasterlist.id, { onDelete: "cascade" }),
+  versionId: varchar("version_id").notNull().references(() => documentVersions.id),
+  approvalId: varchar("approval_id").references(() => documentApprovals.id),
+
+  // uSign integration
+  provider: text("provider").notNull().default("uSign"), // uSign, DocuSign, etc.
+  externalRequestId: text("external_request_id"), // ID from uSign
+  status: text("status").notNull().default("PENDING"), // PENDING, PROCESSING, SIGNED, FAILED, CANCELLED
+
+  // Signer info
+  signerId: varchar("signer_id").notNull().references(() => employees.id),
+  signerName: text("signer_name").notNull(),
+  signerPosition: text("signer_position"),
+
+  // Tracking
+  requestedAt: timestamp("requested_at").defaultNow(),
+  signedAt: timestamp("signed_at"),
+  signedFilePath: text("signed_file_path"),
+  failedReason: text("failed_reason"),
+
+  // Audit
+  retryCount: integer("retry_count").notNull().default(0),
+  lastRetryAt: timestamp("last_retry_at"),
+
+  createdBy: varchar("created_by").notNull(),
+}, (table) => [
+  index("IDX_esign_requests_document").on(table.documentId),
+  index("IDX_esign_requests_status").on(table.status),
+  index("IDX_esign_requests_signer").on(table.signerId),
+]);
+
+// External Document Register
+export const externalDocuments = pgTable("external_documents", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+
+  // Document info
+  documentCode: varchar("document_code").notNull(),
+  title: text("title").notNull(),
+  source: text("source").notNull(), // e.g., "ISO", "Government", "Client"
+  issuedBy: text("issued_by"),
+
+  // Version
+  versionNumber: text("version_number"),
+  issueDate: text("issue_date"), // YYYY-MM-DD
+  nextReviewDate: text("next_review_date"), // YYYY-MM-DD
+
+  // File/Link
+  fileType: text("file_type").notNull().default("LINK"), // LINK, FILE
+  fileUrl: text("file_url"), // URL or file path
+  fileName: text("file_name"),
+
+  // Status
+  status: text("status").notNull().default("ACTIVE"), // ACTIVE, OBSOLETE, SUPERSEDED
+
+  // Distribution
+  distributionRequired: boolean("distribution_required").notNull().default(false),
+
+  // Owner
+  ownerId: varchar("owner_id").references(() => employees.id),
+  ownerName: text("owner_name"),
+  department: text("department"),
+
+  notes: text("notes"),
+
+  createdBy: varchar("created_by").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("IDX_external_docs_code").on(table.documentCode),
+  index("IDX_external_docs_source").on(table.source),
+  index("IDX_external_docs_status").on(table.status),
+]);
+
+// Change Requests (for revising published documents)
+export const changeRequests = pgTable("change_requests", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  documentId: varchar("document_id").notNull().references(() => documentMasterlist.id, { onDelete: "cascade" }),
+
+  // Request info
+  requestType: text("request_type").notNull().default("REVISION"), // REVISION, CORRECTION, UPDATE
+  priority: text("priority").notNull().default("NORMAL"), // LOW, NORMAL, HIGH, URGENT
+
+  // Reason for change
+  reason: text("reason").notNull(),
+  description: text("description"),
+
+  // Requested changes
+  proposedChanges: text("proposed_changes"),
+  affectedSections: text("affected_sections"),
+
+  // Status
+  status: text("status").notNull().default("PENDING"), // PENDING, APPROVED, REJECTED, IN_PROGRESS, COMPLETED, CANCELLED
+
+  // Workflow
+  reviewedBy: varchar("reviewed_by").references(() => employees.id),
+  reviewedByName: text("reviewed_by_name"),
+  reviewedAt: timestamp("reviewed_at"),
+  reviewComments: text("review_comments"),
+
+  // Completion
+  completedAt: timestamp("completed_at"),
+  newVersionId: varchar("new_version_id").references(() => documentVersions.id),
+
+  // Tracking
+  requestedBy: varchar("requested_by").notNull().references(() => employees.id),
+  requestedByName: text("requested_by_name").notNull(),
+  requestedAt: timestamp("requested_at").defaultNow(),
+}, (table) => [
+  index("IDX_change_requests_document").on(table.documentId),
+  index("IDX_change_requests_status").on(table.status),
+  index("IDX_change_requests_requested_by").on(table.requestedBy),
+]);
+
+// Disposal Records
+export const documentDisposalRecords = pgTable("document_disposal_records", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  documentId: varchar("document_id").notNull(),
+  documentCode: text("document_code"),
+  documentTitle: text("document_title"),
+
+  disposedBy: varchar("disposed_by").references(() => employees.id),
+  disposedByName: text("disposed_by_name"),
+  disposedAt: timestamp("disposed_at").defaultNow(),
+
+  method: text("method").notNull().default("ELECTRONIC_DELETION"),
+  reason: text("reason"),
+  notes: text("notes"),
+});
+
+// ============================================
+// INSERT SCHEMAS & TYPES - DOCUMENT CONTROL
+// ============================================
+
+export const insertDocumentMasterlistSchema = createInsertSchema(documentMasterlist).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertDocumentVersionSchema = createInsertSchema(documentVersions).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertDocumentApprovalSchema = createInsertSchema(documentApprovals).omit({
+  id: true,
+  initiatedAt: true,
+  completedAt: true,
+});
+
+export const insertDocumentApprovalStepSchema = createInsertSchema(documentApprovalSteps).omit({
+  id: true,
+  createdAt: true,
+  completedAt: true,
+});
+
+export const insertDocumentStepAssigneeSchema = createInsertSchema(documentStepAssignees).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertDocumentDistributionSchema = createInsertSchema(documentDistributions).omit({
+  id: true,
+  distributedAt: true,
+});
+
+export const insertDocumentExportLogSchema = createInsertSchema(documentExportLogs).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertDocumentAuditLogSchema = createInsertSchema(documentAuditLogs).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertChangeRequestSchema = createInsertSchema(changeRequests).omit({
+  id: true,
+  requestedAt: true,
+  completedAt: true,
+});
+
+export const insertDocumentDisposalRecordSchema = createInsertSchema(documentDisposalRecords).omit({
+  id: true,
+  disposedAt: true,
+});
+
+// Types
+export type DocumentMasterlist = typeof documentMasterlist.$inferSelect;
+export type InsertDocumentMasterlist = z.infer<typeof insertDocumentMasterlistSchema>;
+
+export type DocumentVersion = typeof documentVersions.$inferSelect;
+export type InsertDocumentVersion = z.infer<typeof insertDocumentVersionSchema>;
+
+export type DocumentApproval = typeof documentApprovals.$inferSelect;
+export type InsertDocumentApproval = z.infer<typeof insertDocumentApprovalSchema>;
+
+export type DocumentApprovalStep = typeof documentApprovalSteps.$inferSelect;
+export type InsertDocumentApprovalStep = z.infer<typeof insertDocumentApprovalStepSchema>;
+
+export type DocumentStepAssignee = typeof documentStepAssignees.$inferSelect;
+export type InsertDocumentStepAssignee = z.infer<typeof insertDocumentStepAssigneeSchema>;
+
+export type DocumentDistribution = typeof documentDistributions.$inferSelect;
+export type InsertDocumentDistribution = z.infer<typeof insertDocumentDistributionSchema>;
+
+export type DocumentExportLog = typeof documentExportLogs.$inferSelect;
+export type InsertDocumentExportLog = z.infer<typeof insertDocumentExportLogSchema>;
+
+export type DocumentAuditLog = typeof documentAuditLogs.$inferSelect;
+export type InsertDocumentAuditLog = z.infer<typeof insertDocumentAuditLogSchema>;
+
+export type ChangeRequest = typeof changeRequests.$inferSelect;
+export type InsertChangeRequest = z.infer<typeof insertChangeRequestSchema>;
+
+export type DocumentDisposalRecord = typeof documentDisposalRecords.$inferSelect;
+export type InsertDocumentDisposalRecord = z.infer<typeof insertDocumentDisposalRecordSchema>;

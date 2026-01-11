@@ -39,7 +39,7 @@ export async function generateSidakJarakPdf(data: SidakJarakData): Promise<jsPDF
         pdf.setFont('helvetica', 'bold');
         pdf.setFontSize(10);
         pdf.setTextColor(0, 0, 0);
-        pdf.text('PT BORNEO INDOBARA', margin, yPosition + 6);
+        pdf.text('PT. Goden Energi Cemerlang Lesrari', margin, yPosition + 6);
     }
 
     // Document Code (Top Right)

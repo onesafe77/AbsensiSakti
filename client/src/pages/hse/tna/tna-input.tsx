@@ -629,9 +629,33 @@ export default function TnaInput() {
                                                                 </Button>
                                                             </div>
                                                         ) : (
-                                                            <Button size="icon" variant="ghost" className="h-7 w-7 text-gray-400 hover:text-blue-600 hover:bg-blue-50" onClick={() => startEditing(row)}>
-                                                                <Edit className="w-4 h-4" />
-                                                            </Button>
+                                                            <div className="flex items-center justify-center gap-1">
+                                                                <Button size="icon" variant="ghost" className="h-7 w-7 text-gray-400 hover:text-blue-600 hover:bg-blue-50" onClick={() => startEditing(row)}>
+                                                                    <Edit className="w-4 h-4" />
+                                                                </Button>
+                                                                <Button size="icon" variant="ghost" className="h-7 w-7 text-gray-400 hover:text-red-600 hover:bg-red-50" onClick={() => {
+                                                                    console.log("DEBUG: Row Data:", row);
+                                                                    if (!row || !row.id) {
+                                                                        alert("Error: Cannot delete. ID is missing.");
+                                                                        return;
+                                                                    }
+                                                                    if (window.confirm(`Are you sure you want to delete entry ID: ${row.id}?`)) {
+                                                                        apiRequest("/api/hse/tna/delete-entry", "POST", { id: row.id }).then(() => {
+                                                                            toast({ title: "Deleted", description: "Entry deleted successfully" });
+                                                                            queryClient.invalidateQueries({ queryKey: ["/api/hse/tna/all-raw-entries"] });
+                                                                            queryClient.invalidateQueries({ queryKey: ["/api/hse/tna-dashboard/all-entries"] });
+                                                                            if (selectedEmployee) {
+                                                                                queryClient.invalidateQueries({ queryKey: ["/api/hse/tna", selectedEmployee.id, period] });
+                                                                            }
+                                                                        }).catch(err => {
+                                                                            console.error("Delete Error for ID " + row.id + ":", err);
+                                                                            toast({ title: "Error", description: err.message || "Failed to delete entry", variant: "destructive" });
+                                                                        });
+                                                                    }
+                                                                }}>
+                                                                    <Trash2 className="w-4 h-4" />
+                                                                </Button>
+                                                            </div>
                                                         )}
                                                     </td>
                                                 </tr>
