@@ -113,7 +113,8 @@ export default function CompetencyDashboard() {
 
     // Fetch Lists
     const { data: trainings = [] } = useQuery<any[]>({ queryKey: ["/api/hse/trainings"] });
-    const { data: employees = [] } = useQuery<any[]>({ queryKey: ["/api/employees"] });
+    const { data: employeesResponse } = useQuery<{ data: any[], total: number }>({ queryKey: ["/api/employees?per_page=1000"] });
+    const employees = employeesResponse?.data || [];
 
     // Fetch all TNA entries (using same endpoint as dashboard, we flatten it)
     const { data: allSummaries = [], isLoading } = useQuery<any[]>({

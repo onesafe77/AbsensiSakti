@@ -26,7 +26,12 @@ import {
   Settings,
   Activity,
   Clock,
-  User
+  User,
+  Bot,
+  MessageSquare,
+  Database,
+  Bell,
+  Car
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import oneTalentLogo from "@assets/onetalent-logo.png";
@@ -56,6 +61,14 @@ export const navigationGroups: NavGroup[] = [
     items: [
       { name: "Berita", href: "/workspace/news-feed", icon: Newspaper },
       { name: "Dashboard", href: "/workspace/dashboard", icon: BarChart3, requiredPermissions: [Permission.VIEW_DASHBOARD] },
+      {
+        name: "Mystic AI",
+        icon: Bot,
+        children: [
+          { name: "Chat Regulasi", href: "/workspace/si-asef", icon: MessageSquare },
+          { name: "Knowledge Base", href: "/workspace/si-asef/admin", icon: Database, requiredPermissions: [Permission.MANAGE_EMPLOYEES] }
+        ]
+      },
     ]
   },
   {
@@ -65,7 +78,8 @@ export const navigationGroups: NavGroup[] = [
         name: "HR",
         icon: Users,
         children: [
-          { name: "Data Karyawan", href: "/workspace/employees", icon: Users, requiredPermissions: [Permission.VIEW_EMPLOYEES] },
+          { name: "Dashboard Karyawan", href: "/workspace/employees/dashboard", icon: BarChart3, requiredPermissions: [Permission.VIEW_EMPLOYEES] },
+          { name: "List Karyawan", href: "/workspace/employees/list", icon: Users, requiredPermissions: [Permission.VIEW_EMPLOYEES] },
           { name: "Roster", href: "/workspace/roster", icon: Calendar, requiredPermissions: [Permission.VIEW_ROSTER] },
           { name: "Management Cuti", href: "/workspace/leave-roster-monitoring", icon: Monitor, requiredPermissions: [Permission.VIEW_LEAVE, Permission.MANAGE_LEAVE] },
           { name: "Generate QR", href: "/workspace/qr-generator", icon: QrCode, requiredPermissions: [Permission.VIEW_QR, Permission.GENERATE_QR] },
@@ -140,6 +154,18 @@ export const navigationGroups: NavGroup[] = [
               { name: "Coming Soon", href: "#", icon: AlertTriangle },
             ]
           }
+        ]
+      }
+    ]
+  },
+  {
+    title: "Other",
+    items: [
+      {
+        name: "Push Notifikasi",
+        icon: Bell,
+        children: [
+          { name: "SIMPER", href: "/workspace/push-notification/simper", icon: Car, requiredPermissions: [Permission.MANAGE_EMPLOYEES] },
         ]
       }
     ]

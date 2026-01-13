@@ -9,7 +9,9 @@ import { Permission } from "@shared/rbac";
 import Dashboard from "@/pages/dashboard";
 import QRGenerator from "@/pages/qr-generator";
 import Scanner from "@/pages/scanner";
-import Employees from "@/pages/employees";
+import EmployeesDashboard from "@/pages/employees-dashboard";
+import EmployeesList from "@/pages/employees-list";
+import EmployeeDetail from "@/pages/employee-detail";
 import Roster from "@/pages/roster";
 import Leave from "@/pages/leave";
 import LeaveRosterMonitoring from "@/pages/leave-roster-monitoring";
@@ -52,8 +54,7 @@ import DashboardOverspeed from "@/pages/dashboard-overspeed";
 import DashboardJarak from "@/pages/dashboard-jarak";
 import DashboardStatistics from "@/pages/dashboard-statistics";
 
-import DashboardFatigueRedirect from "@/pages/dashboard-fatigue-redirect";
-
+import FmsFatigueValidationDashboard from "@/pages/hse/fatigue/dashboard-validation";
 
 import SafetyPatrol from "@/pages/safety-patrol";
 import TrainingMaster from "@/pages/hse/tna/training-master";
@@ -64,6 +65,8 @@ import CompetencyDashboard from "@/pages/hse/tna/competency-dashboard";
 import MonitoringKompetensi from "@/pages/hse/tna/monitoring-kompetensi";
 import DocumentControl from "@/pages/hse/k3/document-control";
 import DocumentDetail from "@/pages/hse/k3/document-detail";
+import SiAsefChatPage from "@/pages/si-asef-chat";
+import SiAsefAdminPage from "@/pages/si-asef-admin";
 import Announcements from "@/pages/announcements";
 import News from "@/pages/news";
 import NewsFeed from "@/pages/news-feed";
@@ -71,6 +74,7 @@ import Documents from "@/pages/documents";
 import NotFound from "@/pages/not-found";
 import { NotificationPrompt } from "@/components/NotificationPrompt";
 import { WorkspaceHome } from "@/components/WorkspaceHome";
+import PushNotificationSimper from "@/pages/push-notification-simper";
 
 
 const workspaceRoutes = [
@@ -78,7 +82,8 @@ const workspaceRoutes = [
   { path: "/workspace/dashboard", component: Dashboard, title: "Dashboard Karyawan PT.GECL" },
   { path: "/workspace/qr-generator", component: QRGenerator, title: "Generate QR Code" },
   { path: "/workspace/scanner", component: Scanner, title: "Scan QR Code" },
-  { path: "/workspace/employees", component: Employees, title: "Data Karyawan" },
+  { path: "/workspace/employees/dashboard", component: EmployeesDashboard, title: "Dashboard Karyawan" },
+  { path: "/workspace/employees/list", component: EmployeesList, title: "List Karyawan" },
   { path: "/workspace/roster", component: Roster, title: "Roster Kerja" },
   { path: "/workspace/leave", component: Leave, title: "Manajemen Cuti" },
   { path: "/workspace/leave-roster-monitoring", component: LeaveRosterMonitoring, title: "Monitoring Roster Cuti" },
@@ -129,6 +134,7 @@ const workspaceRoutes = [
   { path: "/workspace/driver-view", component: DriverView, title: "Driver View - Data Karyawan" },
   { path: "/workspace/mobile-driver", component: MobileDriverView, title: "Driver Mobile View" },
   { path: "/workspace/employee-personal", component: EmployeePersonalData, title: "Data Pribadi Karyawan" },
+  { path: "/workspace/push-notification/simper", component: PushNotificationSimper, title: "Push Notifikasi SIMPER" },
 ];
 
 export function Workspace() {
@@ -138,7 +144,13 @@ export function Workspace() {
   const getCurrentTitle = () => {
     const currentPath = window.location.pathname;
     const route = workspaceRoutes.find(r => r.path === currentPath);
-    return route?.title || "AttendanceQR Workspace";
+    if (route) return route.title;
+
+    // Dynamic matching for detail pages
+    if (currentPath.includes('/hse/k3/document/')) return "Detail Dokumen";
+    if (currentPath.includes('/employees/')) return "Detail Karyawan";
+
+    return "AttendanceQR Workspace";
   };
 
   // Show loading screen when entering workspace
@@ -168,7 +180,7 @@ export function Workspace() {
 
       {/* Workspace Content - selalu render tapi invisible saat loading */}
       <div
-        className={`h-screen flex bg-gray-50 dark:bg-gray-900 transition-opacity duration-300 ${isLoading ? 'opacity-0 pointer-events-none' : 'opacity-100 pointer-events-auto'
+        className={`h-screen flex bg-gray-50 dark:bg-gray-900 transition-opacity duration-300 ${isLoading ? 'opacity-100 pointer-events-none' : 'opacity-100 pointer-events-auto'
           }`}
       >
         <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
@@ -193,7 +205,9 @@ export function Workspace() {
                   <Scanner />
                 </PermissionGuard>
               </Route>
-              <Route path="/workspace/employees" component={Employees} />
+              <Route path="/workspace/employees/dashboard" component={EmployeesDashboard} />
+              <Route path="/workspace/employees/list" component={EmployeesList} />
+              <Route path="/workspace/employees/:id" component={EmployeeDetail} />
               <Route path="/workspace/roster" component={Roster} />
               <Route path="/workspace/leave" component={Leave} />
               <Route path="/workspace/leave-roster-monitoring" component={LeaveRosterMonitoring} />
@@ -268,7 +282,7 @@ export function Workspace() {
               <Route path="/workspace/employee-personal" component={EmployeePersonalData} />
               <Route path="/workspace/hse/overspeed" component={DashboardOverspeed} />
               <Route path="/workspace/hse/jarak" component={DashboardJarak} />
-              <Route path="/workspace/hse/fatigue-validation" component={DashboardFatigueRedirect} />
+              <Route path="/workspace/hse/fatigue-validation" component={FmsFatigueValidationDashboard} />
               <Route path="/workspace/hse/statistics" component={DashboardStatistics} />
 
               {/* TNA Routes */}
@@ -278,9 +292,16 @@ export function Workspace() {
               <Route path="/workspace/hse/tna/rekap" component={TnaRekap} />
               <Route path="/workspace/hse/tna/monitoring" component={MonitoringKompetensi} />
 
+              {/* Mystic AI Chatbot Routes */}
+              <Route path="/workspace/si-asef" component={SiAsefChatPage} />
+              <Route path="/workspace/si-asef/admin" component={SiAsefAdminPage} />
+
               {/* Document Control Routes */}
               <Route path="/workspace/hse/k3/document-control" component={DocumentControl} />
               <Route path="/workspace/hse/k3/document/:id" component={DocumentDetail} />
+
+              {/* Push Notification Routes */}
+              <Route path="/workspace/push-notification/simper" component={PushNotificationSimper} />
 
               <Route component={Dashboard} />
             </Switch>

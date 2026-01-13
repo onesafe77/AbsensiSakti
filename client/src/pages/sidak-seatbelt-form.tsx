@@ -182,10 +182,11 @@ export default function SidakSeatbeltForm() {
     };
 
     // Fetch employees for autocomplete (optional optimization: fetch on search)
-    const { data: employees } = useQuery<Employee[]>({
+    const { data: employeesResponse } = useQuery<any>({
         queryKey: ["/api/employees"],
         staleTime: 5 * 60 * 1000
     });
+    const employees = Array.isArray(employeesResponse?.data) ? employeesResponse.data : [];
 
     const handleCreateSession = useMutation({
         mutationFn: async (data: any) => {
@@ -276,10 +277,10 @@ export default function SidakSeatbeltForm() {
     };
 
     // Filter employees based on search
-    const filteredEmployees = employees?.filter(emp =>
+    const filteredEmployees = (Array.isArray(employees) ? employees : []).filter(emp =>
         emp.name.toLowerCase().includes(nameSearch.toLowerCase()) ||
         emp.id.toLowerCase().includes(nameSearch.toLowerCase())
-    ).slice(0, 10) || [];
+    ).slice(0, 10);
 
     const handleEmployeeSelect = (employee: Employee) => {
         setCurrentRecord(prev => ({
@@ -414,7 +415,7 @@ export default function SidakSeatbeltForm() {
                                         <CommandList>
                                             <CommandEmpty>Tidak ada karyawan ditemukan.</CommandEmpty>
                                             <CommandGroup>
-                                                {filteredEmployees.map((emp) => (
+                                                {(Array.isArray(filteredEmployees) ? filteredEmployees : []).map((emp) => (
                                                     <CommandItem
                                                         key={emp.id}
                                                         value={emp.name}

@@ -177,6 +177,7 @@ export default function DocumentControlPage() {
         description: "",
         effectiveDate: "",
         nextReviewDate: "",
+        currentRevision: "0",
     });
 
     // Change Request Form State
@@ -206,9 +207,10 @@ export default function DocumentControlPage() {
     });
 
     // Fetch employees for approver selection
-    const { data: employees = [] } = useQuery<any[]>({
-        queryKey: ["/api/employees"],
+    const { data: employeesResponse } = useQuery<{ data: any[], total: number }>({
+        queryKey: ["/api/employees?per_page=1000"],
     });
+    const employees = employeesResponse?.data || [];
 
     // Fetch approval inbox
     const { data: inbox = [], isLoading: inboxLoading } = useQuery<any[]>({
@@ -373,7 +375,8 @@ export default function DocumentControlPage() {
     // Decision mutation
     const decisionMutation = useMutation({
         mutationFn: async (data: any) => {
-            return apiRequest(`/api/approvals/${selectedInboxItem?.assignee_id}/decide`, "POST", data);
+            const { documentId, ...rest } = data;
+            return apiRequest(`/api/document-masterlist/${documentId}/approve`, "POST", rest);
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["/api/approval-inbox"] });
@@ -383,8 +386,12 @@ export default function DocumentControlPage() {
             setSelectedInboxItem(null);
             setDecisionData({ decision: "", comments: "" });
         },
-        onError: () => {
-            toast({ title: "Gagal memproses keputusan", variant: "destructive" });
+        onError: (error: any) => {
+            toast({
+                title: "Gagal memproses keputusan",
+                description: error?.message || "Internal server error",
+                variant: "destructive"
+            });
         }
     });
 
@@ -453,6 +460,7 @@ export default function DocumentControlPage() {
             description: "",
             effectiveDate: "",
             nextReviewDate: "",
+            currentRevision: "0",
         });
     };
 
@@ -491,8 +499,13 @@ export default function DocumentControlPage() {
         }
 
         decisionMutation.mutate({
+            documentId: selectedInboxItem?.documentId,
+            approvalId: selectedInboxItem?.approvalId,
+            stepNumber: selectedInboxItem?.stepNumber,
+            userId: user?.nik,
+            userName: user?.name,
             decision: decisionData.decision,
-            comments: decisionData.comments,
+            notes: decisionData.comments,
         });
     };
 
@@ -596,7 +609,7 @@ export default function DocumentControlPage() {
                             </div>
                         </div>
 
-                        {canManage && activeTab === "masterlist" && (
+                        {activeTab === "masterlist" && (
                             <Button
                                 onClick={() => setCreateDialogOpen(true)}
                                 className="bg-red-600 hover:bg-red-700 text-white shadow-sm"
@@ -689,7 +702,7 @@ export default function DocumentControlPage() {
                                         ? "Tidak ada dokumen yang cocok"
                                         : "Belum ada dokumen dalam masterlist"}
                                 </p>
-                                {canManage && !searchQuery && (
+                                {!searchQuery && (
                                     <Button
                                         onClick={() => setCreateDialogOpen(true)}
                                         className="mt-4 bg-red-600 hover:bg-red-700"
@@ -1424,434 +1437,444 @@ export default function DocumentControlPage() {
                 )}
             </div>
 
-            {/* Record Control Content */}
-            <div className="p-6">
-                {activeTab === "records" && (
-                    <div className="space-y-6">
+            {/* Create Document Dialog - Moved outside of tab conditionals */}
+            <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
+                <DialogContent className="max-w-lg">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            <Plus className="w-5 h-5 text-red-500" />
+                            Tambah Dokumen Baru
+                        </DialogTitle>
+                        <DialogDescription>
+                            Buat dokumen baru di masterlist. Isi data wajib (*) untuk melanjutkan.
+                        </DialogDescription>
+                    </DialogHeader>
 
-                        {/* Create Document Dialog */}
-                        <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
-                            <DialogContent className="max-w-lg">
-                                <DialogHeader>
-                                    <DialogTitle className="flex items-center gap-2">
-                                        <Plus className="w-5 h-5 text-red-500" />
-                                        Tambah Dokumen Baru
-                                    </DialogTitle>
-                                    <DialogDescription>
-                                        Buat dokumen baru di masterlist. Isi data wajib (*) untuk melanjutkan.
-                                    </DialogDescription>
-                                </DialogHeader>
+                    <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="documentCode">Kode Dokumen *</Label>
+                                <Input
+                                    id="documentCode"
+                                    placeholder="HSE-SOP-001"
+                                    value={formData.documentCode}
+                                    onChange={(e) => setFormData({ ...formData, documentCode: e.target.value })}
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="department">Departemen *</Label>
+                                <Select
+                                    value={formData.department}
+                                    onValueChange={(v) => setFormData({ ...formData, department: v })}
+                                >
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Pilih departemen" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {departments.map((dept) => (
+                                            <SelectItem key={dept} value={dept}>{dept}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        </div>
 
-                                <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div className="space-y-2">
-                                            <Label htmlFor="documentCode">Kode Dokumen *</Label>
-                                            <Input
-                                                id="documentCode"
-                                                placeholder="HSE-SOP-001"
-                                                value={formData.documentCode}
-                                                onChange={(e) => setFormData({ ...formData, documentCode: e.target.value })}
-                                            />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label htmlFor="department">Departemen *</Label>
-                                            <Select
-                                                value={formData.department}
-                                                onValueChange={(v) => setFormData({ ...formData, department: v })}
-                                            >
-                                                <SelectTrigger>
-                                                    <SelectValue placeholder="Pilih departemen" />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    {departments.map((dept) => (
-                                                        <SelectItem key={dept} value={dept}>{dept}</SelectItem>
-                                                    ))}
-                                                </SelectContent>
-                                            </Select>
-                                        </div>
-                                    </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="title">Judul Dokumen *</Label>
+                            <Input
+                                id="title"
+                                placeholder="Prosedur Penanganan Keadaan Darurat"
+                                value={formData.title}
+                                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                            />
+                        </div>
 
-                                    <div className="space-y-2">
-                                        <Label htmlFor="title">Judul Dokumen *</Label>
-                                        <Input
-                                            id="title"
-                                            placeholder="Prosedur Penanganan Keadaan Darurat"
-                                            value={formData.title}
-                                            onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                                        />
-                                    </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="category">Kategori *</Label>
+                            <Select
+                                value={formData.category}
+                                onValueChange={(v) => setFormData({ ...formData, category: v })}
+                            >
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Pilih kategori" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {documentCategories.map((cat) => (
+                                        <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
 
-                                    <div className="space-y-2">
-                                        <Label htmlFor="category">Kategori *</Label>
-                                        <Select
-                                            value={formData.category}
-                                            onValueChange={(v) => setFormData({ ...formData, category: v })}
-                                        >
-                                            <SelectTrigger>
-                                                <SelectValue placeholder="Pilih kategori" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                {documentCategories.map((cat) => (
-                                                    <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="description">Deskripsi</Label>
+                            <Textarea
+                                id="description"
+                                placeholder="Deskripsi singkat tentang dokumen ini..."
+                                value={formData.description}
+                                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                                rows={3}
+                            />
+                        </div>
 
-                                    <div className="space-y-2">
-                                        <Label htmlFor="description">Deskripsi</Label>
-                                        <Textarea
-                                            id="description"
-                                            placeholder="Deskripsi singkat tentang dokumen ini..."
-                                            value={formData.description}
-                                            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                                            rows={3}
-                                        />
-                                    </div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="effectiveDate">Tanggal Berlaku</Label>
+                                <Input
+                                    id="effectiveDate"
+                                    type="date"
+                                    value={formData.effectiveDate}
+                                    onChange={(e) => setFormData({ ...formData, effectiveDate: e.target.value })}
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="nextReviewDate">Tanggal Review Berikutnya</Label>
+                                <Input
+                                    id="nextReviewDate"
+                                    type="date"
+                                    onChange={(e) => setFormData({ ...formData, nextReviewDate: e.target.value })}
+                                />
+                            </div>
+                        </div>
 
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div className="space-y-2">
-                                            <Label htmlFor="effectiveDate">Tanggal Berlaku</Label>
-                                            <Input
-                                                id="effectiveDate"
-                                                type="date"
-                                                value={formData.effectiveDate}
-                                                onChange={(e) => setFormData({ ...formData, effectiveDate: e.target.value })}
-                                            />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label htmlFor="nextReviewDate">Tanggal Review Berikutnya</Label>
-                                            <Input
-                                                id="nextReviewDate"
-                                                type="date"
-                                                value={formData.nextReviewDate}
-                                                onChange={(e) => setFormData({ ...formData, nextReviewDate: e.target.value })}
-                                            />
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <DialogFooter>
-                                    <Button variant="outline" onClick={() => setCreateDialogOpen(false)}>
-                                        Batal
-                                    </Button>
-                                    <Button
-                                        onClick={handleCreate}
-                                        disabled={createMutation.isPending}
-                                        className="bg-red-600 hover:bg-red-700"
-                                    >
-                                        {createMutation.isPending ? "Menyimpan..." : "Simpan"}
-                                    </Button>
-                                </DialogFooter>
-                            </DialogContent>
-                        </Dialog>
-
-                        {/* Submit for Review Dialog */}
-                        <Dialog open={submitDialogOpen} onOpenChange={setSubmitDialogOpen}>
-                            <DialogContent className="max-w-md">
-                                <DialogHeader>
-                                    <DialogTitle className="flex items-center gap-2">
-                                        <Send className="w-5 h-5 text-blue-500" />
-                                        Submit untuk Review
-                                    </DialogTitle>
-                                    <DialogDescription>
-                                        Pilih approver untuk mereview dokumen "{selectedDoc?.title}"
-                                    </DialogDescription>
-                                </DialogHeader>
-
-                                <div className="space-y-4">
-                                    <div className="space-y-2">
-                                        <Label>Cari Approver</Label>
-                                        <div className="relative">
-                                            <Users className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                                            <Input
-                                                placeholder="Ketik nama karyawan..."
-                                                value={submitData.approverSearch}
-                                                onChange={(e) => setSubmitData({ ...submitData, approverSearch: e.target.value })}
-                                                className="pl-10"
-                                            />
-                                        </div>
-                                        {submitData.approverSearch && filteredEmployees.length > 0 && (
-                                            <div className="border rounded-lg divide-y max-h-32 overflow-y-auto">
-                                                {filteredEmployees.map((emp: any) => (
-                                                    <button
-                                                        key={emp.id}
-                                                        onClick={() => addApprover(emp)}
-                                                        className="w-full px-3 py-2 text-left hover:bg-gray-50 text-sm flex items-center gap-2"
-                                                    >
-                                                        <User className="w-4 h-4 text-gray-400" />
-                                                        <span>{emp.name}</span>
-                                                        <span className="text-gray-400 text-xs">- {emp.position || emp.department}</span>
-                                                    </button>
-                                                ))}
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    {submitData.selectedApprovers.length > 0 && (
-                                        <div className="space-y-2">
-                                            <Label>Approver Terpilih ({submitData.selectedApprovers.length})</Label>
-                                            <div className="flex flex-wrap gap-2">
-                                                {submitData.selectedApprovers.map((approver) => (
-                                                    <Badge
-                                                        key={approver.id}
-                                                        variant="outline"
-                                                        className="flex items-center gap-1 py-1"
-                                                    >
-                                                        {approver.name}
-                                                        <button
-                                                            onClick={() => removeApprover(approver.id)}
-                                                            className="ml-1 hover:text-red-500"
-                                                        >
-                                                            <XCircle className="w-3 h-3" />
-                                                        </button>
-                                                    </Badge>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    <div className="space-y-2">
-                                        <Label htmlFor="deadline">Deadline (Opsional)</Label>
-                                        <Input
-                                            id="deadline"
-                                            type="date"
-                                            value={submitData.deadline}
-                                            onChange={(e) => setSubmitData({ ...submitData, deadline: e.target.value })}
-                                        />
-                                    </div>
-                                </div>
-
-                                <DialogFooter>
-                                    <Button variant="outline" onClick={() => setSubmitDialogOpen(false)}>
-                                        Batal
-                                    </Button>
-                                    <Button
-                                        onClick={handleSubmitForReview}
-                                        disabled={submitMutation.isPending || submitData.selectedApprovers.length === 0}
-                                        className="bg-blue-600 hover:bg-blue-700"
-                                    >
-                                        {submitMutation.isPending ? "Mengirim..." : "Submit Review"}
-                                    </Button>
-                                </DialogFooter>
-                            </DialogContent>
-                        </Dialog>
-
-                        {/* Decision Dialog */}
-                        <Dialog open={decisionDialogOpen} onOpenChange={setDecisionDialogOpen}>
-                            <DialogContent className="max-w-md">
-                                <DialogHeader>
-                                    <DialogTitle className="flex items-center gap-2">
-                                        {decisionData.decision === "APPROVED" ? (
-                                            <CheckCircle className="w-5 h-5 text-green-500" />
-                                        ) : (
-                                            <XCircle className="w-5 h-5 text-red-500" />
-                                        )}
-                                        {decisionData.decision === "APPROVED" ? "Setujui Dokumen" : "Tolak Dokumen"}
-                                    </DialogTitle>
-                                    <DialogDescription>
-                                        {decisionData.decision === "APPROVED"
-                                            ? `Anda akan menyetujui dokumen "${selectedInboxItem?.title}"`
-                                            : `Anda akan menolak dokumen "${selectedInboxItem?.title}"`}
-                                    </DialogDescription>
-                                </DialogHeader>
-
-                                <div className="space-y-4">
-                                    <div className="space-y-2">
-                                        <Label htmlFor="comments">Komentar {decisionData.decision === "REJECTED" && "*"}</Label>
-                                        <Textarea
-                                            id="comments"
-                                            placeholder={decisionData.decision === "REJECTED"
-                                                ? "Jelaskan alasan penolakan..."
-                                                : "Tambahkan komentar (opsional)..."}
-                                            value={decisionData.comments}
-                                            onChange={(e) => setDecisionData({ ...decisionData, comments: e.target.value })}
-                                            rows={3}
-                                        />
-                                    </div>
-                                </div>
-
-                                <DialogFooter>
-                                    <Button variant="outline" onClick={() => setDecisionDialogOpen(false)}>
-                                        Batal
-                                    </Button>
-                                    <Button
-                                        onClick={handleDecision}
-                                        disabled={decisionMutation.isPending || (decisionData.decision === "REJECTED" && !decisionData.comments)}
-                                        className={decisionData.decision === "APPROVED"
-                                            ? "bg-green-600 hover:bg-green-700"
-                                            : "bg-red-600 hover:bg-red-700"}
-                                    >
-                                        {decisionMutation.isPending
-                                            ? "Memproses..."
-                                            : decisionData.decision === "APPROVED"
-                                                ? "Setujui"
-                                                : "Tolak"}
-                                    </Button>
-                                </DialogFooter>
-                            </DialogContent>
-                        </Dialog>
-
-                        {/* Change Request Decision Dialog */}
-                        <Dialog open={changeRequestDecisionDialogOpen} onOpenChange={setChangeRequestDecisionDialogOpen}>
-                            <DialogContent className="max-w-md">
-                                <DialogHeader>
-                                    <DialogTitle className="flex items-center gap-2">
-                                        {decisionData.decision === "APPROVED" ? (
-                                            <CheckCircle className="w-5 h-5 text-green-500" />
-                                        ) : (
-                                            <XCircle className="w-5 h-5 text-red-500" />
-                                        )}
-                                        {decisionData.decision === "APPROVED" ? "Setujui Change Request" : "Tolak Change Request"}
-                                    </DialogTitle>
-                                    <DialogDescription>
-                                        {decisionData.decision === "APPROVED"
-                                            ? `Anda akan menyetujui request revisi untuk "${selectedInboxItem?.title}"`
-                                            : `Anda akan menolak request revisi untuk "${selectedInboxItem?.title}"`}
-                                    </DialogDescription>
-                                </DialogHeader>
-
-                                <div className="space-y-4">
-                                    <div className="space-y-2">
-                                        <Label htmlFor="cr-comments">Komentar {decisionData.decision === "REJECTED" && "*"}</Label>
-                                        <Textarea
-                                            id="cr-comments"
-                                            placeholder={decisionData.decision === "REJECTED"
-                                                ? "Jelaskan alasan penolakan..."
-                                                : "Tambahkan komentar (opsional)..."}
-                                            value={decisionData.comments}
-                                            onChange={(e) => setDecisionData({ ...decisionData, comments: e.target.value })}
-                                            rows={3}
-                                        />
-                                    </div>
-                                </div>
-
-                                <DialogFooter>
-                                    <Button variant="outline" onClick={() => setChangeRequestDecisionDialogOpen(false)}>Batal</Button>
-                                    <Button
-                                        onClick={handleChangeRequestDecision}
-                                        disabled={changeRequestDecisionMutation.isPending || (decisionData.decision === "REJECTED" && !decisionData.comments)}
-                                        className={decisionData.decision === "APPROVED" ? "bg-green-600 hover:bg-green-700" : "bg-red-600 hover:bg-red-700"}
-                                    >
-                                        {changeRequestDecisionMutation.isPending ? "Memproses..." : decisionData.decision === "APPROVED" ? "Setujui" : "Tolak"}
-                                    </Button>
-                                </DialogFooter>
-                            </DialogContent>
-                        </Dialog>
-
-                        {/* Change Request Dialog */}
-                        <Dialog open={changeRequestDialogOpen} onOpenChange={setChangeRequestDialogOpen}>
-                            <DialogContent className="max-w-lg">
-                                <DialogHeader>
-                                    <DialogTitle className="flex items-center gap-2">
-                                        <RefreshCw className="w-5 h-5 text-blue-500" />
-                                        Buat Change Request
-                                    </DialogTitle>
-                                    <DialogDescription>
-                                        Ajukan perubahan untuk dokumen "{selectedDoc?.title}". Dokumen published akan tetap aktif sampai revisi disetujui.
-                                    </DialogDescription>
-                                </DialogHeader>
-
-                                <div className="space-y-4">
-                                    <div className="space-y-2">
-                                        <Label htmlFor="req-reason">Alasan Perubahan *</Label>
-                                        <Input
-                                            id="req-reason"
-                                            placeholder="Contoh: Update regulasi, penambahan prosedur..."
-                                            value={changeRequestData.reason}
-                                            onChange={(e) => setChangeRequestData({ ...changeRequestData, reason: e.target.value })}
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="req-desc">Deskripsi & Bagian Terdampak</Label>
-                                        <Textarea
-                                            id="req-desc"
-                                            placeholder="Jelaskan detail perubahan yang diinginkan..."
-                                            value={changeRequestData.description}
-                                            onChange={(e) => setChangeRequestData({ ...changeRequestData, description: e.target.value })}
-                                            rows={3}
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="req-priority">Prioritas</Label>
-                                        <Select
-                                            value={changeRequestData.priority}
-                                            onValueChange={(val) => setChangeRequestData({ ...changeRequestData, priority: val })}
-                                        >
-                                            <SelectTrigger>
-                                                <SelectValue />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="LOW">Low (Minor)</SelectItem>
-                                                <SelectItem value="NORMAL">Normal</SelectItem>
-                                                <SelectItem value="HIGH">High (Major)</SelectItem>
-                                                <SelectItem value="URGENT">Urgent (Critical)</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                </div>
-
-                                <DialogFooter>
-                                    <Button variant="outline" onClick={() => setChangeRequestDialogOpen(false)}>
-                                        Batal
-                                    </Button>
-                                    <Button
-                                        onClick={handleChangeRequestSubmit}
-                                        disabled={changeRequestMutation.isPending || !changeRequestData.reason}
-                                        className="bg-blue-600 hover:bg-blue-700"
-                                    >
-                                        {changeRequestMutation.isPending ? "Mengajukan..." : "Ajukan Revisi"}
-                                    </Button>
-                                </DialogFooter>
-                            </DialogContent>
-                        </Dialog>
-
-                        {/* Delete Confirmation Dialog */}
-                        <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-                            <DialogContent className="max-w-sm">
-                                <DialogHeader>
-                                    <DialogTitle>Hapus Dokumen?</DialogTitle>
-                                    <DialogDescription>
-                                        Dokumen "{selectedDoc?.title}" akan dihapus permanen beserta semua versi dan riwayatnya. Tindakan ini tidak dapat dibatalkan.
-                                    </DialogDescription>
-                                </DialogHeader>
-                                <DialogFooter>
-                                    <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>
-                                        Batal
-                                    </Button>
-                                    <Button
-                                        variant="destructive"
-                                        onClick={() => selectedDoc && deleteMutation.mutate(selectedDoc.id)}
-                                        disabled={deleteMutation.isPending}
-                                    >
-                                        {deleteMutation.isPending ? "Menghapus..." : "Hapus"}
-                                    </Button>
-                                </DialogFooter>
-                            </DialogContent>
-                        </Dialog>
-
-                        {/* Disposal Confirmation Dialog */}
-                        <AlertDialog open={disposalConfirmDialogOpen} onOpenChange={setDisposalConfirmDialogOpen}>
-                            <AlertDialogContent>
-                                <AlertDialogHeader>
-                                    <AlertDialogTitle>Konfirmasi Pemusnahan Dokumen</AlertDialogTitle>
-                                    <AlertDialogDescription>
-                                        Anda akan memusnahkan dokumen <b>{documentToDispose?.title}</b> ({documentToDispose?.document_code}).
-                                        <br /><br />
-                                        Tindakan ini akan mencatat log pemusnahan resmi. Pastikan dokumen fisik (jika ada) juga dimusnahkan sesuai prosedur.
-                                    </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                    <AlertDialogCancel>Batal</AlertDialogCancel>
-                                    <AlertDialogAction onClick={handleDispose} className="bg-red-600 hover:bg-red-700">
-                                        Ya, Musnahkan
-                                    </AlertDialogAction>
-                                </AlertDialogFooter>
-                            </AlertDialogContent>
-                        </AlertDialog>
+                        <div className="space-y-2">
+                            <Label htmlFor="revision">Nomor Revisi</Label>
+                            <Select
+                                value={formData.currentRevision}
+                                onValueChange={(v) => setFormData({ ...formData, currentRevision: v })}
+                            >
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Pilih Revisi" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {Array.from({ length: 11 }, (_, i) => (
+                                        <SelectItem key={i} value={i.toString()}>
+                                            {i === 0 ? "Baru Dibuat (R00)" : `R${i.toString().padStart(2, '0')}`}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
                     </div>
-                )}
-            </div>
+
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setCreateDialogOpen(false)}>
+                            Batal
+                        </Button>
+                        <Button
+                            onClick={handleCreate}
+                            disabled={createMutation.isPending}
+                            className="bg-red-600 hover:bg-red-700"
+                        >
+                            {createMutation.isPending ? "Menyimpan..." : "Simpan"}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Submit for Review Dialog */}
+            <Dialog open={submitDialogOpen} onOpenChange={setSubmitDialogOpen}>
+                <DialogContent className="max-w-md">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            <Send className="w-5 h-5 text-blue-500" />
+                            Submit untuk Review
+                        </DialogTitle>
+                        <DialogDescription>
+                            Pilih approver untuk mereview dokumen "{selectedDoc?.title}"
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="space-y-4">
+                        <div className="space-y-2">
+                            <Label>Cari Approver</Label>
+                            <div className="relative">
+                                <Users className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                                <Input
+                                    placeholder="Ketik nama karyawan..."
+                                    value={submitData.approverSearch}
+                                    onChange={(e) => setSubmitData({ ...submitData, approverSearch: e.target.value })}
+                                    className="pl-10"
+                                />
+                            </div>
+                            {submitData.approverSearch && filteredEmployees.length > 0 && (
+                                <div className="border rounded-lg divide-y max-h-32 overflow-y-auto">
+                                    {filteredEmployees.map((emp: any) => (
+                                        <button
+                                            key={emp.id}
+                                            onClick={() => addApprover(emp)}
+                                            className="w-full px-3 py-2 text-left hover:bg-gray-50 text-sm flex items-center gap-2"
+                                        >
+                                            <User className="w-4 h-4 text-gray-400" />
+                                            <span>{emp.name}</span>
+                                            <span className="text-gray-400 text-xs">- {emp.position || emp.department}</span>
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+
+                        {submitData.selectedApprovers.length > 0 && (
+                            <div className="space-y-2">
+                                <Label>Approver Terpilih ({submitData.selectedApprovers.length})</Label>
+                                <div className="flex flex-wrap gap-2">
+                                    {submitData.selectedApprovers.map((approver) => (
+                                        <Badge
+                                            key={approver.id}
+                                            variant="outline"
+                                            className="flex items-center gap-1 py-1"
+                                        >
+                                            {approver.name}
+                                            <button
+                                                onClick={() => removeApprover(approver.id)}
+                                                className="ml-1 hover:text-red-500"
+                                            >
+                                                <XCircle className="w-3 h-3" />
+                                            </button>
+                                        </Badge>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="space-y-2">
+                            <Label htmlFor="deadline">Deadline (Opsional)</Label>
+                            <Input
+                                id="deadline"
+                                type="date"
+                                value={submitData.deadline}
+                                onChange={(e) => setSubmitData({ ...submitData, deadline: e.target.value })}
+                            />
+                        </div>
+                    </div>
+
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setSubmitDialogOpen(false)}>
+                            Batal
+                        </Button>
+                        <Button
+                            onClick={handleSubmitForReview}
+                            disabled={submitMutation.isPending || submitData.selectedApprovers.length === 0}
+                            className="bg-blue-600 hover:bg-blue-700"
+                        >
+                            {submitMutation.isPending ? "Mengirim..." : "Submit Review"}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Decision Dialog */}
+            <Dialog open={decisionDialogOpen} onOpenChange={setDecisionDialogOpen}>
+                <DialogContent className="max-w-md">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            {decisionData.decision === "APPROVED" ? (
+                                <CheckCircle className="w-5 h-5 text-green-500" />
+                            ) : (
+                                <XCircle className="w-5 h-5 text-red-500" />
+                            )}
+                            {decisionData.decision === "APPROVED" ? "Setujui Dokumen" : "Tolak Dokumen"}
+                        </DialogTitle>
+                        <DialogDescription>
+                            {decisionData.decision === "APPROVED"
+                                ? `Anda akan menyetujui dokumen "${selectedInboxItem?.title}"`
+                                : `Anda akan menolak dokumen "${selectedInboxItem?.title}"`}
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="space-y-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="comments">Komentar {decisionData.decision === "REJECTED" && "*"}</Label>
+                            <Textarea
+                                id="comments"
+                                placeholder={decisionData.decision === "REJECTED"
+                                    ? "Jelaskan alasan penolakan..."
+                                    : "Tambahkan komentar (opsional)..."}
+                                value={decisionData.comments}
+                                onChange={(e) => setDecisionData({ ...decisionData, comments: e.target.value })}
+                                rows={3}
+                            />
+                        </div>
+                    </div>
+
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setDecisionDialogOpen(false)}>
+                            Batal
+                        </Button>
+                        <Button
+                            onClick={handleDecision}
+                            disabled={decisionMutation.isPending || (decisionData.decision === "REJECTED" && !decisionData.comments)}
+                            className={decisionData.decision === "APPROVED"
+                                ? "bg-green-600 hover:bg-green-700"
+                                : "bg-red-600 hover:bg-red-700"}
+                        >
+                            {decisionMutation.isPending
+                                ? "Memproses..."
+                                : decisionData.decision === "APPROVED"
+                                    ? "Setujui"
+                                    : "Tolak"}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Change Request Decision Dialog */}
+            <Dialog open={changeRequestDecisionDialogOpen} onOpenChange={setChangeRequestDecisionDialogOpen}>
+                <DialogContent className="max-w-md">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            {decisionData.decision === "APPROVED" ? (
+                                <CheckCircle className="w-5 h-5 text-green-500" />
+                            ) : (
+                                <XCircle className="w-5 h-5 text-red-500" />
+                            )}
+                            {decisionData.decision === "APPROVED" ? "Setujui Change Request" : "Tolak Change Request"}
+                        </DialogTitle>
+                        <DialogDescription>
+                            {decisionData.decision === "APPROVED"
+                                ? `Anda akan menyetujui request revisi untuk "${selectedInboxItem?.title}"`
+                                : `Anda akan menolak request revisi untuk "${selectedInboxItem?.title}"`}
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="space-y-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="cr-comments">Komentar {decisionData.decision === "REJECTED" && "*"}</Label>
+                            <Textarea
+                                id="cr-comments"
+                                placeholder={decisionData.decision === "REJECTED"
+                                    ? "Jelaskan alasan penolakan..."
+                                    : "Tambahkan komentar (opsional)..."}
+                                value={decisionData.comments}
+                                onChange={(e) => setDecisionData({ ...decisionData, comments: e.target.value })}
+                                rows={3}
+                            />
+                        </div>
+                    </div>
+
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setChangeRequestDecisionDialogOpen(false)}>Batal</Button>
+                        <Button
+                            onClick={handleChangeRequestDecision}
+                            disabled={changeRequestDecisionMutation.isPending || (decisionData.decision === "REJECTED" && !decisionData.comments)}
+                            className={decisionData.decision === "APPROVED" ? "bg-green-600 hover:bg-green-700" : "bg-red-600 hover:bg-red-700"}
+                        >
+                            {changeRequestDecisionMutation.isPending ? "Memproses..." : decisionData.decision === "APPROVED" ? "Setujui" : "Tolak"}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Change Request Dialog */}
+            <Dialog open={changeRequestDialogOpen} onOpenChange={setChangeRequestDialogOpen}>
+                <DialogContent className="max-w-lg">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            <RefreshCw className="w-5 h-5 text-blue-500" />
+                            Buat Change Request
+                        </DialogTitle>
+                        <DialogDescription>
+                            Ajukan perubahan untuk dokumen "{selectedDoc?.title}". Dokumen published akan tetap aktif sampai revisi disetujui.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="space-y-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="req-reason">Alasan Perubahan *</Label>
+                            <Input
+                                id="req-reason"
+                                placeholder="Contoh: Update regulasi, penambahan prosedur..."
+                                value={changeRequestData.reason}
+                                onChange={(e) => setChangeRequestData({ ...changeRequestData, reason: e.target.value })}
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="req-desc">Deskripsi & Bagian Terdampak</Label>
+                            <Textarea
+                                id="req-desc"
+                                placeholder="Jelaskan detail perubahan yang diinginkan..."
+                                value={changeRequestData.description}
+                                onChange={(e) => setChangeRequestData({ ...changeRequestData, description: e.target.value })}
+                                rows={3}
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="req-priority">Prioritas</Label>
+                            <Select
+                                value={changeRequestData.priority}
+                                onValueChange={(val) => setChangeRequestData({ ...changeRequestData, priority: val })}
+                            >
+                                <SelectTrigger>
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="LOW">Low (Minor)</SelectItem>
+                                    <SelectItem value="NORMAL">Normal</SelectItem>
+                                    <SelectItem value="HIGH">High (Major)</SelectItem>
+                                    <SelectItem value="URGENT">Urgent (Critical)</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </div>
+
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setChangeRequestDialogOpen(false)}>
+                            Batal
+                        </Button>
+                        <Button
+                            onClick={handleChangeRequestSubmit}
+                            disabled={changeRequestMutation.isPending || !changeRequestData.reason}
+                            className="bg-blue-600 hover:bg-blue-700"
+                        >
+                            {changeRequestMutation.isPending ? "Mengajukan..." : "Ajukan Revisi"}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Delete Confirmation Dialog */}
+            <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+                <DialogContent className="max-w-sm">
+                    <DialogHeader>
+                        <DialogTitle>Hapus Dokumen?</DialogTitle>
+                        <DialogDescription>
+                            Dokumen "{selectedDoc?.title}" akan dihapus permanen beserta semua versi dan riwayatnya. Tindakan ini tidak dapat dibatalkan.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>
+                            Batal
+                        </Button>
+                        <Button
+                            variant="destructive"
+                            onClick={() => selectedDoc && deleteMutation.mutate(selectedDoc.id)}
+                            disabled={deleteMutation.isPending}
+                        >
+                            {deleteMutation.isPending ? "Menghapus..." : "Hapus"}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Disposal Confirmation Dialog */}
+            <AlertDialog open={disposalConfirmDialogOpen} onOpenChange={setDisposalConfirmDialogOpen}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Konfirmasi Pemusnahan Dokumen</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Anda akan memusnahkan dokumen <b>{documentToDispose?.title}</b> ({documentToDispose?.document_code}).
+                            <br /><br />
+                            Tindakan ini akan mencatat log pemusnahan resmi. Pastikan dokumen fisik (jika ada) juga dimusnahkan sesuai prosedur.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Batal</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleDispose} className="bg-red-600 hover:bg-red-700">
+                            Ya, Musnahkan
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }

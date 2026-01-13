@@ -66,9 +66,10 @@ export default function Roster() {
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
   const { toast } = useToast();
 
-  const { data: employees = [] } = useQuery<Employee[]>({
+  const { data: employeesResponse } = useQuery<any>({
     queryKey: ["/api/employees"],
   });
+  const employees = Array.isArray(employeesResponse?.data) ? employeesResponse.data : [];
 
   const { data: rosterSchedules = [], isLoading: isLoadingRoster } = useQuery<any[]>({
     queryKey: ["/api/roster", selectedDate],
@@ -677,7 +678,7 @@ export default function Roster() {
   };
 
   const getEmployeeName = (employeeId: string) => {
-    return employees.find(emp => emp.id === employeeId)?.name || 'Unknown';
+    return (Array.isArray(employees) ? employees : []).find(emp => emp.id === employeeId)?.name || 'Unknown';
   };
 
   const filteredRosterSchedules = rosterSchedules.filter(roster => {
@@ -688,7 +689,7 @@ export default function Roster() {
     const nikMatch = !searchNIK || roster.employeeId.toLowerCase().includes(searchNIK.toLowerCase());
 
     // Filter by employee name
-    const employee = roster.employee || employees.find(emp => emp.id === roster.employeeId);
+    const employee = roster.employee || (Array.isArray(employees) ? employees : []).find(emp => emp.id === roster.employeeId);
     const nameMatch = !searchName || (employee?.name || '').toLowerCase().includes(searchName.toLowerCase());
 
     // Filter by attendance status
@@ -706,7 +707,7 @@ export default function Roster() {
 
   const rosterWithAttendance = filteredRosterSchedules.map(roster => ({
     ...roster,
-    employee: roster.employee || employees.find(emp => emp.id === roster.employeeId), // Use API employee data first
+    employee: roster.employee || (Array.isArray(employees) ? employees : []).find(emp => emp.id === roster.employeeId), // Use API employee data first
     attendance: {
       status: roster.hasAttended ? 'present' : 'absent',
       time: roster.attendanceTime
@@ -1171,7 +1172,7 @@ export default function Roster() {
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              {employees.map((employee) => (
+                              {(Array.isArray(employees) ? employees : []).map((employee) => (
                                 <SelectItem key={employee.id} value={employee.id}>
                                   {employee.id} - {employee.name} ({employee.position || 'No ID'})
                                 </SelectItem>
@@ -1315,7 +1316,7 @@ export default function Roster() {
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              {employees.map((employee) => (
+                              {(Array.isArray(employees) ? employees : []).map((employee) => (
                                 <SelectItem key={employee.id} value={employee.id}>
                                   {employee.id} - {employee.name} ({employee.position || 'No ID'})
                                 </SelectItem>

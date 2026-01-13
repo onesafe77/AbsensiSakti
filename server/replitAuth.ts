@@ -36,12 +36,18 @@ export function getSession() {
     saveUninitialized: false,
     cookie: {
       httpOnly: true,
-      secure: true,
-      sameSite: 'none',
+      secure: process.env.NODE_ENV === "production",
+      sameSite: process.env.NODE_ENV === "production" ? 'none' : 'lax',
       maxAge: sessionTtl,
     },
   });
 }
+// Need to accept app to check env, so we update getSession signature and call site.
+// Wait, getSession defines store. app is passed to setupAuth.
+// I can change getSession to accept app, or checks process.env.NODE_ENV
+// process.env.NODE_ENV is usually set.
+// Or just check if REPLIT info is present?
+// Safer to check NODE_ENV or default to lax/false if not prod.
 
 function updateUserSession(
   user: any,
@@ -135,12 +141,36 @@ export async function setupAuth(app: Express) {
 }
 
 export const isAuthenticated: RequestHandler = async (req, res, next) => {
-  const user = req.user as any;
+  // 1. Check Passport (Replit) Auth
+  if (req.isAuthenticated()) {
+    const user = req.user as any;
+    if (user.expires_at) {
+      const now = Math.floor(Date.now() / 1000);
+      if (now <= user.expires_at) {
+        return next();
+      }
+      // Refresh logic... (omitted for brevity, or kept if needed. The original had it)
+      // Let's keep original logic for Replit auth path but wrapped
+    }
+  }
 
-  if (!req.isAuthenticated() || !user.expires_at) {
+  // 2. Check Local/Manual Auth (Routes.ts manual session)
+  if ((req.session as any)?.user) {
+    return next();
+  }
+
+  // 3. Fallback: Replit refresh token logic or fail
+  // If we are here, strict Replit auth failed simple check.
+  // The original code had refresh logic. Let's restore it fully but add the session check at top.
+
+  const user = req.user as any;
+  if (!req.isAuthenticated() || !user?.expires_at) {
+    // LAST CHANCE: Check manual session again just in case
+    if ((req.session as any)?.user) return next();
     return res.status(401).json({ message: "Unauthorized" });
   }
 
+  // ... original refresh code ...
   const now = Math.floor(Date.now() / 1000);
   if (now <= user.expires_at) {
     return next();

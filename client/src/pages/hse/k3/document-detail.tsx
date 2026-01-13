@@ -83,6 +83,15 @@ export default function DocumentDetailPage() {
         isMandatory: true,
     });
 
+    // Approval Dialog State
+    const [submitDialogOpen, setSubmitDialogOpen] = useState(false);
+    const [approveDialogOpen, setApproveDialogOpen] = useState(false);
+    const [approvalAction, setApprovalAction] = useState<"APPROVED" | "REJECTED" | null>(null);
+    const [approvalNote, setApprovalNote] = useState("");
+    const [currentStepId, setCurrentStepId] = useState<string | null>(null); // To store which step is being approved
+    const [currentStepNumber, setCurrentStepNumber] = useState<number | null>(null);
+    const [currentApprovalId, setCurrentApprovalId] = useState<string | null>(null);
+
     // Fetch document details
     const { data: docData, isLoading } = useQuery<any>({
         queryKey: ["/api/document-masterlist", documentId],
@@ -97,12 +106,13 @@ export default function DocumentDetailPage() {
     const versions = docData?.versions || [];
 
     // Fetch employees for distribution
-    const { data: employees = [] } = useQuery<any[]>({
+    const { data: employeesResponse } = useQuery<any>({
         queryKey: ["/api/employees"],
     });
+    const employees = Array.isArray(employeesResponse?.data) ? employeesResponse.data : [];
 
     // Fetch distributions
-    const { data: distributions = [] } = useQuery<any[]>({
+    const { data: distributionsResponse } = useQuery<any>({
         queryKey: ["/api/document-masterlist", documentId, "distributions"],
         queryFn: async () => {
             const res = await fetch(`/api/document-masterlist/${documentId}/distributions`);
@@ -110,9 +120,10 @@ export default function DocumentDetailPage() {
         },
         enabled: !!documentId,
     });
+    const distributions = Array.isArray(distributionsResponse) ? distributionsResponse : [];
 
     // Fetch approvals
-    const { data: approvals = [] } = useQuery<any[]>({
+    const { data: approvalsResponse } = useQuery<any>({
         queryKey: ["/api/document-masterlist", documentId, "approvals"],
         queryFn: async () => {
             const res = await fetch(`/api/document-masterlist/${documentId}/approvals`);
@@ -120,6 +131,7 @@ export default function DocumentDetailPage() {
         },
         enabled: !!documentId,
     });
+    const approvals = Array.isArray(approvalsResponse) ? approvalsResponse : [];
 
     // Publish mutation
     const publishMutation = useMutation({
@@ -206,6 +218,64 @@ export default function DocumentDetailPage() {
         });
     };
 
+    // Submit Mutation
+    const submitMutation = useMutation({
+        mutationFn: async () => {
+            // Hardcoded for demo: Version ID is needed. 
+            // In real app, we might select which version. 
+            // Here we assume the latest version is the one to submit.
+            const latestVersion = versions[0];
+            if (!latestVersion) throw new Error("Belum ada versi dokumen yang diupload");
+
+            return apiRequest(`/api/document-masterlist/${documentId}/submit`, "POST", {
+                versionId: latestVersion.id,
+                userId: user?.nik,
+                userName: user?.name
+            });
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["/api/document-masterlist", documentId] });
+            queryClient.invalidateQueries({ queryKey: ["/api/document-masterlist", documentId, "approvals"] });
+            toast({ title: "Dokumen berhasil disubmit untuk review" });
+            setSubmitDialogOpen(false);
+        },
+        onError: (error: any) => {
+            toast({ title: "Gagal submit", description: error.message, variant: "destructive" });
+        }
+    });
+
+    // Approve Mutation
+    const approveMutation = useMutation({
+        mutationFn: async () => {
+            return apiRequest(`/api/document-masterlist/${documentId}/approve`, "POST", {
+                approvalId: currentApprovalId,
+                stepNumber: currentStepNumber,
+                userId: user?.nik,
+                userName: user?.name,
+                decision: approvalAction,
+                notes: approvalNote
+            });
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["/api/document-masterlist", documentId] });
+            queryClient.invalidateQueries({ queryKey: ["/api/document-masterlist", documentId, "approvals"] });
+            toast({ title: approvalAction === "APPROVED" ? "Approval berhasil" : "Dokumen ditolak" });
+            setApproveDialogOpen(false);
+            setApprovalAction(null);
+            setApprovalNote("");
+        },
+        onError: (error: any) => {
+            toast({ title: "Gagal memproses approval", description: error.message, variant: "destructive" });
+        }
+    });
+
+    const handleApprovalClick = (approvalId: string, stepNumber: number, action: "APPROVED" | "REJECTED") => {
+        setCurrentApprovalId(approvalId);
+        setCurrentStepNumber(stepNumber);
+        setApprovalAction(action);
+        setApproveDialogOpen(true);
+    };
+
     const addRecipient = (emp: any) => {
         if (!distributeData.selectedRecipients.find(r => r.id === emp.id)) {
             setDistributeData({
@@ -227,7 +297,7 @@ export default function DocumentDetailPage() {
         });
     };
 
-    const filteredEmployees = employees.filter((emp: any) =>
+    const filteredEmployees = (Array.isArray(employees) ? employees : []).filter((emp: any) =>
         emp.name?.toLowerCase().includes(distributeData.recipientSearch.toLowerCase()) &&
         !distributeData.selectedRecipients.find(r => r.id === emp.id)
     ).slice(0, 5);
@@ -311,7 +381,14 @@ export default function DocumentDetailPage() {
                             {document.effective_date && (
                                 <span className="flex items-center gap-1">
                                     <Clock className="w-4 h-4" />
-                                    Berlaku: {format(new Date(document.effective_date), "dd MMM yyyy", { locale: idLocale })}
+                                    Berlaku: {(() => {
+                                        try {
+                                            const d = new Date(document.effective_date);
+                                            return isNaN(d.getTime()) ? document.effective_date : format(d, "dd MMM yyyy", { locale: idLocale });
+                                        } catch (e) {
+                                            return document.effective_date;
+                                        }
+                                    })()}
                                 </span>
                             )}
                         </div>
@@ -329,6 +406,24 @@ export default function DocumentDetailPage() {
                                 {publishMutation.isPending ? "Publishing..." : "Publish"}
                             </Button>
                         )}
+                        {document.lifecycle_status === "APPROVED" && canManage && (
+                            <div className="relative inline-block">
+                                <input
+                                    type="file"
+                                    id="signed-upload"
+                                    className="hidden"
+                                    accept=".pdf"
+                                    onChange={handleFileChange}
+                                />
+                                <Button
+                                    className="bg-purple-600 hover:bg-purple-700 text-white ml-2"
+                                    onClick={() => window.document.getElementById('signed-upload')?.click()}
+                                >
+                                    <Upload className="w-4 h-4 mr-2" />
+                                    Upload Signed Copy
+                                </Button>
+                            </div>
+                        )}
                         {document.lifecycle_status === "PUBLISHED" && canManage && (
                             <Button
                                 onClick={() => setDistributeDialogOpen(true)}
@@ -336,6 +431,15 @@ export default function DocumentDetailPage() {
                             >
                                 <Share2 className="w-4 h-4 mr-2" />
                                 Distribute
+                            </Button>
+                        )}
+                        {document.lifecycle_status === "DRAFT" && canManage && (
+                            <Button
+                                onClick={() => setSubmitDialogOpen(true)}
+                                className="bg-blue-600 hover:bg-blue-700"
+                            >
+                                <Send className="w-4 h-4 mr-2" />
+                                Submit Approval
                             </Button>
                         )}
                         <Button variant="outline" size="sm">
@@ -453,7 +557,12 @@ export default function DocumentDetailPage() {
                                             </div>
                                             <p className="text-sm text-gray-500">{v.file_name}</p>
                                             <p className="text-xs text-gray-400">
-                                                {v.uploaded_by_name} • {format(new Date(v.uploaded_at), "dd MMM yyyy HH:mm", { locale: idLocale })}
+                                                {v.uploaded_by_name} • {(() => {
+                                                    try {
+                                                        const d = new Date(v.uploaded_at);
+                                                        return isNaN(d.getTime()) ? "" : format(d, "dd MMM yyyy HH:mm", { locale: idLocale });
+                                                    } catch (e) { return ""; }
+                                                })()}
                                             </p>
                                         </div>
                                         <Button variant="outline" size="sm">
@@ -466,195 +575,282 @@ export default function DocumentDetailPage() {
                     </div>
                 )}
 
-                {/* Approval Tab */}
-                {activeTab === "approval" && (
-                    <div>
-                        <h3 className="font-semibold text-gray-900 dark:text-white mb-4">Riwayat Approval</h3>
-                        {approvals.length === 0 ? (
-                            <div className="text-center py-8">
-                                <CheckCircle className="w-12 h-12 text-gray-300 mx-auto mb-2" />
-                                <p className="text-gray-500">Belum ada riwayat approval</p>
+
+
+                {/* Approval Tab (Enhanced Stepper) */}
+                {
+                    activeTab === "approval" && (
+                        <div className="space-y-6">
+                            <div className="flex items-center justify-between">
+                                <h3 className="font-semibold text-gray-900 dark:text-white">Workflow Approval</h3>
+                                {approvals.length > 0 && approvals[0].status === "PENDING" && (
+                                    <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 animate-pulse">
+                                        In Progress
+                                    </Badge>
+                                )}
                             </div>
-                        ) : (
-                            <div className="space-y-3">
-                                {approvals.map((a: any) => (
-                                    <div key={a.id} className="border rounded-lg p-4">
-                                        <div className="flex items-center justify-between mb-2">
-                                            <span className="font-medium">{a.workflow_name}</span>
-                                            <Badge variant="outline" className={
-                                                a.status === "APPROVED" ? "bg-green-100 text-green-700" :
-                                                    a.status === "REJECTED" ? "bg-red-100 text-red-700" :
-                                                        "bg-amber-100 text-amber-700"
-                                            }>
-                                                {a.status}
-                                            </Badge>
+
+                            {approvals.length === 0 ? (
+                                <div className="text-center py-12 border-2 border-dashed rounded-xl">
+                                    <FileText className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                                    <p className="text-gray-500 font-medium">Belum ada proses approval</p>
+                                    {document.lifecycle_status === "DRAFT" && canManage && (
+                                        <Button variant="outline" className="mt-4" onClick={() => setSubmitDialogOpen(true)}>
+                                            Mulai Approval
+                                        </Button>
+                                    )}
+                                </div>
+                            ) : (
+                                <div className="space-y-8">
+                                    {approvals.map((approval: any) => (
+                                        <div key={approval.id} className="border rounded-xl p-6 bg-white shadow-sm">
+                                            <div className="flex items-center gap-3 mb-6 border-b pb-4">
+                                                <div className="p-2 bg-blue-50 rounded-lg">
+                                                    <ClipboardList className="w-5 h-5 text-blue-600" />
+                                                </div>
+                                                <div>
+                                                    <h4 className="font-bold text-gray-900">{approval.workflow_name || "Standard Approval"}</h4>
+                                                    <p className="text-xs text-gray-500">
+                                                        Started by {approval.initiated_by_name} on {format(new Date(approval.initiated_at), "dd MMM yyyy HH:mm")}
+                                                    </p>
+                                                </div>
+                                            </div>
+
+                                            {/* Stepper Visualization */}
+                                            <div className="relative">
+                                                <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-gray-200 -z-10" />
+                                                <div className="space-y-8">
+                                                    {approval.steps?.map((step: any, index: number) => {
+                                                        const isCurrent = step.status === "PENDING" && approval.status !== "REJECTED";
+                                                        const isCompleted = step.status === "COMPLETED";
+                                                        const isRejected = step.status === "REJECTED";
+
+                                                        return (
+                                                            <div key={step.id} className="relative flex items-start gap-4">
+                                                                <div className={`
+                                                                w-8 h-8 rounded-full flex items-center justify-center border-2 shrink-0 bg-white
+                                                                ${isCompleted ? "border-green-500 text-green-500" :
+                                                                        isRejected ? "border-red-500 text-red-500" :
+                                                                            isCurrent ? "border-blue-500 text-blue-500 animate-ring" : "border-gray-300 text-gray-300"}
+                                                            `}>
+                                                                    {isCompleted ? <CheckCircle className="w-5 h-5" /> :
+                                                                        isRejected ? <XCircle className="w-5 h-5" /> :
+                                                                            <span className="text-sm font-bold">{index + 1}</span>}
+                                                                </div>
+
+                                                                <div className="flex-1 pt-1">
+                                                                    <div className="flex justify-between items-start">
+                                                                        <div>
+                                                                            <h5 className={`font-semibold ${isCurrent ? "text-blue-700" : "text-gray-900"}`}>
+                                                                                {step.step_name}
+                                                                            </h5>
+                                                                            <p className="text-sm text-gray-500">
+                                                                                {step.status === "PENDING" ? "Menunggu keputusan..." :
+                                                                                    step.status === "COMPLETED" ? `Disetujui pada ${step.completed_at ? format(new Date(step.completed_at), "dd MMM HH:mm") : "-"}` :
+                                                                                        "Ditolak"}
+                                                                            </p>
+                                                                        </div>
+
+                                                                        {/* Action Buttons for Current Step */}
+                                                                        {isCurrent && canManage && (
+                                                                            <div className="flex gap-2">
+                                                                                <Button
+                                                                                    size="sm"
+                                                                                    variant="outline"
+                                                                                    className="text-red-600 hover:bg-red-50 border-red-200"
+                                                                                    onClick={() => handleApprovalClick(approval.id, step.step_number, "REJECTED")}
+                                                                                >
+                                                                                    Reject
+                                                                                </Button>
+                                                                                <Button
+                                                                                    size="sm"
+                                                                                    className="bg-green-600 hover:bg-green-700 text-white"
+                                                                                    onClick={() => handleApprovalClick(approval.id, step.step_number, "APPROVED")}
+                                                                                >
+                                                                                    Approve
+                                                                                </Button>
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
                                         </div>
-                                        <p className="text-sm text-gray-500">
-                                            Diajukan oleh {a.initiated_by_name} • {format(new Date(a.initiated_at), "dd MMM yyyy HH:mm", { locale: idLocale })}
-                                        </p>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-                )}
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    )
+                }
 
                 {/* Distribution Tab */}
-                {activeTab === "distribution" && (
-                    <div>
-                        <div className="flex items-center justify-between mb-4">
-                            <h3 className="font-semibold text-gray-900 dark:text-white">Status Distribusi</h3>
-                            {document.lifecycle_status === "PUBLISHED" && canManage && (
-                                <Button size="sm" onClick={() => setDistributeDialogOpen(true)} className="bg-blue-600 hover:bg-blue-700">
-                                    <Share2 className="w-4 h-4 mr-1" />
-                                    Distribute
-                                </Button>
+                {
+                    activeTab === "distribution" && (
+                        <div>
+                            <div className="flex items-center justify-between mb-4">
+                                <h3 className="font-semibold text-gray-900 dark:text-white">Status Distribusi</h3>
+                                {document.lifecycle_status === "PUBLISHED" && canManage && (
+                                    <Button size="sm" onClick={() => setDistributeDialogOpen(true)} className="bg-blue-600 hover:bg-blue-700">
+                                        <Share2 className="w-4 h-4 mr-1" />
+                                        Distribute
+                                    </Button>
+                                )}
+                            </div>
+
+                            {/* KPI Summary */}
+                            <div className="grid grid-cols-4 gap-4 mb-4">
+                                <div className="bg-gray-50 rounded-lg p-3 text-center">
+                                    <p className="text-2xl font-bold text-gray-900">{distributions.length}</p>
+                                    <p className="text-xs text-gray-500">Total</p>
+                                </div>
+                                <div className="bg-green-50 rounded-lg p-3 text-center">
+                                    <p className="text-2xl font-bold text-green-600">
+                                        {(Array.isArray(distributions) ? distributions : []).filter((d: any) => d.status === "acknowledged").length}
+                                    </p>
+                                    <p className="text-xs text-gray-500">Sudah Baca</p>
+                                </div>
+                                <div className="bg-amber-50 rounded-lg p-3 text-center">
+                                    <p className="text-2xl font-bold text-amber-600">
+                                        {(Array.isArray(distributions) ? distributions : []).filter((d: any) => d.status === "pending").length}
+                                    </p>
+                                    <p className="text-xs text-gray-500">Belum Baca</p>
+                                </div>
+                                <div className="bg-red-50 rounded-lg p-3 text-center">
+                                    <p className="text-2xl font-bold text-red-600">
+                                        {(Array.isArray(distributions) ? distributions : []).filter((d: any) => d.deadline && new Date(d.deadline) < new Date() && !d.acknowledged_at).length}
+                                    </p>
+                                    <p className="text-xs text-gray-500">Overdue</p>
+                                </div>
+                            </div>
+
+                            {distributions.length === 0 ? (
+                                <div className="text-center py-8">
+                                    <Share2 className="w-12 h-12 text-gray-300 mx-auto mb-2" />
+                                    <p className="text-gray-500">Belum ada distribusi</p>
+                                </div>
+                            ) : (
+                                <table className="w-full text-sm">
+                                    <thead>
+                                        <tr className="border-b bg-gray-50">
+                                            <th className="text-left py-2 px-3">Penerima</th>
+                                            <th className="text-left py-2 px-3">Dept</th>
+                                            <th className="text-left py-2 px-3">Status</th>
+                                            <th className="text-left py-2 px-3">Waktu Baca</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {distributions.map((d: any) => (
+                                            <tr key={d.id} className="border-b hover:bg-gray-50">
+                                                <td className="py-2 px-3">{d.recipient_name}</td>
+                                                <td className="py-2 px-3 text-gray-500">{d.recipient_department}</td>
+                                                <td className="py-2 px-3">
+                                                    <Badge variant="outline" className={
+                                                        d.status === "acknowledged" ? "bg-green-100 text-green-700" :
+                                                            "bg-gray-100 text-gray-700"
+                                                    }>
+                                                        {d.status === "acknowledged" ? "Sudah Baca" : "Belum"}
+                                                    </Badge>
+                                                </td>
+                                                <td className="py-2 px-3 text-gray-500">
+                                                    {d.acknowledged_at ? (() => {
+                                                        try {
+                                                            const date = new Date(d.acknowledged_at);
+                                                            return isNaN(date.getTime()) ? "-" : format(date, "dd MMM yyyy HH:mm", { locale: idLocale });
+                                                        } catch (e) { return "-"; }
+                                                    })() : "-"}
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
                             )}
                         </div>
-
-                        {/* KPI Summary */}
-                        <div className="grid grid-cols-4 gap-4 mb-4">
-                            <div className="bg-gray-50 rounded-lg p-3 text-center">
-                                <p className="text-2xl font-bold text-gray-900">{distributions.length}</p>
-                                <p className="text-xs text-gray-500">Total</p>
-                            </div>
-                            <div className="bg-green-50 rounded-lg p-3 text-center">
-                                <p className="text-2xl font-bold text-green-600">
-                                    {distributions.filter((d: any) => d.status === "acknowledged").length}
-                                </p>
-                                <p className="text-xs text-gray-500">Sudah Baca</p>
-                            </div>
-                            <div className="bg-amber-50 rounded-lg p-3 text-center">
-                                <p className="text-2xl font-bold text-amber-600">
-                                    {distributions.filter((d: any) => d.status === "pending").length}
-                                </p>
-                                <p className="text-xs text-gray-500">Belum Baca</p>
-                            </div>
-                            <div className="bg-red-50 rounded-lg p-3 text-center">
-                                <p className="text-2xl font-bold text-red-600">
-                                    {distributions.filter((d: any) => d.deadline && new Date(d.deadline) < new Date() && !d.acknowledged_at).length}
-                                </p>
-                                <p className="text-xs text-gray-500">Overdue</p>
-                            </div>
-                        </div>
-
-                        {distributions.length === 0 ? (
-                            <div className="text-center py-8">
-                                <Share2 className="w-12 h-12 text-gray-300 mx-auto mb-2" />
-                                <p className="text-gray-500">Belum ada distribusi</p>
-                            </div>
-                        ) : (
-                            <table className="w-full text-sm">
-                                <thead>
-                                    <tr className="border-b bg-gray-50">
-                                        <th className="text-left py-2 px-3">Penerima</th>
-                                        <th className="text-left py-2 px-3">Dept</th>
-                                        <th className="text-left py-2 px-3">Status</th>
-                                        <th className="text-left py-2 px-3">Waktu Baca</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {distributions.map((d: any) => (
-                                        <tr key={d.id} className="border-b hover:bg-gray-50">
-                                            <td className="py-2 px-3">{d.recipient_name}</td>
-                                            <td className="py-2 px-3 text-gray-500">{d.recipient_department}</td>
-                                            <td className="py-2 px-3">
-                                                <Badge variant="outline" className={
-                                                    d.status === "acknowledged" ? "bg-green-100 text-green-700" :
-                                                        "bg-gray-100 text-gray-700"
-                                                }>
-                                                    {d.status === "acknowledged" ? "Sudah Baca" : "Belum"}
-                                                </Badge>
-                                            </td>
-                                            <td className="py-2 px-3 text-gray-500">
-                                                {d.acknowledged_at ? format(new Date(d.acknowledged_at), "dd MMM yyyy HH:mm", { locale: idLocale }) : "-"}
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        )}
-                    </div>
-                )}
+                    )
+                }
 
                 {/* Audit Trail Tab */}
-                {activeTab === "audit" && (
-                    <div>
-                        <div className="flex items-center justify-between mb-4">
-                            <h3 className="font-semibold text-gray-900 dark:text-white">Audit Trail & Evidence Pack</h3>
-                            {canManage && (
-                                <Button
-                                    size="sm"
-                                    className="bg-purple-600 hover:bg-purple-700"
-                                    onClick={() => {
-                                        toast({ title: "Generating Evidence Pack...", description: "PDF will be ready soon" });
-                                        // In production, this would call an API to generate PDF
-                                    }}
-                                >
-                                    <Download className="w-4 h-4 mr-1" />
-                                    Export Evidence Pack
-                                </Button>
-                            )}
-                        </div>
+                {
+                    activeTab === "audit" && (
+                        <div>
+                            <div className="flex items-center justify-between mb-4">
+                                <h3 className="font-semibold text-gray-900 dark:text-white">Audit Trail & Evidence Pack</h3>
+                                {canManage && (
+                                    <Button
+                                        size="sm"
+                                        className="bg-purple-600 hover:bg-purple-700"
+                                        onClick={() => {
+                                            toast({ title: "Generating Evidence Pack...", description: "PDF will be ready soon" });
+                                            // In production, this would call an API to generate PDF
+                                        }}
+                                    >
+                                        <Download className="w-4 h-4 mr-1" />
+                                        Export Evidence Pack
+                                    </Button>
+                                )}
+                            </div>
 
-                        {/* Evidence Summary Cards */}
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                            <div className="bg-gray-50 rounded-lg p-4 border">
-                                <p className="text-2xl font-bold text-gray-900">{versions.length}</p>
-                                <p className="text-xs text-gray-500 mt-1">Versi File</p>
+                            {/* Evidence Summary Cards */}
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                                <div className="bg-gray-50 rounded-lg p-4 border">
+                                    <p className="text-2xl font-bold text-gray-900">{versions.length}</p>
+                                    <p className="text-xs text-gray-500 mt-1">Versi File</p>
+                                </div>
+                                <div className="bg-blue-50 rounded-lg p-4 border border-blue-100">
+                                    <p className="text-2xl font-bold text-blue-600">{approvals.length}</p>
+                                    <p className="text-xs text-gray-500 mt-1">Approval Cycle</p>
+                                </div>
+                                <div className="bg-green-50 rounded-lg p-4 border border-green-100">
+                                    <p className="text-2xl font-bold text-green-600">{distributions.length}</p>
+                                    <p className="text-xs text-gray-500 mt-1">Distribusi</p>
+                                </div>
+                                <div className="bg-purple-50 rounded-lg p-4 border border-purple-100">
+                                    <p className="text-2xl font-bold text-purple-600">
+                                        {(Array.isArray(distributions) ? distributions : []).filter((d: any) => d.status === "acknowledged").length}
+                                    </p>
+                                    <p className="text-xs text-gray-500 mt-1">Read Receipts</p>
+                                </div>
                             </div>
-                            <div className="bg-blue-50 rounded-lg p-4 border border-blue-100">
-                                <p className="text-2xl font-bold text-blue-600">{approvals.length}</p>
-                                <p className="text-xs text-gray-500 mt-1">Approval Cycle</p>
-                            </div>
-                            <div className="bg-green-50 rounded-lg p-4 border border-green-100">
-                                <p className="text-2xl font-bold text-green-600">{distributions.length}</p>
-                                <p className="text-xs text-gray-500 mt-1">Distribusi</p>
-                            </div>
-                            <div className="bg-purple-50 rounded-lg p-4 border border-purple-100">
-                                <p className="text-2xl font-bold text-purple-600">
-                                    {distributions.filter((d: any) => d.status === "acknowledged").length}
-                                </p>
-                                <p className="text-xs text-gray-500 mt-1">Read Receipts</p>
-                            </div>
-                        </div>
 
-                        {/* Evidence Pack Contents Preview */}
-                        <div className="border rounded-lg p-4 bg-gray-50">
-                            <h4 className="font-medium text-gray-900 mb-3">Evidence Pack Contents:</h4>
-                            <ul className="space-y-2 text-sm text-gray-600">
-                                <li className="flex items-center gap-2">
-                                    <CheckCircle className="w-4 h-4 text-green-500" />
-                                    Document metadata & identity
-                                </li>
-                                <li className="flex items-center gap-2">
-                                    <CheckCircle className="w-4 h-4 text-green-500" />
-                                    Version history ({versions.length} versions)
-                                </li>
-                                <li className="flex items-center gap-2">
-                                    <CheckCircle className="w-4 h-4 text-green-500" />
-                                    Approval timeline ({approvals.length} cycles)
-                                </li>
-                                <li className="flex items-center gap-2">
-                                    <CheckCircle className="w-4 h-4 text-green-500" />
-                                    Distribution list ({distributions.length} recipients)
-                                </li>
-                                <li className="flex items-center gap-2">
-                                    <CheckCircle className="w-4 h-4 text-green-500" />
-                                    Read receipts with timestamps
-                                </li>
-                                <li className="flex items-center gap-2">
-                                    <CheckCircle className="w-4 h-4 text-green-500" />
-                                    eSign status (if applicable)
-                                </li>
-                            </ul>
+                            {/* Evidence Pack Contents Preview */}
+                            <div className="border rounded-lg p-4 bg-gray-50">
+                                <h4 className="font-medium text-gray-900 mb-3">Evidence Pack Contents:</h4>
+                                <ul className="space-y-2 text-sm text-gray-600">
+                                    <li className="flex items-center gap-2">
+                                        <CheckCircle className="w-4 h-4 text-green-500" />
+                                        Document metadata & identity
+                                    </li>
+                                    <li className="flex items-center gap-2">
+                                        <CheckCircle className="w-4 h-4 text-green-500" />
+                                        Version history ({versions.length} versions)
+                                    </li>
+                                    <li className="flex items-center gap-2">
+                                        <CheckCircle className="w-4 h-4 text-green-500" />
+                                        Approval timeline ({approvals.length} cycles)
+                                    </li>
+                                    <li className="flex items-center gap-2">
+                                        <CheckCircle className="w-4 h-4 text-green-500" />
+                                        Distribution list ({distributions.length} recipients)
+                                    </li>
+                                    <li className="flex items-center gap-2">
+                                        <CheckCircle className="w-4 h-4 text-green-500" />
+                                        Read receipts with timestamps
+                                    </li>
+                                    <li className="flex items-center gap-2">
+                                        <CheckCircle className="w-4 h-4 text-green-500" />
+                                        eSign status (if applicable)
+                                    </li>
+                                </ul>
+                            </div>
                         </div>
-                    </div>
-                )}
-            </div>
+                    )
+                }
+            </div >
 
             {/* Distribute Dialog */}
-            <Dialog open={distributeDialogOpen} onOpenChange={setDistributeDialogOpen}>
+            < Dialog open={distributeDialogOpen} onOpenChange={setDistributeDialogOpen} >
                 <DialogContent className="max-w-md">
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-2">
@@ -746,7 +942,65 @@ export default function DocumentDetailPage() {
                         </Button>
                     </DialogFooter>
                 </DialogContent>
-            </Dialog>
-        </div>
+            </Dialog >
+
+            {/* Submit Confirmation Dialog */}
+            < Dialog open={submitDialogOpen} onOpenChange={setSubmitDialogOpen} >
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Submit Document for Approval</DialogTitle>
+                        <DialogDescription>
+                            Anda akan memulai proses approval untuk dokumen ini.
+                            Notifikasi WhatsApp akan dikirimkan ke Sect Head dan PJO.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="py-4">
+                        <div className="flex items-center gap-3 p-3 bg-blue-50 text-blue-700 rounded-lg text-sm">
+                            <Send className="w-5 h-5 shrink-0" />
+                            <p>Proses: <strong>Sect Head Review</strong> → <strong>PJO Approval</strong></p>
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setSubmitDialogOpen(false)}>Batal</Button>
+                        <Button onClick={() => submitMutation.mutate()} disabled={submitMutation.isPending}>
+                            {submitMutation.isPending ? "Submitting..." : "Submit Now"}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog >
+
+            {/* Approve/Reject Dialog */}
+            < Dialog open={approveDialogOpen} onOpenChange={setApproveDialogOpen} >
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>
+                            {approvalAction === "APPROVED" ? "Setujui Dokumen" : "Tolak Dokumen"}
+                        </DialogTitle>
+                        <DialogDescription>
+                            Berikan catatan untuk keputusan Anda (opsional).
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-2">
+                        <Label>Catatan / Komentar</Label>
+                        <textarea
+                            className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                            placeholder={approvalAction === "APPROVED" ? "Ok, dokumen sudah sesuai..." : "Mohon revisi bagian..."}
+                            value={approvalNote}
+                            onChange={(e) => setApprovalNote(e.target.value)}
+                        />
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setApproveDialogOpen(false)}>Batal</Button>
+                        <Button
+                            className={approvalAction === "APPROVED" ? "bg-green-600 hover:bg-green-700" : "bg-red-600 hover:bg-red-700"}
+                            onClick={() => approveMutation.mutate()}
+                            disabled={approveMutation.isPending}
+                        >
+                            {approveMutation.isPending ? "Processing..." : "Konfirmasi"}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog >
+        </div >
     );
 }

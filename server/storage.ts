@@ -181,18 +181,18 @@ import {
   // TNA Types
   type Training, type InsertTraining,
   type TnaSummary, type InsertTnaSummary,
-  type TnaEntry, type InsertTnaEntry,
   type CompetencyMonitoringLog, type InsertCompetencyMonitoringLog,
   type KompetensiMonitoring, type InsertKompetensiMonitoring,
   trainings, tnaSummaries, tnaEntries, competencyMonitoringLogs, kompetensiMonitoring,
   changeRequests, type ChangeRequest, documentMasterlist, documentVersions,
-  documentDisposalRecords, type DocumentDisposalRecord, type InsertDocumentDisposalRecord
+  documentApprovals, documentApprovalSteps, documentStepAssignees,
+  documentDisposalRecords, type DocumentDisposalRecord, type InsertDocumentDisposalRecord,
+  fmsFatigueAlerts,
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { drizzle } from "drizzle-orm/neon-http";
 import { neon } from "@neondatabase/serverless";
-import { eq, and, inArray, desc, asc, getTableColumns } from "drizzle-orm";
-import { sql as drizzleSql } from "drizzle-orm";
+import { eq, and, inArray, desc, asc, getTableColumns, or, ilike, sql } from "drizzle-orm";
 import { db } from "./db";
 import PDFDocument from "pdfkit";
 import path from "path";
@@ -213,6 +213,7 @@ export interface IStorage {
   getEmployeeByNik(nik: string): Promise<Employee | undefined>;
   getAllEmployees(): Promise<Employee[]>;
   getEmployees(): Promise<Employee[]>; // Alias for compatibility
+  getEmployeesPaginated(page: number, perPage: number, search?: string): Promise<{ data: Employee[]; total: number; totalPages: number }>;
   createEmployee(employee: InsertEmployee): Promise<Employee>;
   updateEmployee(id: string, employee: Partial<InsertEmployee>): Promise<Employee | undefined>;
   deleteEmployee(id: string): Promise<boolean>;
@@ -616,6 +617,7 @@ export class MemStorage {
       department: insertEmployee.department || null,
       investorGroup: insertEmployee.investorGroup || null,
       qrCode: insertEmployee.qrCode || null, // Add QR Code field
+      photoUrl: insertEmployee.photoUrl || null,
       status: insertEmployee.status || "active",
       isSpareOrigin: insertEmployee.nomorLambung === "SPARE" ? true : (insertEmployee.isSpareOrigin || false), // Track SPARE origin
       createdAt: new Date()
@@ -1582,6 +1584,35 @@ export class DrizzleStorage implements IStorage {
     return this.getAllEmployees();
   }
 
+  async getEmployeesPaginated(page: number, perPage: number, search?: string): Promise<{ data: Employee[]; total: number; totalPages: number }> {
+    const offset = (page - 1) * perPage;
+
+    let baseQuery = this.db.select().from(employees);
+    let countQuery = this.db.select({ count: sql<number>`count(*)` }).from(employees);
+
+    if (search && search.trim()) {
+      const searchPattern = `%${search.trim().toLowerCase()}%`;
+      const searchCondition = or(
+        ilike(employees.id, searchPattern),
+        ilike(employees.name, searchPattern),
+        ilike(employees.department, searchPattern),
+        ilike(employees.position, searchPattern)
+      );
+      baseQuery = baseQuery.where(searchCondition) as any;
+      countQuery = countQuery.where(searchCondition) as any;
+    }
+
+    const [data, countResult] = await Promise.all([
+      baseQuery.limit(perPage).offset(offset),
+      countQuery
+    ]);
+
+    const total = Number(countResult[0]?.count || 0);
+    const totalPages = Math.ceil(total / perPage);
+
+    return { data, total, totalPages };
+  }
+
   async createEmployee(insertEmployee: InsertEmployee): Promise<Employee> {
     const result = await this.db.insert(employees).values(insertEmployee).returning();
     return result[0];
@@ -1627,8 +1658,8 @@ export class DrizzleStorage implements IStorage {
     return await this.db.select().from(attendanceRecords)
       .where(
         and(
-          drizzleSql`${attendanceRecords.date} >= ${startDate}`,
-          drizzleSql`${attendanceRecords.date} <= ${endDate}`
+          sql`${attendanceRecords.date} >= ${startDate}`,
+          sql`${attendanceRecords.date} <= ${endDate}`
         )
       );
   }
@@ -1665,8 +1696,8 @@ export class DrizzleStorage implements IStorage {
     return await this.db.select().from(rosterSchedules)
       .where(
         and(
-          drizzleSql`${rosterSchedules.date} >= ${startDate}`,
-          drizzleSql`${rosterSchedules.date} <= ${endDate}`
+          sql`${rosterSchedules.date} >= ${startDate}`,
+          sql`${rosterSchedules.date} <= ${endDate}`
         )
       );
   }
@@ -2011,7 +2042,7 @@ export class DrizzleStorage implements IStorage {
     return await this.db
       .select()
       .from(leaveRosterMonitoring)
-      .orderBy(drizzleSql`created_at DESC`);
+      .orderBy(sql`created_at DESC`);
   }
 
   async getLeaveRosterMonitoringByStatus(status: string): Promise<LeaveRosterMonitoring[]> {
@@ -2019,7 +2050,7 @@ export class DrizzleStorage implements IStorage {
       .select()
       .from(leaveRosterMonitoring)
       .where(eq(leaveRosterMonitoring.status, status))
-      .orderBy(drizzleSql`created_at DESC`);
+      .orderBy(sql`created_at DESC`);
   }
 
   async createLeaveRosterMonitoring(monitoring: InsertLeaveRosterMonitoring): Promise<LeaveRosterMonitoring> {
@@ -2033,7 +2064,7 @@ export class DrizzleStorage implements IStorage {
   async updateLeaveRosterMonitoring(id: string, monitoring: Partial<InsertLeaveRosterMonitoring>): Promise<LeaveRosterMonitoring | undefined> {
     const [result] = await this.db
       .update(leaveRosterMonitoring)
-      .set({ ...monitoring, updatedAt: drizzleSql`now()` })
+      .set({ ...monitoring, updatedAt: sql`now()` })
       .where(eq(leaveRosterMonitoring.id, id))
       .returning();
     return result;
@@ -2104,7 +2135,7 @@ export class DrizzleStorage implements IStorage {
     return await this.db
       .select()
       .from(meetings)
-      .orderBy(drizzleSql`created_at DESC`);
+      .orderBy(sql`created_at DESC`);
   }
 
   async getMeetingsByDate(date: string): Promise<Meeting[]> {
@@ -2112,7 +2143,7 @@ export class DrizzleStorage implements IStorage {
       .select()
       .from(meetings)
       .where(eq(meetings.date, date))
-      .orderBy(drizzleSql`start_time ASC`);
+      .orderBy(sql`start_time ASC`);
   }
 
   async createMeeting(meeting: InsertMeeting): Promise<Meeting> {
@@ -2130,7 +2161,7 @@ export class DrizzleStorage implements IStorage {
   async updateMeeting(id: string, meeting: Partial<InsertMeeting>): Promise<Meeting | undefined> {
     const [result] = await this.db
       .update(meetings)
-      .set({ ...meeting, updatedAt: drizzleSql`now()` })
+      .set({ ...meeting, updatedAt: sql`now()` })
       .where(eq(meetings.id, id))
       .returning();
     return result;
@@ -2157,7 +2188,7 @@ export class DrizzleStorage implements IStorage {
       .select()
       .from(meetingAttendance)
       .where(eq(meetingAttendance.meetingId, meetingId))
-      .orderBy(drizzleSql`created_at ASC`);
+      .orderBy(sql`created_at ASC`);
   }
 
   async createMeetingAttendance(attendance: InsertMeetingAttendance): Promise<MeetingAttendance> {
@@ -2207,7 +2238,7 @@ export class DrizzleStorage implements IStorage {
     return await this.db
       .select()
       .from(simperMonitoring)
-      .orderBy(drizzleSql`created_at DESC`);
+      .orderBy(sql`created_at DESC`);
   }
 
   async createSimperMonitoring(simperData: InsertSimperMonitoring): Promise<SimperMonitoring> {
@@ -2320,7 +2351,7 @@ export class DrizzleStorage implements IStorage {
     return await this.db
       .select()
       .from(sidakFatigueSessions)
-      .orderBy(drizzleSql`created_at DESC`);
+      .orderBy(sql`created_at DESC`);
   }
 
   async createSidakFatigueSession(sessionData: InsertSidakFatigueSession): Promise<SidakFatigueSession> {
@@ -2352,7 +2383,7 @@ export class DrizzleStorage implements IStorage {
       .select()
       .from(sidakFatigueRecords)
       .where(eq(sidakFatigueRecords.sessionId, sessionId))
-      .orderBy(drizzleSql`created_at ASC`);
+      .orderBy(sql`created_at ASC`);
   }
 
   async getSidakFatigueRecordsBySessionIds(sessionIds: string[]): Promise<SidakFatigueRecord[]> {
@@ -2363,7 +2394,7 @@ export class DrizzleStorage implements IStorage {
       .select()
       .from(sidakFatigueRecords)
       .where(inArray(sidakFatigueRecords.sessionId, sessionIds))
-      .orderBy(drizzleSql`created_at ASC`);
+      .orderBy(sql`created_at ASC`);
   }
 
   async createSidakFatigueRecord(recordData: InsertSidakFatigueRecord): Promise<SidakFatigueRecord> {
@@ -2377,7 +2408,7 @@ export class DrizzleStorage implements IStorage {
       try {
         // Get next ordinal (MAX + 1)
         const maxOrdinalResult = await this.db
-          .select({ max: drizzleSql<number>`COALESCE(MAX(ordinal), 0)` })
+          .select({ max: sql<number>`COALESCE(MAX(ordinal), 0)` })
           .from(sidakFatigueRecords)
           .where(eq(sidakFatigueRecords.sessionId, recordData.sessionId));
 
@@ -2422,7 +2453,7 @@ export class DrizzleStorage implements IStorage {
       .select()
       .from(sidakFatigueObservers)
       .where(eq(sidakFatigueObservers.sessionId, sessionId))
-      .orderBy(drizzleSql`created_at ASC`);
+      .orderBy(sql`created_at ASC`);
   }
 
   async createSidakFatigueObserver(observerData: InsertSidakFatigueObserver): Promise<SidakFatigueObserver> {
@@ -2449,7 +2480,7 @@ export class DrizzleStorage implements IStorage {
     return await this.db
       .select()
       .from(sidakRosterSessions)
-      .orderBy(drizzleSql`created_at DESC`);
+      .orderBy(sql`created_at DESC`);
   }
 
   async createSidakRosterSession(sessionData: InsertSidakRosterSession): Promise<SidakRosterSession> {
@@ -2481,7 +2512,7 @@ export class DrizzleStorage implements IStorage {
       .select()
       .from(sidakRosterRecords)
       .where(eq(sidakRosterRecords.sessionId, sessionId))
-      .orderBy(drizzleSql`created_at ASC`);
+      .orderBy(sql`created_at ASC`);
   }
 
   async createSidakRosterRecord(recordData: InsertSidakRosterRecord): Promise<SidakRosterRecord> {
@@ -2495,7 +2526,7 @@ export class DrizzleStorage implements IStorage {
       try {
         // Get next ordinal (MAX + 1)
         const maxOrdinalResult = await this.db
-          .select({ max: drizzleSql<number>`COALESCE(MAX(ordinal), 0)` })
+          .select({ max: sql<number>`COALESCE(MAX(ordinal), 0)` })
           .from(sidakRosterRecords)
           .where(eq(sidakRosterRecords.sessionId, recordData.sessionId));
 
@@ -2540,7 +2571,7 @@ export class DrizzleStorage implements IStorage {
       .select()
       .from(sidakRosterObservers)
       .where(eq(sidakRosterObservers.sessionId, sessionId))
-      .orderBy(drizzleSql`created_at ASC`);
+      .orderBy(sql`created_at ASC`);
   }
 
   async createSidakRosterObserver(observerData: InsertSidakRosterObserver): Promise<SidakRosterObserver> {
@@ -2567,7 +2598,7 @@ export class DrizzleStorage implements IStorage {
     return await this.db
       .select()
       .from(sidakSeatbeltSessions)
-      .orderBy(drizzleSql`created_at DESC`);
+      .orderBy(sql`created_at DESC`);
   }
 
   async createSidakSeatbeltSession(sessionData: InsertSidakSeatbeltSession): Promise<SidakSeatbeltSession> {
@@ -2599,7 +2630,7 @@ export class DrizzleStorage implements IStorage {
       .select()
       .from(sidakSeatbeltRecords)
       .where(eq(sidakSeatbeltRecords.sessionId, sessionId))
-      .orderBy(drizzleSql`created_at ASC`);
+      .orderBy(sql`created_at ASC`);
   }
 
   async createSidakSeatbeltRecord(recordData: InsertSidakSeatbeltRecord): Promise<SidakSeatbeltRecord> {
@@ -2609,7 +2640,7 @@ export class DrizzleStorage implements IStorage {
     for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
       try {
         const maxOrdinalResult = await this.db
-          .select({ max: drizzleSql<number>`COALESCE(MAX(ordinal), 0)` })
+          .select({ max: sql<number>`COALESCE(MAX(ordinal), 0)` })
           .from(sidakSeatbeltRecords)
           .where(eq(sidakSeatbeltRecords.sessionId, recordData.sessionId));
 
@@ -2648,7 +2679,7 @@ export class DrizzleStorage implements IStorage {
       .select()
       .from(sidakSeatbeltObservers)
       .where(eq(sidakSeatbeltObservers.sessionId, sessionId))
-      .orderBy(drizzleSql`created_at ASC`);
+      .orderBy(sql`created_at ASC`);
   }
 
   async createSidakSeatbeltObserver(observerData: InsertSidakSeatbeltObserver): Promise<SidakSeatbeltObserver> {
@@ -2672,7 +2703,7 @@ export class DrizzleStorage implements IStorage {
     return await this.db
       .select()
       .from(announcements)
-      .orderBy(drizzleSql`created_at DESC`);
+      .orderBy(sql`created_at DESC`);
   }
 
   async getActiveAnnouncements(): Promise<Announcement[]> {
@@ -2680,7 +2711,7 @@ export class DrizzleStorage implements IStorage {
       .select()
       .from(announcements)
       .where(eq(announcements.isActive, true))
-      .orderBy(drizzleSql`created_at DESC`);
+      .orderBy(sql`created_at DESC`);
   }
 
   async createAnnouncement(announcementData: InsertAnnouncement): Promise<Announcement> {
@@ -2720,7 +2751,7 @@ export class DrizzleStorage implements IStorage {
       .from(announcementReads)
       .leftJoin(employees, eq(announcementReads.employeeId, employees.id))
       .where(eq(announcementReads.announcementId, announcementId))
-      .orderBy(drizzleSql`${announcementReads.readAt} DESC`);
+      .orderBy(sql`${announcementReads.readAt} DESC`);
     return reads;
   }
 
@@ -2945,7 +2976,7 @@ export class DrizzleStorage implements IStorage {
     return await this.db
       .select()
       .from(safetyPatrolReports)
-      .orderBy(drizzleSql`${safetyPatrolReports.createdAt} DESC`);
+      .orderBy(sql`${safetyPatrolReports.createdAt} DESC`);
   }
 
   async getSafetyPatrolReportsByDateRange(startDate: string, endDate: string): Promise<SafetyPatrolReport[]> {
@@ -2953,10 +2984,10 @@ export class DrizzleStorage implements IStorage {
       .select()
       .from(safetyPatrolReports)
       .where(and(
-        drizzleSql`${safetyPatrolReports.tanggal} >= ${startDate}`,
-        drizzleSql`${safetyPatrolReports.tanggal} <= ${endDate}`
+        sql`${safetyPatrolReports.tanggal} >= ${startDate}`,
+        sql`${safetyPatrolReports.tanggal} <= ${endDate}`
       ))
-      .orderBy(drizzleSql`${safetyPatrolReports.createdAt} DESC`);
+      .orderBy(sql`${safetyPatrolReports.createdAt} DESC`);
   }
 
   async getRecentSafetyPatrolReportBySender(senderPhone: string, minutesAgo: number = 5): Promise<SafetyPatrolReport | undefined> {
@@ -2966,9 +2997,9 @@ export class DrizzleStorage implements IStorage {
       .from(safetyPatrolReports)
       .where(and(
         eq(safetyPatrolReports.senderPhone, senderPhone),
-        drizzleSql`${safetyPatrolReports.createdAt} >= ${cutoffTime.toISOString()}`
+        sql`${safetyPatrolReports.createdAt} >= ${cutoffTime.toISOString()}`
       ))
-      .orderBy(drizzleSql`${safetyPatrolReports.createdAt} DESC`)
+      .orderBy(sql`${safetyPatrolReports.createdAt} DESC`)
       .limit(1);
     return result;
   }
@@ -3068,10 +3099,10 @@ export class DrizzleStorage implements IStorage {
       .where(and(
         eq(safetyPatrolRawMessages.senderPhone, senderPhone),
         eq(safetyPatrolRawMessages.processed, false),
-        drizzleSql`${safetyPatrolRawMessages.mediaUrl} IS NOT NULL`,
-        drizzleSql`${safetyPatrolRawMessages.messageTimestamp} IS NOT NULL`,
-        drizzleSql`${safetyPatrolRawMessages.messageTimestamp} >= ${windowStart.toISOString()}`,
-        drizzleSql`${safetyPatrolRawMessages.messageTimestamp} <= ${windowEnd.toISOString()}`
+        sql`${safetyPatrolRawMessages.mediaUrl} IS NOT NULL`,
+        sql`${safetyPatrolRawMessages.messageTimestamp} IS NOT NULL`,
+        sql`${safetyPatrolRawMessages.messageTimestamp} >= ${windowStart.toISOString()}`,
+        sql`${safetyPatrolRawMessages.messageTimestamp} <= ${windowEnd.toISOString()}`
       ));
   }
 
@@ -3088,7 +3119,7 @@ export class DrizzleStorage implements IStorage {
     return await this.db
       .select()
       .from(safetyPatrolTemplates)
-      .orderBy(drizzleSql`${safetyPatrolTemplates.name} ASC`);
+      .orderBy(sql`${safetyPatrolTemplates.name} ASC`);
   }
 
   async getActiveSafetyPatrolTemplates(): Promise<SafetyPatrolTemplate[]> {
@@ -3096,7 +3127,7 @@ export class DrizzleStorage implements IStorage {
       .select()
       .from(safetyPatrolTemplates)
       .where(eq(safetyPatrolTemplates.isActive, true))
-      .orderBy(drizzleSql`${safetyPatrolTemplates.name} ASC`);
+      .orderBy(sql`${safetyPatrolTemplates.name} ASC`);
   }
 
   async createSafetyPatrolTemplate(template: InsertSafetyPatrolTemplate): Promise<SafetyPatrolTemplate> {
@@ -6031,7 +6062,7 @@ export class DrizzleStorage implements IStorage {
 
   async getDocumentMasterlist(): Promise<any[]> {
     try {
-      const result = await db.execute(drizzleSql`
+      const result = await db.execute(sql`
         SELECT dm.*, dv.file_path 
         FROM document_masterlist dm
         LEFT JOIN document_versions dv ON dm.id = dv.document_id 
@@ -6048,7 +6079,7 @@ export class DrizzleStorage implements IStorage {
 
   async getDocumentById(id: string): Promise<any | undefined> {
     try {
-      const result = await db.execute(drizzleSql`
+      const result = await db.execute(sql`
         SELECT * FROM document_masterlist WHERE id = ${id}
       `);
       return result.rows?.[0];
@@ -6104,8 +6135,9 @@ export class DrizzleStorage implements IStorage {
     }
   }
 
+
   async createDocumentMasterlist(data: any): Promise<any> {
-    const result = await db.execute(drizzleSql`
+    const result = await db.execute(sql`
       INSERT INTO document_masterlist (
         document_code, title, category, department,
         current_version, current_revision,
@@ -6139,7 +6171,7 @@ export class DrizzleStorage implements IStorage {
 
     updates.push(`updated_at = NOW()`);
 
-    const result = await db.execute(drizzleSql.raw(`
+    const result = await db.execute(sql.raw(`
       UPDATE document_masterlist 
       SET ${updates.join(', ')}
       WHERE id = '${id}'
@@ -6149,7 +6181,7 @@ export class DrizzleStorage implements IStorage {
   }
 
   async deleteDocumentMasterlist(id: string): Promise<boolean> {
-    const result = await db.execute(drizzleSql`
+    const result = await db.execute(sql`
       DELETE FROM document_masterlist WHERE id = ${id} RETURNING id
     `);
     return (result.rows?.length || 0) > 0;
@@ -6157,7 +6189,7 @@ export class DrizzleStorage implements IStorage {
 
   async getDocumentVersions(documentId: string): Promise<any[]> {
     try {
-      const result = await db.execute(drizzleSql`
+      const result = await db.execute(sql`
         SELECT * FROM document_versions 
         WHERE document_id = ${documentId}
         ORDER BY version_number DESC, revision_number DESC
@@ -6169,22 +6201,218 @@ export class DrizzleStorage implements IStorage {
     }
   }
 
-  async createDocumentVersion(documentId: string, data: any): Promise<any> {
-    const result = await db.execute(drizzleSql`
-      INSERT INTO document_versions (
-        document_id, version_number, revision_number,
-        file_name, file_path, file_size, mime_type,
-        status, changes_note,
-        uploaded_by, uploaded_by_name
-      ) VALUES (
-        ${documentId}, ${data.versionNumber || 1}, ${data.revisionNumber || 0},
-        ${data.fileName}, ${data.filePath}, ${data.fileSize || null}, ${data.mimeType || 'application/pdf'},
-        ${data.status || 'DRAFT'}, ${data.changesNote || null},
-        ${data.uploadedBy}, ${data.uploadedByName}
-      ) RETURNING *
-    `);
-    return result.rows?.[0];
+  async submitDocumentForApproval(documentId: string, versionId: string, userId: string, userName: string, workflowName: string = "Standard Approval"): Promise<any> {
+    try {
+      // 1. Create Approval Record
+      const [approval] = await db.insert(documentApprovals).values({
+        documentId,
+        versionId,
+        workflowName,
+        totalSteps: 2, // Default: Sect Head -> PJO
+        currentStep: 1,
+        status: "PENDING",
+        initiatedBy: userId,
+        initiatedByName: userName
+      }).returning();
+
+      // 2. Create Approval Steps
+      // Step 1: Diperiksa Oleh (Sect Head)
+      const [step1] = await db.insert(documentApprovalSteps).values({
+        approvalId: approval.id,
+        stepNumber: 1,
+        stepName: "Diperiksa Oleh (Sect Head)",
+        mode: "SERIAL",
+        status: "PENDING"
+      }).returning();
+
+      // Step 2: Disahkan Oleh (PJO)
+      const [step2] = await db.insert(documentApprovalSteps).values({
+        approvalId: approval.id,
+        stepNumber: 2,
+        stepName: "Disahkan Oleh (PJO)",
+        mode: "SERIAL",
+        status: "PENDING"
+      }).returning();
+
+      // 3. Find Assignees based on Position
+      // Step 1: Sect Head (Filtered by Department of the document)
+      const doc = (await db.select().from(documentMasterlist).where(eq(documentMasterlist.id, documentId)))[0];
+
+      const sectHeads = await db.select().from(employees).where(
+        and(
+          or(
+            ilike(employees.position, '%Section Head%'),
+            ilike(employees.position, '%Sect Head%'),
+            ilike(employees.position, '%Head of%')
+          ),
+          ilike(employees.department, `%${doc.department}%`)
+        )
+      );
+
+      // Step 2: Project Manager (PJO)
+      const pjos = await db.select().from(employees).where(
+        or(
+          ilike(employees.position, '%Project Manager%'),
+          ilike(employees.position, '%Manager Proyek%'),
+          ilike(employees.position, '%PJO%'),
+          ilike(employees.position, '%KTT%')
+        )
+      );
+
+      // 4. Create Step Assignees
+      // Add Sect Heads to Step 1
+      for (const sh of sectHeads) {
+        await db.insert(documentStepAssignees).values({
+          stepId: step1.id,
+          assigneeId: sh.id,
+          assigneeName: sh.name,
+          assigneePosition: sh.position,
+        });
+      }
+
+      // Add PJO to Step 2
+      for (const pjo of pjos) {
+        await db.insert(documentStepAssignees).values({
+          stepId: step2.id,
+          assigneeId: pjo.id,
+          assigneeName: pjo.name,
+          assigneePosition: pjo.position,
+        });
+      }
+
+      // 5. Update Document Status
+      await db.update(documentMasterlist)
+        .set({ lifecycleStatus: "IN_REVIEW" })
+        .where(eq(documentMasterlist.id, documentId));
+
+      await db.update(documentVersions)
+        .set({ status: "PENDING_APPROVAL" })
+        .where(eq(documentVersions.id, versionId));
+
+      // 6. Update Step 1 to IN_PROGRESS if we found assignees
+      if (sectHeads.length > 0) {
+        await db.update(documentApprovalSteps)
+          .set({ status: "IN_PROGRESS" })
+          .where(eq(documentApprovalSteps.id, step1.id));
+      }
+
+      return { approval, steps: [step1, step2], assignees: [...sectHeads, ...pjos] };
+    } catch (error) {
+      console.error("Error submitting document for approval:", error);
+      throw error;
+    }
   }
+
+  async getDocumentApprovals(documentId: string): Promise<any[]> {
+    const approvals = await db.select().from(documentApprovals)
+      .where(eq(documentApprovals.documentId, documentId))
+      .orderBy(desc(documentApprovals.initiatedAt));
+
+    // Fetch steps for each approval
+    const result = await Promise.all(approvals.map(async (app) => {
+      const steps = await db.select().from(documentApprovalSteps)
+        .where(eq(documentApprovalSteps.approvalId, app.id))
+        .orderBy(asc(documentApprovalSteps.stepNumber));
+      return { ...app, steps };
+    }));
+
+    return result;
+  }
+
+  async approveDocumentStep(approvalId: string, stepNumber: number, userId: string, userName: string, decision: "APPROVED" | "REJECTED", notes?: string): Promise<any> {
+    try {
+      // 1. Get current step
+      const steps = await db.select().from(documentApprovalSteps)
+        .where(and(eq(documentApprovalSteps.approvalId, approvalId), eq(documentApprovalSteps.stepNumber, stepNumber)));
+
+      const step = steps[0];
+      if (!step) throw new Error("Step not found");
+
+      // 2. Update step status
+      await db.update(documentApprovalSteps)
+        .set({
+          status: decision === "APPROVED" ? "COMPLETED" : "REJECTED",
+          completedAt: new Date(),
+          quorumAchieved: 1 // Simple simplified logic for now
+        })
+        .where(eq(documentApprovalSteps.id, step.id));
+
+      // 3. Log the decision
+      await db.insert(documentStepAssignees).values({
+        stepId: step.id,
+        assigneeId: userId,
+        assigneeName: userName,
+        decision: decision,
+        comments: notes,
+        decidedAt: new Date()
+      });
+
+      // 4. Handle workflow transition
+      const approval = (await db.select().from(documentApprovals).where(eq(documentApprovals.id, approvalId)))[0];
+
+      if (decision === "REJECTED") {
+        // Reject entire workflow
+        await db.update(documentApprovals).set({ status: "REJECTED", completedAt: new Date(), finalDecision: "REJECTED" }).where(eq(documentApprovals.id, approvalId));
+        await db.update(documentMasterlist).set({ lifecycleStatus: "DRAFT" }).where(eq(documentMasterlist.id, approval.documentId)); // Revert to Draft
+        await db.update(documentVersions).set({ status: "DRAFT" }).where(eq(documentVersions.id, approval.versionId));
+        return { status: "REJECTED" };
+      } else {
+        // Approved - check if next step exists
+        if (stepNumber < approval.totalSteps) {
+          // Move to next step
+          await db.update(documentApprovals).set({ currentStep: stepNumber + 1 }).where(eq(documentApprovals.id, approvalId));
+
+          // Update next step status to IN_PROGRESS
+          await db.update(documentApprovalSteps)
+            .set({ status: 'IN_PROGRESS' })
+            .where(and(eq(documentApprovalSteps.approvalId, approvalId), eq(documentApprovalSteps.stepNumber, stepNumber + 1)));
+
+          return { status: "NEXT_STEP" };
+        } else {
+          // All steps completed - Final Approval
+          await db.update(documentApprovals).set({ status: "APPROVED", completedAt: new Date(), finalDecision: "APPROVED" }).where(eq(documentApprovals.id, approvalId));
+          await db.update(documentMasterlist).set({ lifecycleStatus: "APPROVED" }).where(eq(documentMasterlist.id, approval.documentId)); // Ready for signing
+          await db.update(documentVersions).set({ status: "APPROVED" }).where(eq(documentVersions.id, approval.versionId));
+          return { status: "APPROVED" };
+        }
+      }
+    } catch (error) {
+      console.error("Error updating approval:", error);
+      throw error;
+    }
+  }
+  async getPendingApprovals(userId?: string): Promise<any[]> {
+    const query = db.select({
+      id: documentApprovalSteps.id,
+      approvalId: documentApprovalSteps.approvalId,
+      stepName: documentApprovalSteps.stepName,
+      stepNumber: documentApprovalSteps.stepNumber,
+      initiatedBy: documentApprovals.initiatedBy,
+      initiatedByName: documentApprovals.initiatedByName,
+      initiatedAt: documentApprovals.initiatedAt,
+      documentId: documentApprovals.documentId,
+      title: documentMasterlist.title,
+      document_code: documentMasterlist.documentCode,
+      workflowName: documentApprovals.workflowName,
+      status: documentApprovalSteps.status,
+      assignee_id: documentStepAssignees.assigneeId
+    })
+      .from(documentApprovalSteps)
+      .innerJoin(documentApprovals, eq(documentApprovalSteps.approvalId, documentApprovals.id))
+      .innerJoin(documentMasterlist, eq(documentApprovals.documentId, documentMasterlist.id))
+      .innerJoin(documentStepAssignees, eq(documentApprovalSteps.id, documentStepAssignees.stepId))
+      .where(
+        and(
+          eq(documentApprovalSteps.status, "IN_PROGRESS"),
+          userId ? eq(documentStepAssignees.assigneeId, userId) : undefined
+        )
+      )
+      .orderBy(desc(documentApprovals.initiatedAt));
+
+    return query;
+  }
+
+
 
   // ============================================
   // APPROVAL WORKFLOW STORAGE METHODS (Phase 2)
@@ -6192,14 +6420,14 @@ export class DrizzleStorage implements IStorage {
 
   async submitDocumentForReview(documentId: string, data: any): Promise<any> {
     // 1. Update document status to IN_REVIEW
-    await db.execute(drizzleSql`
+    await db.execute(sql`
       UPDATE document_masterlist 
       SET lifecycle_status = 'IN_REVIEW', updated_at = NOW()
       WHERE id = ${documentId}
     `);
 
     // 2. Create approval record
-    const approvalResult = await db.execute(drizzleSql`
+    const approvalResult = await db.execute(sql`
       INSERT INTO document_approvals (
         document_id, version_id, workflow_name, 
         total_steps, current_step, status,
@@ -6215,7 +6443,7 @@ export class DrizzleStorage implements IStorage {
     if (!approval) throw new Error("Failed to create approval");
 
     // 3. Create approval step
-    const stepResult = await db.execute(drizzleSql`
+    const stepResult = await db.execute(sql`
       INSERT INTO document_approval_steps (
         approval_id, step_number, step_name, mode, quorum_required, status
       ) VALUES (
@@ -6228,7 +6456,7 @@ export class DrizzleStorage implements IStorage {
 
     // 4. Add assignees
     for (const approver of data.approvers) {
-      await db.execute(drizzleSql`
+      await db.execute(sql`
         INSERT INTO document_step_assignees (
           step_id, assignee_id, assignee_name, assignee_position,
           deadline
@@ -6244,7 +6472,7 @@ export class DrizzleStorage implements IStorage {
 
   async getApprovalInbox(userId: string): Promise<any[]> {
     try {
-      const result = await db.execute(drizzleSql`
+      const result = await db.execute(sql`
         SELECT 
           dsa.id as assignee_id,
           dsa.assignee_name,
@@ -6280,7 +6508,7 @@ export class DrizzleStorage implements IStorage {
 
   async processApprovalDecision(assigneeId: string, data: any): Promise<any> {
     // 1. Update assignee decision
-    await db.execute(drizzleSql`
+    await db.execute(sql`
       UPDATE document_step_assignees 
       SET decision = ${data.decision}, 
           comments = ${data.comments || null},
@@ -6289,7 +6517,7 @@ export class DrizzleStorage implements IStorage {
     `);
 
     // 2. Get the step and check if all assignees have decided
-    const stepResult = await db.execute(drizzleSql`
+    const stepResult = await db.execute(sql`
       SELECT das.*, dsa.step_id, da.document_id
       FROM document_step_assignees dsa
       JOIN document_approval_steps das ON dsa.step_id = das.id
@@ -6301,7 +6529,7 @@ export class DrizzleStorage implements IStorage {
     if (!stepInfo) return { success: false };
 
     // 3. Check pending assignees for this step
-    const pendingResult = await db.execute(drizzleSql`
+    const pendingResult = await db.execute(sql`
       SELECT COUNT(*) as pending FROM document_step_assignees 
       WHERE step_id = ${stepInfo.step_id} AND decision IS NULL
     `);
@@ -6310,13 +6538,13 @@ export class DrizzleStorage implements IStorage {
 
     // 4. If rejected, mark document as rejected
     if (data.decision === "REJECTED") {
-      await db.execute(drizzleSql`
+      await db.execute(sql`
         UPDATE document_masterlist 
         SET lifecycle_status = 'DRAFT', updated_at = NOW()
         WHERE id = ${stepInfo.document_id}
       `);
 
-      await db.execute(drizzleSql`
+      await db.execute(sql`
         UPDATE document_approvals 
         SET status = 'REJECTED', final_decision = 'REJECTED', completed_at = NOW()
         WHERE document_id = ${stepInfo.document_id} AND status = 'PENDING'
@@ -6324,19 +6552,19 @@ export class DrizzleStorage implements IStorage {
     }
     // 5. If all approved and no pending, complete the approval
     else if (pendingCount === 0 && data.decision === "APPROVED") {
-      await db.execute(drizzleSql`
+      await db.execute(sql`
         UPDATE document_masterlist 
         SET lifecycle_status = 'APPROVED', updated_at = NOW()
         WHERE id = ${stepInfo.document_id}
       `);
 
-      await db.execute(drizzleSql`
+      await db.execute(sql`
         UPDATE document_approvals 
         SET status = 'APPROVED', final_decision = 'APPROVED', completed_at = NOW()
         WHERE document_id = ${stepInfo.document_id} AND status = 'PENDING'
       `);
 
-      await db.execute(drizzleSql`
+      await db.execute(sql`
         UPDATE document_approval_steps 
         SET status = 'COMPLETED', completed_at = NOW()
         WHERE id = ${stepInfo.step_id}
@@ -6348,7 +6576,7 @@ export class DrizzleStorage implements IStorage {
 
   async getDocumentApprovals(documentId: string): Promise<any[]> {
     try {
-      const result = await db.execute(drizzleSql`
+      const result = await db.execute(sql`
         SELECT da.*, 
           json_agg(
             json_build_object(
@@ -6378,7 +6606,7 @@ export class DrizzleStorage implements IStorage {
 
   async distributeDocument(documentId: string, data: any): Promise<any> {
     // Get the latest version ID
-    const versionResult = await db.execute(drizzleSql`
+    const versionResult = await db.execute(sql`
       SELECT id FROM document_versions WHERE document_id = ${documentId}
       ORDER BY version_number DESC, revision_number DESC LIMIT 1
     `);
@@ -6387,7 +6615,7 @@ export class DrizzleStorage implements IStorage {
     // Create distribution records for each recipient
     const results = [];
     for (const recipient of data.recipients) {
-      const result = await db.execute(drizzleSql`
+      const result = await db.execute(sql`
         INSERT INTO document_distributions (
           document_id, version_id,
           recipient_id, recipient_name, recipient_department,
@@ -6408,7 +6636,7 @@ export class DrizzleStorage implements IStorage {
 
   async getMyDocuments(userId: string): Promise<any[]> {
     try {
-      const result = await db.execute(drizzleSql`
+      const result = await db.execute(sql`
         SELECT 
           dd.id as distribution_id,
           dd.is_read,
@@ -6437,7 +6665,7 @@ export class DrizzleStorage implements IStorage {
   }
 
   async acknowledgeDocument(distributionId: string, data: any): Promise<any> {
-    const result = await db.execute(drizzleSql`
+    const result = await db.execute(sql`
       UPDATE document_distributions 
       SET 
         is_read = true,
@@ -6453,7 +6681,7 @@ export class DrizzleStorage implements IStorage {
 
   async getDocumentDistributions(documentId: string): Promise<any[]> {
     try {
-      const result = await db.execute(drizzleSql`
+      const result = await db.execute(sql`
         SELECT 
           dd.*,
           CASE 
@@ -6473,7 +6701,7 @@ export class DrizzleStorage implements IStorage {
   }
 
   async publishDocument(documentId: string): Promise<any> {
-    const result = await db.execute(drizzleSql`
+    const result = await db.execute(sql`
       UPDATE document_masterlist 
       SET lifecycle_status = 'PUBLISHED', updated_at = NOW()
       WHERE id = ${documentId} AND lifecycle_status = 'APPROVED'
@@ -6493,7 +6721,7 @@ export class DrizzleStorage implements IStorage {
 
   async getExternalDocuments(): Promise<any[]> {
     try {
-      const result = await db.execute(drizzleSql`
+      const result = await db.execute(sql`
         SELECT * FROM external_documents ORDER BY created_at DESC
       `);
       return result.rows || [];
@@ -6504,7 +6732,7 @@ export class DrizzleStorage implements IStorage {
   }
 
   async createExternalDocument(data: any): Promise<any> {
-    const result = await db.execute(drizzleSql`
+    const result = await db.execute(sql`
       INSERT INTO external_documents (
         document_code, title, source, issued_by,
         version_number, issue_date, next_review_date,
@@ -6533,14 +6761,14 @@ export class DrizzleStorage implements IStorage {
     if (data.fileUrl !== undefined) updates.push(`file_url = '${data.fileUrl}'`);
     updates.push(`updated_at = NOW()`);
 
-    const result = await db.execute(drizzleSql.raw(`
+    const result = await db.execute(sql.raw(`
       UPDATE external_documents SET ${updates.join(', ')} WHERE id = '${id}' RETURNING *
     `));
     return result.rows?.[0];
   }
 
   async deleteExternalDocument(id: string): Promise<boolean> {
-    await db.execute(drizzleSql`DELETE FROM external_documents WHERE id = ${id}`);
+    await db.execute(sql`DELETE FROM external_documents WHERE id = ${id}`);
     return true;
   }
 
@@ -6550,20 +6778,20 @@ export class DrizzleStorage implements IStorage {
 
   async createEsignRequest(documentId: string, data: any): Promise<any> {
     // Get latest version
-    const versionResult = await db.execute(drizzleSql`
+    const versionResult = await db.execute(sql`
       SELECT id FROM document_versions WHERE document_id = ${documentId}
       ORDER BY version_number DESC, revision_number DESC LIMIT 1
     `);
     const versionId = versionResult.rows?.[0]?.id || documentId;
 
     // Update document status to ESIGN_PENDING
-    await db.execute(drizzleSql`
+    await db.execute(sql`
       UPDATE document_masterlist SET lifecycle_status = 'ESIGN_PENDING', updated_at = NOW()
       WHERE id = ${documentId}
     `);
 
     // Create eSign request
-    const result = await db.execute(drizzleSql`
+    const result = await db.execute(sql`
       INSERT INTO esign_requests (
         document_id, version_id, approval_id,
         provider, signer_id, signer_name, signer_position,
@@ -6579,7 +6807,7 @@ export class DrizzleStorage implements IStorage {
 
   async getEsignRequests(documentId: string): Promise<any[]> {
     try {
-      const result = await db.execute(drizzleSql`
+      const result = await db.execute(sql`
         SELECT * FROM esign_requests WHERE document_id = ${documentId}
         ORDER BY requested_at DESC
       `);
@@ -6591,11 +6819,11 @@ export class DrizzleStorage implements IStorage {
   }
 
   async updateEsignStatus(externalRequestId: string, data: any): Promise<any> {
-    const result = await db.execute(drizzleSql`
+    const result = await db.execute(sql`
       UPDATE esign_requests SET
         status = ${data.status},
         signed_file_path = ${data.signedFileUrl || null},
-        signed_at = ${data.status === 'SIGNED' ? drizzleSql`NOW()` : null},
+        signed_at = ${data.status === 'SIGNED' ? sql`NOW()` : null},
         failed_reason = ${data.failedReason || null}
       WHERE external_request_id = ${externalRequestId}
       RETURNING *
@@ -6604,14 +6832,14 @@ export class DrizzleStorage implements IStorage {
     // If signed, update document status
     if (data.status === 'SIGNED' && result.rows?.[0]) {
       const req = result.rows[0];
-      await db.execute(drizzleSql`
+      await db.execute(sql`
         UPDATE document_masterlist SET lifecycle_status = 'SIGNED', updated_at = NOW()
         WHERE id = ${req.document_id}
       `);
 
       // Update version with signed file
       if (data.signedFileUrl) {
-        await db.execute(drizzleSql`
+        await db.execute(sql`
           UPDATE document_versions SET signed_file_path = ${data.signedFileUrl}, signed_at = NOW()
           WHERE id = ${req.version_id}
         `);
@@ -6622,7 +6850,7 @@ export class DrizzleStorage implements IStorage {
   }
 
   async retryEsignRequest(requestId: string): Promise<any> {
-    const result = await db.execute(drizzleSql`
+    const result = await db.execute(sql`
       UPDATE esign_requests SET
         status = 'PENDING',
         retry_count = retry_count + 1,

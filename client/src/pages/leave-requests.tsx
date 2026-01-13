@@ -36,9 +36,10 @@ export default function LeaveRequests() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const { toast } = useToast();
 
-  const { data: employees = [] } = useQuery<Employee[]>({
+  const { data: employeesResponse } = useQuery<any>({
     queryKey: ["/api/employees"],
   });
+  const employees = Array.isArray(employeesResponse?.data) ? employeesResponse.data : [];
 
   const { data: leaveRequests = [], isLoading } = useQuery<LeaveRequest[]>({
     queryKey: ["/api/leave-requests"],
@@ -120,7 +121,7 @@ export default function LeaveRequests() {
   };
 
   const getEmployeeName = (employeeId: string) => {
-    const employee = employees.find(emp => emp.id === employeeId);
+    const employee = (Array.isArray(employees) ? employees : []).find(emp => emp.id === employeeId);
     return employee ? employee.name : employeeId;
   };
 
@@ -143,7 +144,7 @@ export default function LeaveRequests() {
                   <AutoSaveIndicator status={saveStatus} />
                 </DialogTitle>
               </DialogHeader>
-              
+
               {hasDraft() && (
                 <Alert>
                   <AlertCircle className="h-4 w-4" />
@@ -168,7 +169,7 @@ export default function LeaveRequests() {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {employees.map((employee) => (
+                            {(Array.isArray(employees) ? employees : []).map((employee) => (
                               <SelectItem key={employee.id} value={employee.id}>
                                 {employee.id} - {employee.name}
                               </SelectItem>
@@ -210,9 +211,9 @@ export default function LeaveRequests() {
                       <FormItem>
                         <FormLabel>Tanggal Mulai</FormLabel>
                         <FormControl>
-                          <Input 
-                            type="date" 
-                            {...field} 
+                          <Input
+                            type="date"
+                            {...field}
                             data-testid="leave-start-date-input"
                           />
                         </FormControl>
@@ -227,9 +228,9 @@ export default function LeaveRequests() {
                       <FormItem>
                         <FormLabel>Tanggal Selesai</FormLabel>
                         <FormControl>
-                          <Input 
-                            type="date" 
-                            {...field} 
+                          <Input
+                            type="date"
+                            {...field}
                             data-testid="leave-end-date-input"
                           />
                         </FormControl>
@@ -244,9 +245,9 @@ export default function LeaveRequests() {
                       <FormItem>
                         <FormLabel>Alasan</FormLabel>
                         <FormControl>
-                          <Textarea 
-                            placeholder="Jelaskan alasan pengajuan cuti..." 
-                            {...field} 
+                          <Textarea
+                            placeholder="Jelaskan alasan pengajuan cuti..."
+                            {...field}
                             value={field.value || ""}
                             data-testid="leave-reason-textarea"
                           />

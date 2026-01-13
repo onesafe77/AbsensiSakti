@@ -111,9 +111,10 @@ export default function MonitoringKompetensi() {
     const [openCombobox, setOpenCombobox] = useState(false);
 
     // Fetch Employees for Combobox
-    const { data: employees = [] } = useQuery({
-        queryKey: ["/api/employees"],
-    }) as { data: any[] };
+    const { data: employeesResponse } = useQuery<{ data: any[], total: number }>({
+        queryKey: ["/api/employees?per_page=1000"],
+    });
+    const employees = employeesResponse?.data || [];
 
     // Delete State
     const [deletingId, setDeletingId] = useState<string | null>(null);

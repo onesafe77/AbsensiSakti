@@ -41,13 +41,57 @@ export const employees = pgTable("employees", {
   name: text("name").notNull(),
   position: text("position"),
   nomorLambung: text("nomor_lambung"),
-  isSpareOrigin: boolean("is_spare_origin").default(false), // Track jika karyawan asli SPARE
+  isSpareOrigin: boolean("is_spare_origin").default(false),
   department: text("department"),
   investorGroup: text("investor_group"),
   phone: text("phone").notNull(),
-  qrCode: text("qr_code"), // QR Code data untuk karyawan
+  qrCode: text("qr_code"), // DO NOT TOUCH - QR Code data
+  photoUrl: text("photo_url"),
   status: text("status").notNull().default("active"),
   createdAt: timestamp("created_at").default(sql`now()`),
+
+  // New columns - After NIK
+  isafeNumber: varchar("isafe_number", { length: 50 }),
+  idItws: varchar("id_itws", { length: 50 }),
+
+  // Identitas
+  tempatLahir: varchar("tempat_lahir", { length: 100 }),
+  dob: date("dob"),
+  ktpNo: varchar("ktp_no", { length: 32 }),
+
+  // Kepegawaian
+  doh: date("doh"),
+  statusKaryawan: varchar("status_karyawan", { length: 30 }),
+
+  // Resign
+  tanggalResign: date("tanggal_resign"),
+  catatanResign: text("catatan_resign"),
+
+  // SIM & SIMPER
+  typeSim: varchar("type_sim", { length: 10 }),
+  simNo: varchar("sim_no", { length: 50 }),
+  expiredSimpol: date("expired_simpol"),
+  expiredSimperBib: date("expired_simper_bib"),
+  statusSimperBib: varchar("status_simper_bib", { length: 20 }),
+  expiredSimperTia: date("expired_simper_tia"),
+  statusSimperTia: varchar("status_simper_tia", { length: 20 }),
+
+  // Alamat
+  address: text("address"),
+  provinsi: varchar("provinsi", { length: 80 }),
+  addressGroup: varchar("address_group", { length: 80 }),
+  domisiliKaryawan: varchar("domisili_karyawan", { length: 120 }),
+
+  // OS Training
+  tglIkutPelatihanOs: date("tgl_ikut_pelatihan_os"),
+  merekUnitDigunakanOs: varchar("merek_unit_digunakan_os", { length: 80 }),
+  tglRefreshmentOs: date("tgl_refreshment_os"),
+  refreshmentOs: varchar("refreshment_os", { length: 30 }),
+  keteranganOs: text("keterangan_os"),
+  sertifikatOsUrl: text("sertifikat_os_url"),
+
+  // BPJS
+  bpjsKesehatan: varchar("bpjs_kesehatan", { length: 50 }),
 }, (table) => [
   index("IDX_employees_name").on(table.name),
   index("IDX_employees_status").on(table.status),
@@ -2173,3 +2217,111 @@ export type InsertChangeRequest = z.infer<typeof insertChangeRequestSchema>;
 
 export type DocumentDisposalRecord = typeof documentDisposalRecords.$inferSelect;
 export type InsertDocumentDisposalRecord = z.infer<typeof insertDocumentDisposalRecordSchema>;
+
+// ============================================
+// SI ASEF CHATBOT (Knowledge Base & Chat)
+// ============================================
+
+export const siAsefDocuments = pgTable("si_asef_documents", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  originalName: text("original_name").notNull(),
+  fileType: text("file_type").notNull(),
+  fileSize: text("file_size"),
+  folder: text("folder").default('Umum'),
+  totalPages: integer("total_pages").default(1),
+  totalChunks: integer("total_chunks").default(0),
+  isActive: boolean("is_active").default(true),
+  uploadedBy: varchar("uploaded_by"), // Optional NIK
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("IDX_asef_docs_folder").on(table.folder),
+]);
+
+export const siAsefChunks = pgTable("si_asef_chunks", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  documentId: varchar("document_id").notNull().references(() => siAsefDocuments.id, { onDelete: "cascade" }),
+  chunkIndex: integer("chunk_index").notNull(),
+  content: text("content").notNull(),
+  pageNumber: integer("page_number").default(1),
+  startPosition: integer("start_position").default(0),
+  endPosition: integer("end_position").default(0),
+  embedding: jsonb("embedding"), // Store as JSON array for in-memory processing
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("IDX_asef_chunks_doc").on(table.documentId),
+]);
+
+export const siAsefChatSessions = pgTable("si_asef_chat_sessions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  title: text("title").notNull(),
+  userId: varchar("user_id"), // Optional: Link to authUsers if needed
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const siAsefChatMessages = pgTable("si_asef_chat_messages", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  sessionId: varchar("session_id").notNull().references(() => siAsefChatSessions.id, { onDelete: "cascade" }),
+  role: text("role").notNull(), // 'user' | 'model'
+  content: text("content").notNull(),
+  sources: jsonb("sources"), // JSON array of source references
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("IDX_asef_messages_session").on(table.sessionId),
+  index("IDX_asef_messages_created").on(table.createdAt),
+]);
+
+// Insert Schemas
+export const insertSiAsefDocumentSchema = createInsertSchema(siAsefDocuments).omit({ id: true, createdAt: true });
+export const insertSiAsefChunkSchema = createInsertSchema(siAsefChunks).omit({ id: true, createdAt: true });
+export const insertSiAsefChatSessionSchema = createInsertSchema(siAsefChatSessions).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertSiAsefChatMessageSchema = createInsertSchema(siAsefChatMessages).omit({ id: true, createdAt: true });
+
+// Types
+// ============================================
+// FMS FATIGUE ALERTS (Fleet Management System Monitoring)
+// For high-volume automated ingestion from Excel/API
+// ============================================
+
+export const fmsFatigueAlerts = pgTable("fms_fatigue_alerts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+
+  // Alert Metadata from FMS
+  alertDate: text("alert_date").notNull(), // YYYY-MM-DD
+  alertTime: text("alert_time").notNull(), // HH:mm:ss
+  vehicleNo: text("vehicle_no").notNull(),
+  company: text("company"), // e.g., GECL
+  violation: text("violation"), // e.g., Mata Tertutup, Mengantuk
+  location: text("location"),
+
+  // Timeframe Info
+  oprDate: text("opr_date"), // YYYY-MM-DD
+  shift: text("shift"), // Shift 1 / Shift 2
+  week: integer("week"),
+  month: text("month"), // e.g., Januari
+
+  // Coordinates
+  coordinate: text("coordinate"),
+  level: integer("level"),
+
+  // Validation Tracking
+  validationStatus: text("validation_status").default("Belum Validasi"), // Valid / Tidak Valid
+  validatedBy: text("validated_by"), // Supervisor Name from Roster
+  validatedAt: timestamp("validated_at"),
+
+  // Speed/Performance
+  slaSeconds: integer("sla_seconds"), // Difference between validatedAt and alert datetime
+
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("IDX_fms_fatigue_date").on(table.alertDate),
+  index("IDX_fms_fatigue_vehicle").on(table.vehicleNo),
+  index("IDX_fms_fatigue_week").on(table.week),
+  index("IDX_fms_fatigue_sla").on(table.slaSeconds),
+]);
+
+export const insertFmsFatigueAlertSchema = createInsertSchema(fmsFatigueAlerts).omit({ id: true, createdAt: true, updatedAt: true });
+export type FmsFatigueAlert = typeof fmsFatigueAlerts.$inferSelect;
+export type InsertFmsFatigueAlert = z.infer<typeof insertFmsFatigueAlertSchema>;

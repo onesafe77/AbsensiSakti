@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
     Chart as ChartJS,
     CategoryScale,
@@ -18,7 +18,8 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import { ChevronDown, ChevronUp, Edit, Sparkles, Loader2 } from "lucide-react";
+import { ChevronDown, ChevronUp, Edit, Sparkles, Loader2, Download } from "lucide-react";
+import html2canvas from "html2canvas";
 
 ChartJS.register(
     CategoryScale,
@@ -61,6 +62,29 @@ export default function DashboardStatistics() {
     const [mhOpen, setMhOpen] = useState(false);
     const [selectedMonth, setSelectedMonth] = useState({ mh: 0, tifr: 0, fatigue: 0, cifr: 0 });
     const [isAnalyzing, setIsAnalyzing] = useState(false);
+    const [isExporting, setIsExporting] = useState(false);
+    const dashboardRef = useRef<HTMLDivElement>(null);
+
+    const exportToJPG = async () => {
+        if (!dashboardRef.current) return;
+        setIsExporting(true);
+        try {
+            const canvas = await html2canvas(dashboardRef.current, {
+                backgroundColor: '#f8fafc',
+                scale: 2,
+                useCORS: true,
+                logging: false
+            });
+            const link = document.createElement('a');
+            link.download = `STATISTIK_KESELAMATAN_GECL_2026_${new Date().toISOString().split('T')[0]}.jpg`;
+            link.href = canvas.toDataURL('image/jpeg', 0.9);
+            link.click();
+        } catch (error) {
+            console.error('Export error:', error);
+            alert('Gagal export gambar');
+        }
+        setIsExporting(false);
+    };
 
     const analyzeWithAI = async () => {
         setIsAnalyzing(true);
@@ -169,12 +193,24 @@ export default function DashboardStatistics() {
     };
 
     return (
-        <div className="p-6 bg-slate-50 min-h-screen font-sans space-y-6">
+        <div ref={dashboardRef} className="p-6 bg-slate-50 min-h-screen font-sans space-y-6">
             <div className="flex justify-between items-center bg-white p-4 rounded-xl shadow-sm border-t-4 border-red-500">
                 <h1 className="text-2xl font-bold text-red-600 uppercase tracking-wide">STATISTIK KESELAMATAN PT GECL 2026</h1>
-                <div className="text-right">
-                    <div className="text-xs text-gray-500">POWERED BY</div>
-                    <div className="font-bold text-gray-800">ONETALENT</div>
+                <div className="flex items-center gap-4">
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={exportToJPG}
+                        disabled={isExporting}
+                        className="text-blue-600 border-blue-200 hover:bg-blue-50"
+                    >
+                        {isExporting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Download className="w-4 h-4 mr-2" />}
+                        {isExporting ? 'Exporting...' : 'Export JPG'}
+                    </Button>
+                    <div className="text-right">
+                        <div className="text-xs text-gray-500">POWERED BY</div>
+                        <div className="font-bold text-gray-800">ONETALENT</div>
+                    </div>
                 </div>
             </div>
 
@@ -437,7 +473,7 @@ export default function DashboardStatistics() {
                                 disabled={isAnalyzing}
                             >
                                 {isAnalyzing ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <Sparkles className="w-3 h-3 mr-1" />}
-                                {isAnalyzing ? "Menganalisa..." : "Tanya AI"}
+                                {isAnalyzing ? "Menganalisa..." : "Tanya Mystic AI"}
                             </Button>
                         </div>
                         {data.aiInsights && data.aiInsights.length > 0 ? (

@@ -1,0 +1,2 @@
+Status: 200
+Body: {"photoUrl":"/uploads/photo-1768146545700-747913852.jpg"}

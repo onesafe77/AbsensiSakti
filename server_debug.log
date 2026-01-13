@@ -1,0 +1,144 @@
+[2026-01-12T12:51:38.575Z] CREATE-DOC Attempt: {"documentCode":"GECL-HSE-PPO-4.1.1","title":"Prosedur Manajemen Resiko","category":"Prosedur - Dept HSE","department":"HSE","description":"","effectiveDate":"2026-01-12","nextReviewDate":"2026-01-26","ownerId":"C-075768","ownerName":"BAGUS ANDYKA FIRMANSYAH","createdBy":"C-075768"}
+[2026-01-12T12:51:38.576Z] CREATE-DOC Error: drizzleSql is not defined
+Stack: ReferenceError: drizzleSql is not defined
+    at DrizzleStorage.createDocumentMasterlist (C:\OneTalent\server\storage.ts:6138:29)
+    at <anonymous> (C:\OneTalent\server\routes.ts:10622:34)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at next (C:\OneTalent\node_modules\express\lib\router\route.js:149:13)
+    at Route.dispatch (C:\OneTalent\node_modules\express\lib\router\route.js:119:3)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:284:15
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at strategy.pass (C:\OneTalent\node_modules\passport\lib\middleware\authenticate.js:355:9)
+    at SessionStrategy.authenticate (C:\OneTalent\node_modules\passport\lib\strategies\session.js:126:10)
+    at attempt (C:\OneTalent\node_modules\passport\lib\middleware\authenticate.js:378:16)
+    at authenticate (C:\OneTalent\node_modules\passport\lib\middleware\authenticate.js:379:7)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\OneTalent\node_modules\express\lib\router\index.js:328:13)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:286:9
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at initialize (C:\OneTalent\node_modules\passport\lib\middleware\initialize.js:98:5)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\OneTalent\node_modules\express\lib\router\index.js:328:13)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:286:9
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at session (C:\OneTalent\node_modules\express-session\index.js:182:7)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\OneTalent\node_modules\express\lib\router\index.js:328:13)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:286:9
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at strategy.pass (C:\OneTalent\node_modules\passport\lib\middleware\authenticate.js:355:9)
+    at SessionStrategy.authenticate (C:\OneTalent\node_modules\passport\lib\strategies\session.js:126:10)
+    at attempt (C:\OneTalent\node_modules\passport\lib\middleware\authenticate.js:378:16)
+    at authenticate (C:\OneTalent\node_modules\passport\lib\middleware\authenticate.js:379:7)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\OneTalent\node_modules\express\lib\router\index.js:328:13)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:286:9
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at initialize (C:\OneTalent\node_modules\passport\lib\middleware\initialize.js:98:5)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\OneTalent\node_modules\express\lib\router\index.js:328:13)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:286:9
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at C:\OneTalent\node_modules\express-session\index.js:514:7
+    at C:\OneTalent\node_modules\connect-pg-simple\index.js:370:18
+    at process.processTicksAndRejections (node:internal/process/task_queues:82:21)
+[2026-01-12T12:51:56.673Z] CREATE-DOC Attempt: {"documentCode":"GECL-HSE-PPO-4.1.1","title":"Prosedur Manajemen Resiko","category":"Prosedur - Dept HSE","department":"HSE","description":"","effectiveDate":"2026-01-12","nextReviewDate":"2026-01-26","ownerId":"C-075768","ownerName":"BAGUS ANDYKA FIRMANSYAH","createdBy":"C-075768"}
+[2026-01-12T12:51:56.674Z] CREATE-DOC Error: drizzleSql is not defined
+Stack: ReferenceError: drizzleSql is not defined
+    at DrizzleStorage.createDocumentMasterlist (C:\OneTalent\server\storage.ts:6138:29)
+    at <anonymous> (C:\OneTalent\server\routes.ts:10622:34)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at next (C:\OneTalent\node_modules\express\lib\router\route.js:149:13)
+    at Route.dispatch (C:\OneTalent\node_modules\express\lib\router\route.js:119:3)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:284:15
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at strategy.pass (C:\OneTalent\node_modules\passport\lib\middleware\authenticate.js:355:9)
+    at SessionStrategy.authenticate (C:\OneTalent\node_modules\passport\lib\strategies\session.js:126:10)
+    at attempt (C:\OneTalent\node_modules\passport\lib\middleware\authenticate.js:378:16)
+    at authenticate (C:\OneTalent\node_modules\passport\lib\middleware\authenticate.js:379:7)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\OneTalent\node_modules\express\lib\router\index.js:328:13)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:286:9
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at initialize (C:\OneTalent\node_modules\passport\lib\middleware\initialize.js:98:5)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\OneTalent\node_modules\express\lib\router\index.js:328:13)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:286:9
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at session (C:\OneTalent\node_modules\express-session\index.js:182:7)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\OneTalent\node_modules\express\lib\router\index.js:328:13)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:286:9
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at strategy.pass (C:\OneTalent\node_modules\passport\lib\middleware\authenticate.js:355:9)
+    at SessionStrategy.authenticate (C:\OneTalent\node_modules\passport\lib\strategies\session.js:126:10)
+    at attempt (C:\OneTalent\node_modules\passport\lib\middleware\authenticate.js:378:16)
+    at authenticate (C:\OneTalent\node_modules\passport\lib\middleware\authenticate.js:379:7)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\OneTalent\node_modules\express\lib\router\index.js:328:13)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:286:9
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at initialize (C:\OneTalent\node_modules\passport\lib\middleware\initialize.js:98:5)
+    at Layer.handle [as handle_request] (C:\OneTalent\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (C:\OneTalent\node_modules\express\lib\router\index.js:328:13)
+    at C:\OneTalent\node_modules\express\lib\router\index.js:286:9
+    at Function.process_params (C:\OneTalent\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\OneTalent\node_modules\express\lib\router\index.js:280:10)
+    at C:\OneTalent\node_modules\express-session\index.js:514:7
+    at C:\OneTalent\node_modules\connect-pg-simple\index.js:370:18
+    at process.processTicksAndRejections (node:internal/process/task_queues:82:21)
+[2026-01-12T12:56:19.919Z] CREATE-DOC Attempt: {"documentCode":"GECL-HSE-PPO-4.1.1","title":"Prosedur Manajemen Resiko","category":"Prosedur - Dept HSE","department":"HSE","description":"","effectiveDate":"2026-01-12","nextReviewDate":"2026-01-27","ownerId":"C-075768","ownerName":"BAGUS ANDYKA FIRMANSYAH","createdBy":"C-075768"}
+[2026-01-12T12:56:21.876Z] CREATE-DOC Error: duplicate key value violates unique constraint "document_masterlist_document_code_unique"
+Stack: error: duplicate key value violates unique constraint "document_masterlist_document_code_unique"
+    at file:///C:/OneTalent/node_modules/@neondatabase/serverless/index.mjs:1345:74
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async DrizzleStorage.createDocumentMasterlist (C:\OneTalent\server\storage.ts:6138:20)
+    at async <anonymous> (C:\OneTalent\server\routes.ts:10622:20)
+[2026-01-12T12:56:37.364Z] CREATE-DOC Attempt: {"documentCode":"GECL-HSE-PPO-4.1.1","title":"Prosedur Manajemen Resiko","category":"Prosedur - Dept HSE","department":"HSE","description":"","effectiveDate":"2026-01-12","nextReviewDate":"2026-01-27","ownerId":"C-075768","ownerName":"BAGUS ANDYKA FIRMANSYAH","createdBy":"C-075768"}
+[2026-01-12T12:56:39.312Z] CREATE-DOC Error: duplicate key value violates unique constraint "document_masterlist_document_code_unique"
+Stack: error: duplicate key value violates unique constraint "document_masterlist_document_code_unique"
+    at file:///C:/OneTalent/node_modules/@neondatabase/serverless/index.mjs:1345:74
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async DrizzleStorage.createDocumentMasterlist (C:\OneTalent\server\storage.ts:6138:20)
+    at async <anonymous> (C:\OneTalent\server\routes.ts:10622:20)
+[2026-01-12T12:58:22.719Z] CREATE-DOC Attempt: {"documentCode":"GECL-HSE-PPO-4.1.2","title":"Identifikasi, Kepatuhan P3L","category":"Prosedur - Dept HSE","department":"HSE","description":"","effectiveDate":"2026-01-12","nextReviewDate":"2026-01-27","ownerId":"C-075768","ownerName":"BAGUS ANDYKA FIRMANSYAH","createdBy":"C-075768"}
+[2026-01-12T12:58:23.857Z] CREATE-DOC Success
+[2026-01-12T13:27:35.404Z] UPLOAD Version Attempt for 2a2aad5c-cc8d-450d-82dd-16f590573d7c
+[2026-01-12T13:27:35.405Z] UPLOAD File Info: GECL - HSE - PPO - 4.1.2 - R02 Identifikasi, Kepatuhan P3L.pdf
+[2026-01-12T13:27:38.611Z] UPLOAD Success
+[2026-01-12T15:03:30.377Z] CREATE-DOC Attempt: {"documentCode":"GECL-HSE-PPO-4.1.9","title":"AKA-JSA","category":"Prosedur - Dept HSE","department":"HSE","description":"","effectiveDate":"2026-01-12","nextReviewDate":"2026-03-27","currentRevision":"2","ownerId":"C-075768","ownerName":"BAGUS ANDYKA FIRMANSYAH","createdBy":"C-075768"}
+[2026-01-12T15:03:32.021Z] CREATE-DOC Success
+[2026-01-12T15:03:44.041Z] UPLOAD Version Attempt for a633dbbc-9278-411a-8a53-4ea75880aa54
+[2026-01-12T15:03:44.042Z] UPLOAD File Info: GECL - HSE - PPO - 4.1.9 - R01 AKA- JSA.pdf
+[2026-01-12T15:03:44.866Z] UPLOAD Success
+[2026-01-12T15:31:24.908Z] CREATE-DOC Attempt: {"documentCode":"GECL-HSE-PPO-4.1.11","title":"APD dan Alat Keselamatan","category":"Prosedur - Dept HSE","department":"HSE","description":"","effectiveDate":"2026-01-12","nextReviewDate":"","currentRevision":"3","ownerId":"C-075768","ownerName":"BAGUS ANDYKA FIRMANSYAH","createdBy":"C-075768"}
+[2026-01-12T15:31:26.528Z] CREATE-DOC Success
+[2026-01-12T15:31:44.440Z] UPLOAD Version Attempt for 8dbae68d-46f2-4712-ab56-20790426abd5
+[2026-01-12T15:31:44.441Z] UPLOAD File Info: GECL - HSE - PPO - 4.1.11- R01 APD dan Alat Keselamatan.pdf
+[2026-01-12T15:31:45.264Z] UPLOAD Success
+[2026-01-12T16:18:40.791Z] CREATE-DOC Attempt: {"documentCode":"GECL-HSE-PPO-4.1.14","title":"Kalibrasi Peralatan","category":"Prosedur - Dept HSE","department":"HSE","description":"","effectiveDate":"2026-01-21","nextReviewDate":"","currentRevision":"0","ownerId":"C-075768","ownerName":"BAGUS ANDYKA FIRMANSYAH","createdBy":"C-075768"}
+[2026-01-12T16:18:41.860Z] CREATE-DOC Success
+[2026-01-12T16:18:54.858Z] UPLOAD Version Attempt for ab18809e-71e4-41b0-9ded-e8ae70487ac5
+[2026-01-12T16:18:54.859Z] UPLOAD File Info: GECL - HSE - PPO - 4.1.8 - R01 Partisipasi, Konsultasi, Motivasi dan Kesadaran 1.pdf
+[2026-01-12T16:18:55.698Z] UPLOAD Success
+2026-01-12T17:27:13.316Z - Ingest request received.
+2026-01-12T17:27:13.317Z - File uploaded to: uploads\file-1768238833313-313313390.xlsx
+2026-01-12T17:27:13.318Z - Executing: "C:\Users\SDM UTAMA\AppData\Local\Programs\Python\Python313\python.exe" "C:\OneTalent\scripts\ingest_fatigue.py" "uploads\file-1768238833313-313313390.xlsx"
+2026-01-12T17:27:21.751Z - Success. Stdout: Reading uploads\file-1768238833313-313313390.xlsx...
+Loaded 2 rows. Columns: ['Date', 'Time', 'Vehicle No', 'Company', 'Violation', 'Location', 'Date Opr', 'Shift', 'Week', 'Month', 'Coordinate', 'Level', 'validation_status', 'validated_by', 'validated_at']
+Inserting 2 clean rows to DB...
+Ingestion successful! SLA calculated.
+

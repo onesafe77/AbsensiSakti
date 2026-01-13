@@ -84,7 +84,8 @@ export default function TnaInput() {
 
     // Fetch Lists
     const { data: trainings = [] } = useQuery<any[]>({ queryKey: ["/api/hse/trainings"] });
-    const { data: employees = [] } = useQuery<Employee[]>({ queryKey: ["/api/employees"] });
+    const { data: employeesResponse } = useQuery<{ data: Employee[], total: number }>({ queryKey: ["/api/employees?per_page=1000"] });
+    const employees = employeesResponse?.data || [];
 
     // Load Existing TNA Data when Employee & Period Selected
     const { data: existingTna, isLoading: tnaLoading } = useQuery({

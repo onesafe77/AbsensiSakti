@@ -4,6 +4,9 @@ import compression from "compression";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { storage } from "./storage";
+import multer from "multer";
+import path from "path";
+import fs from "fs";
 
 const app = express();
 
@@ -40,6 +43,7 @@ app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: false, limit: '50mb' }));
 
 app.use((req, res, next) => {
+  console.log(`[INCOMING REQUEST] ${req.method} ${req.originalUrl}`);
   const start = Date.now();
   const path = req.path;
   let capturedJsonResponse: Record<string, any> | undefined = undefined;
@@ -64,6 +68,172 @@ app.use((req, res, next) => {
 
   next();
 });
+
+// !!! HOTFIX: Define routes directly here to bypass potential routes.ts issues !!!
+app.get('/api/direct-probe', (req, res) => {
+  res.json({ working: true, source: 'index.ts' });
+});
+
+// Ensure uploads directory exists
+if (!fs.existsSync('uploads')) {
+  fs.mkdirSync('uploads');
+}
+
+const storageConfig = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, 'uploads/')
+  },
+  filename: function (req, file, cb) {
+    console.log('DEBUG (Index): Multer filename', file.originalname);
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    const ext = path.extname(file.originalname) || '.jpg';
+    cb(null, file.fieldname + '-' + uniqueSuffix + ext);
+  }
+});
+const uploadDirect = multer({ storage: storageConfig });
+app.use('/uploads', express.static('uploads'));
+
+app.post("/api/employees/:id/photo", uploadDirect.single('photo'), async (req, res) => {
+  console.log(`[HOTFIX ROUTE] POST photo for ${req.params.id}`);
+  try {
+    const { id } = req.params;
+    const file = req.file;
+    if (!file) return res.status(400).json({ message: "No photo" });
+
+    const photoUrl = `/uploads/${file.filename}`;
+    await storage.updateEmployee(id, { photoUrl });
+    console.log("Photo updated via HOTFIX:", photoUrl);
+    res.json({ photoUrl });
+  } catch (error) {
+    console.error("Hotfix Upload Error:", error);
+    res.status(500).json({ error: String(error) });
+  }
+});
+
+// Upload OS Certificate PDF
+app.post("/api/employees/:id/os-certificate", uploadDirect.single('certificate'), async (req, res) => {
+  console.log(`[HOTFIX ROUTE] POST OS certificate for ${req.params.id}`);
+  try {
+    const { id } = req.params;
+    const file = req.file;
+    if (!file) return res.status(400).json({ message: "No file uploaded" });
+
+    const sertifikatOsUrl = `/uploads/${file.filename}`;
+    await storage.updateEmployee(id, { sertifikatOsUrl } as any);
+    console.log("OS Certificate updated:", sertifikatOsUrl);
+    res.json({ sertifikatOsUrl });
+  } catch (error) {
+    console.error("OS Certificate Upload Error:", error);
+    res.status(500).json({ error: String(error) });
+  }
+});
+
+// WhatsApp Send Reminder API
+import { sendWhatsAppMessage, generateSimperReminderMessage, sendAdminNotification } from './services/whatsapp-service';
+
+app.post("/api/whatsapp/send-reminder", async (req, res) => {
+  console.log(`[WhatsApp API] POST /api/whatsapp/send-reminder`);
+  try {
+    const { phone, name, docType, daysLeft, expiredDate, customMessage } = req.body;
+
+    if (!phone) {
+      return res.status(400).json({ success: false, message: "Phone number is required" });
+    }
+
+    if (!name || !docType) {
+      return res.status(400).json({ success: false, message: "Name and docType are required" });
+    }
+
+    // Use custom message if provided, otherwise generate default
+    let message: string;
+    if (customMessage) {
+      // Replace placeholders in custom message
+      message = customMessage
+        .replace(/{nama}/g, name)
+        .replace(/{docType}/g, docType)
+        .replace(/{daysLeft}/g, String(daysLeft ?? 0))
+        .replace(/{expiredDate}/g, expiredDate || "N/A");
+    } else {
+      message = generateSimperReminderMessage({
+        name,
+        docType,
+        daysLeft: daysLeft ?? 0,
+        expiredDate: expiredDate || "N/A"
+      });
+    }
+
+    // Send WhatsApp
+    const result = await sendWhatsAppMessage({ phone, message });
+
+    if (result.success) {
+      console.log(`[WhatsApp API] Successfully sent to ${phone}`);
+      res.json({ success: true, message: "WhatsApp sent successfully" });
+    } else {
+      console.error(`[WhatsApp API] Failed: ${result.error}`);
+      res.status(500).json({ success: false, message: result.error });
+    }
+  } catch (error) {
+    console.error("[WhatsApp API] Error:", error);
+    res.status(500).json({ success: false, message: String(error) });
+  }
+});
+
+// GET /api/employees with pagination
+app.get("/api/employees", async (req, res) => {
+  try {
+    const page = parseInt(req.query.page as string) || 1;
+    const perPage = parseInt(req.query.per_page as string) || 20;
+    const search = req.query.search as string || "";
+
+    console.log(`[DEBUG] GET /api/employees page=${page} perPage=${perPage} search="${search}"`);
+    const result = await storage.getEmployeesPaginated(page, perPage, search);
+    console.log(`[DEBUG] Result: ${result.data.length} items, total=${result.total}`);
+
+    res.json({
+      data: result.data,
+      total: result.total,
+      totalPages: result.totalPages,
+      page,
+      perPage
+    });
+  } catch (error) {
+    console.error("Error fetching employees:", error);
+    res.status(500).json({ error: String(error) });
+  }
+});
+
+// GET /api/employees/:id
+app.get("/api/employees/:id", async (req, res) => {
+  try {
+    const employee = await storage.getEmployee(req.params.id);
+    if (!employee) return res.status(404).json({ error: "Employee not found" });
+    res.json(employee);
+  } catch (error) {
+    console.error("Error fetching employee:", error);
+    res.status(500).json({ error: String(error) });
+  }
+});
+
+// PUT /api/employees/:id with resign validation
+app.put("/api/employees/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updateData = req.body;
+
+    // Validation: if resign, tanggal_resign required
+    if (updateData.statusKaryawan === "Resign" && !updateData.tanggalResign) {
+      return res.status(400).json({ error: "Tanggal resign wajib diisi jika status Resign" });
+    }
+
+    const updated = await storage.updateEmployee(id, updateData);
+    if (!updated) return res.status(404).json({ error: "Employee not found" });
+    res.json(updated);
+  } catch (error) {
+    console.error("Error updating employee:", error);
+    res.status(500).json({ error: String(error) });
+  }
+});
+
 
 (async () => {
   const server = await registerRoutes(app);

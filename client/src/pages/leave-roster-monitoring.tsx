@@ -12,12 +12,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { 
-  Calendar, 
-  Filter, 
-  Plus, 
-  Trash2, 
-  Edit, 
+import {
+  Calendar,
+  Filter,
+  Plus,
+  Trash2,
+  Edit,
   Download,
   Upload,
   Users,
@@ -85,18 +85,18 @@ const statusColors = {
 export default function LeaveRosterMonitoringPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  
+
   // States for filters
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [investorGroupFilter, setInvestorGroupFilter] = useState("all");
   const [leaveOptionFilter, setLeaveOptionFilter] = useState("all");
   const [dateRangeFilter, setDateRangeFilter] = useState("all");
-  
+
   // States for add/edit dialog
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<LeaveRosterMonitoring | null>(null);
-  
+
   // States for Excel upload
   const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
   const [uploadFile, setUploadFile] = useState<File | null>(null);
@@ -123,16 +123,17 @@ export default function LeaveRosterMonitoringPage() {
   });
 
   // Fetch employees for dropdown with longer cache
-  const { data: employees = [] } = useQuery<Employee[]>({
+  const { data: employeesResponse } = useQuery<any>({
     queryKey: ["/api/employees"],
     staleTime: 600000, // 10 minutes cache
     refetchInterval: false, // Disable auto-refresh, only manual or on focus
     refetchOnWindowFocus: false, // Employees don't change often
   });
+  const employees = Array.isArray(employeesResponse?.data) ? employeesResponse.data : [];
 
   // Create monitoring entry
   const createMutation = useMutation({
-    mutationFn: (data: any) => 
+    mutationFn: (data: any) =>
       apiRequest("/api/leave-roster-monitoring", "POST", data),
     onSuccess: () => {
       toast({
@@ -154,7 +155,7 @@ export default function LeaveRosterMonitoringPage() {
 
   // Update monitoring entry
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: any }) => 
+    mutationFn: ({ id, data }: { id: string; data: any }) =>
       apiRequest(`/api/leave-roster-monitoring/${id}`, "PUT", data),
     onSuccess: () => {
       toast({
@@ -167,7 +168,7 @@ export default function LeaveRosterMonitoringPage() {
     },
     onError: (error: Error) => {
       toast({
-        title: "Gagal", 
+        title: "Gagal",
         description: error.message,
         variant: "destructive",
       });
@@ -176,7 +177,7 @@ export default function LeaveRosterMonitoringPage() {
 
   // Delete monitoring entry
   const deleteMutation = useMutation({
-    mutationFn: (id: string) => 
+    mutationFn: (id: string) =>
       apiRequest(`/api/leave-roster-monitoring/${id}`, "DELETE"),
     onSuccess: () => {
       toast({
@@ -207,16 +208,16 @@ export default function LeaveRosterMonitoringPage() {
     mutationFn: async (file: File) => {
       const formData = new FormData();
       formData.append("file", file);
-      
+
       const response = await fetch("/api/leave-roster-monitoring/upload-excel", {
         method: "POST",
         body: formData,
       });
-      
+
       if (!response.ok) {
         throw new Error("Upload failed");
       }
-      
+
       return response.json();
     },
     onSuccess: (result) => {
@@ -270,7 +271,7 @@ export default function LeaveRosterMonitoringPage() {
   // Calculate next leave date based on leave option
   const calculateNextLeaveDate = (lastLeaveDate: string, leaveOption: string) => {
     if (!lastLeaveDate) return "";
-    
+
     const workDays = leaveOption === "70" ? 70 : 35;
     const lastDate = parseISO(lastLeaveDate);
     const nextDate = addDays(lastDate, workDays);
@@ -280,7 +281,7 @@ export default function LeaveRosterMonitoringPage() {
   // Calculate monitoring days
   const calculateMonitoringDays = (lastLeaveDate: string) => {
     if (!lastLeaveDate) return 0;
-    
+
     const lastDate = parseISO(lastLeaveDate);
     const today = new Date();
     return differenceInDays(today, lastDate);
@@ -306,7 +307,7 @@ export default function LeaveRosterMonitoringPage() {
   // Handle form submission
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!formData.nik || !formData.name || !formData.investorGroup) {
       toast({
         title: "Error",
@@ -317,12 +318,12 @@ export default function LeaveRosterMonitoringPage() {
     }
 
     // Calculate monitoring days and auto-determine status
-    const monitoringDays = formData.lastLeaveDate ? 
+    const monitoringDays = formData.lastLeaveDate ?
       calculateMonitoringDays(formData.lastLeaveDate) : 0;
-    
+
     const workDaysThreshold = formData.leaveOption === "70" ? 70 : 35;
     let autoStatus = "Aktif";
-    
+
     // Auto determine status based on monitoring days
     if (monitoringDays >= workDaysThreshold - 5 && monitoringDays < workDaysThreshold) {
       autoStatus = "Menunggu Cuti";
@@ -334,14 +335,14 @@ export default function LeaveRosterMonitoringPage() {
     const processedData = {
       ...formData,
       status: autoStatus, // Use auto-calculated status
-      nextLeaveDate: formData.lastLeaveDate ? 
+      nextLeaveDate: formData.lastLeaveDate ?
         calculateNextLeaveDate(formData.lastLeaveDate, formData.leaveOption) : undefined,
       monitoringDays
     };
 
     if (editingItem) {
-      updateMutation.mutate({ 
-        id: editingItem.id, 
+      updateMutation.mutate({
+        id: editingItem.id,
         data: {
           nik: processedData.nik,
           name: processedData.name,
@@ -389,7 +390,7 @@ export default function LeaveRosterMonitoringPage() {
 
   // Handle employee selection
   const handleEmployeeSelect = (employeeId: string) => {
-    const employee = employees.find(emp => emp.id === employeeId);
+    const employee = (Array.isArray(employees) ? employees : []).find(emp => emp.id === employeeId);
     if (employee) {
       setFormData(prev => ({
         ...prev,
@@ -429,7 +430,7 @@ export default function LeaveRosterMonitoringPage() {
     // Create Excel workbook
     const workbook = XLSX.utils.book_new();
     const worksheet = XLSX.utils.aoa_to_sheet(templateData);
-    
+
     // Set column widths
     const colWidths = [
       { wch: 12 }, // NIK
@@ -442,28 +443,28 @@ export default function LeaveRosterMonitoringPage() {
       { wch: 15 }  // Investor Group
     ];
     worksheet['!cols'] = colWidths;
-    
+
     XLSX.utils.book_append_sheet(workbook, worksheet, "Template Monitoring");
-    
+
     // Download Excel file
     XLSX.writeFile(workbook, "template_monitoring_roster_cuti.xlsx");
   };
 
   // Filter data
   const filteredData = monitoringData.filter((item) => {
-    const matchesSearch = 
+    const matchesSearch =
       item.nik.toLowerCase().includes(searchTerm.toLowerCase()) ||
       item.name.toLowerCase().includes(searchTerm.toLowerCase());
-    
+
     const matchesStatus = statusFilter === "all" || item.status === statusFilter;
     const matchesInvestorGroup = investorGroupFilter === "all" || item.investorGroup === investorGroupFilter;
     const matchesLeaveOption = leaveOptionFilter === "all" || item.leaveOption === leaveOptionFilter;
-    
+
     return matchesSearch && matchesStatus && matchesInvestorGroup && matchesLeaveOption;
   });
 
   // Get unique investor groups for filter
-  const investorGroups = Array.from(new Set(monitoringData.map((item) => item.investorGroup)));
+  const investorGroups = Array.from(new Set((Array.isArray(monitoringData) ? monitoringData : []).map((item) => item.investorGroup)));
 
   // Dashboard stats
   const stats = {
@@ -515,7 +516,7 @@ export default function LeaveRosterMonitoringPage() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button 
+          <Button
             onClick={() => setIsDialogOpen(true)}
             className="bg-red-600 hover:bg-red-700"
             data-testid="button-add-monitoring"
@@ -523,7 +524,7 @@ export default function LeaveRosterMonitoringPage() {
             <Plus className="h-4 w-4 mr-2" />
             Tambah Monitoring
           </Button>
-          <Button 
+          <Button
             onClick={() => setIsUploadDialogOpen(true)}
             variant="outline"
             className="border-red-600 text-red-600 hover:bg-red-50"
@@ -532,7 +533,7 @@ export default function LeaveRosterMonitoringPage() {
             <Upload className="h-4 w-4 mr-2" />
             Upload Excel
           </Button>
-          <Button 
+          <Button
             onClick={downloadTemplate}
             variant="outline"
             data-testid="button-download-template"
@@ -540,7 +541,7 @@ export default function LeaveRosterMonitoringPage() {
             <Download className="h-4 w-4 mr-2" />
             Template Sederhana
           </Button>
-          <Button 
+          <Button
             onClick={() => {
               if (window.confirm("Apakah Anda yakin ingin menghapus SEMUA data monitoring roster cuti? Tindakan ini tidak dapat dibatalkan.")) {
                 deleteAllMutation.mutate();
@@ -567,7 +568,7 @@ export default function LeaveRosterMonitoringPage() {
             <div className="text-2xl font-bold">{stats.total}</div>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Aktif</CardTitle>
@@ -643,7 +644,7 @@ export default function LeaveRosterMonitoringPage() {
                 data-testid="input-search"
               />
             </div>
-            
+
             <div>
               <Label>Status</Label>
               <Select value={statusFilter} onValueChange={setStatusFilter}>
@@ -692,8 +693,8 @@ export default function LeaveRosterMonitoringPage() {
             </div>
 
             <div className="flex items-end">
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 onClick={() => {
                   setSearchTerm("");
                   setStatusFilter("all");
@@ -751,7 +752,7 @@ export default function LeaveRosterMonitoringPage() {
                   ) : (
                     filteredData.map((item) => {
                       // Find employee data to get Nomor Lambung
-                      const employee = employees.find(emp => emp.id === item.nik);
+                      const employee = (Array.isArray(employees) ? employees : []).find(emp => emp.id === item.nik);
                       return (
                         <TableRow key={item.id} data-testid={`row-monitoring-${item.nik}`}>
                           <TableCell className="font-medium">{item.nik}</TableCell>
@@ -768,8 +769,8 @@ export default function LeaveRosterMonitoringPage() {
                           </TableCell>
                           <TableCell>{item.investorGroup}</TableCell>
                           <TableCell>
-                            {item.lastLeaveDate ? 
-                              format(parseISO(item.lastLeaveDate), "dd/MM/yyyy") : 
+                            {item.lastLeaveDate ?
+                              format(parseISO(item.lastLeaveDate), "dd/MM/yyyy") :
                               "-"
                             }
                           </TableCell>
@@ -780,11 +781,11 @@ export default function LeaveRosterMonitoringPage() {
                           </TableCell>
                           <TableCell>
                             <span className="font-semibold">
-                              {item.monitoringDays > 0 
+                              {item.monitoringDays > 0
                                 ? `${item.monitoringDays} hari lagi menuju cuti`
-                                : item.monitoringDays === 0 
-                                ? "Hari ini adalah cuti"
-                                : `${Math.abs(item.monitoringDays)} hari (sudah lewat ${Math.abs(item.monitoringDays)} hari dari cuti)`
+                                : item.monitoringDays === 0
+                                  ? "Hari ini adalah cuti"
+                                  : `${Math.abs(item.monitoringDays)} hari (sudah lewat ${Math.abs(item.monitoringDays)} hari dari cuti)`
                               }
                             </span>
                             <div className="text-xs text-gray-500 mt-1">
@@ -845,7 +846,7 @@ export default function LeaveRosterMonitoringPage() {
               {editingItem ? "Edit Monitoring Roster Cuti" : "Tambah Monitoring Roster Cuti"}
             </DialogTitle>
           </DialogHeader>
-          
+
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <Label>Pilih Karyawan</Label>
@@ -854,7 +855,7 @@ export default function LeaveRosterMonitoringPage() {
                   <SelectValue placeholder="Pilih karyawan..." />
                 </SelectTrigger>
                 <SelectContent>
-                  {employees.map((employee) => (
+                  {(Array.isArray(employees) ? employees : []).map((employee) => (
                     <SelectItem key={employee.id} value={employee.id}>
                       {employee.id} - {employee.name} ({employee.investorGroup})
                     </SelectItem>
@@ -928,8 +929,8 @@ export default function LeaveRosterMonitoringPage() {
 
             <div>
               <Label>Pilihan Cuti</Label>
-              <Select 
-                value={formData.leaveOption} 
+              <Select
+                value={formData.leaveOption}
                 onValueChange={(value) => setFormData(prev => ({ ...prev, leaveOption: value }))}
               >
                 <SelectTrigger data-testid="select-leave-option">
@@ -944,8 +945,8 @@ export default function LeaveRosterMonitoringPage() {
 
             <div>
               <Label>OnSite</Label>
-              <Select 
-                value={formData.onSite || "none"} 
+              <Select
+                value={formData.onSite || "none"}
                 onValueChange={(value) => setFormData(prev => ({ ...prev, onSite: value === "none" ? "" : value }))}
               >
                 <SelectTrigger data-testid="select-onsite">
@@ -966,13 +967,13 @@ export default function LeaveRosterMonitoringPage() {
                   const monitoringDays = calculateMonitoringDays(formData.lastLeaveDate);
                   const workDaysThreshold = formData.leaveOption === "70" ? 70 : 35;
                   let status = "Aktif";
-                  
+
                   if (monitoringDays >= workDaysThreshold - 5 && monitoringDays < workDaysThreshold) {
                     status = "Menunggu Cuti";
                   } else if (monitoringDays >= workDaysThreshold) {
                     status = "Menunggu Cuti";
                   }
-                  
+
                   return (
                     <div className="text-sm">
                       <span className={`px-2 py-1 rounded ${statusColors[status as keyof typeof statusColors]}`}>
@@ -990,9 +991,9 @@ export default function LeaveRosterMonitoringPage() {
             </div>
 
             <div className="flex justify-end space-x-2">
-              <Button 
-                type="button" 
-                variant="outline" 
+              <Button
+                type="button"
+                variant="outline"
                 onClick={() => {
                   setIsDialogOpen(false);
                   resetForm();
@@ -1001,14 +1002,14 @@ export default function LeaveRosterMonitoringPage() {
               >
                 Batal
               </Button>
-              <Button 
-                type="submit" 
+              <Button
+                type="submit"
                 className="bg-red-600 hover:bg-red-700"
                 disabled={createMutation.isPending || updateMutation.isPending}
                 data-testid="button-save"
               >
-                {createMutation.isPending || updateMutation.isPending ? "Menyimpan..." : 
-                 editingItem ? "Update" : "Simpan"}
+                {createMutation.isPending || updateMutation.isPending ? "Menyimpan..." :
+                  editingItem ? "Update" : "Simpan"}
               </Button>
             </div>
           </form>
@@ -1021,7 +1022,7 @@ export default function LeaveRosterMonitoringPage() {
           <DialogHeader>
             <DialogTitle>Upload Excel Monitoring Roster Cuti</DialogTitle>
           </DialogHeader>
-          
+
           <div className="space-y-4">
             <div>
               <Label>File Excel (.xlsx)</Label>
@@ -1048,7 +1049,7 @@ export default function LeaveRosterMonitoringPage() {
               <div>
                 <Label>Progress Upload</Label>
                 <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div 
+                  <div
                     className="bg-red-600 h-2 rounded-full transition-all duration-300"
                     style={{ width: `${uploadProgress}%` }}
                   />
@@ -1059,30 +1060,30 @@ export default function LeaveRosterMonitoringPage() {
 
             <div className="bg-green-50 p-4 rounded-md">
               <p className="text-sm text-green-800">
-                <strong>Format Excel dengan Bulan:</strong><br/>
-                • Kolom 1: <strong>NIK</strong> (wajib)<br/>
-                • Kolom 2: <strong>Nama</strong> (wajib)<br/>
-                • Kolom 3: <strong>Tanggal Terakhir Cuti</strong> (opsional, format: dd-mm-yyyy)<br/>
-                • Kolom 4: <strong>Pilihan Cuti</strong> (opsional, 70 atau 35, default: 70)<br/>
-                • Kolom 5: <strong>Bulan</strong> (opsional, format: YYYY-MM, default: bulan ini)<br/><br/>
-                
-                📅 <strong>Fitur Baru - Per Bulan:</strong><br/>
-                ✓ Setiap NIK bisa ada di berbagai bulan<br/>
-                ✓ Upload roster per bulan untuk tracking berkala<br/>
-                ✓ Monitoring hari dan status per periode bulanan<br/><br/>
-                
-                <strong>OTOMATIS DIHITUNG:</strong><br/>
-                ✓ Investor Group: Berdasarkan range NIK<br/>
-                ✓ Monitoring Hari: Dari tanggal terakhir cuti<br/>
-                ✓ Status: Berdasarkan threshold monitoring hari<br/>
+                <strong>Format Excel dengan Bulan:</strong><br />
+                • Kolom 1: <strong>NIK</strong> (wajib)<br />
+                • Kolom 2: <strong>Nama</strong> (wajib)<br />
+                • Kolom 3: <strong>Tanggal Terakhir Cuti</strong> (opsional, format: dd-mm-yyyy)<br />
+                • Kolom 4: <strong>Pilihan Cuti</strong> (opsional, 70 atau 35, default: 70)<br />
+                • Kolom 5: <strong>Bulan</strong> (opsional, format: YYYY-MM, default: bulan ini)<br /><br />
+
+                📅 <strong>Fitur Baru - Per Bulan:</strong><br />
+                ✓ Setiap NIK bisa ada di berbagai bulan<br />
+                ✓ Upload roster per bulan untuk tracking berkala<br />
+                ✓ Monitoring hari dan status per periode bulanan<br /><br />
+
+                <strong>OTOMATIS DIHITUNG:</strong><br />
+                ✓ Investor Group: Berdasarkan range NIK<br />
+                ✓ Monitoring Hari: Dari tanggal terakhir cuti<br />
+                ✓ Status: Berdasarkan threshold monitoring hari<br />
                 ✓ Tanggal Cuti Berikutnya: Auto calculate
               </p>
             </div>
 
             <div className="flex justify-end space-x-2">
-              <Button 
-                type="button" 
-                variant="outline" 
+              <Button
+                type="button"
+                variant="outline"
                 onClick={() => {
                   setIsUploadDialogOpen(false);
                   setUploadFile(null);
@@ -1092,7 +1093,7 @@ export default function LeaveRosterMonitoringPage() {
               >
                 Batal
               </Button>
-              <Button 
+              <Button
                 onClick={handleExcelUpload}
                 className="bg-red-600 hover:bg-red-700"
                 disabled={!uploadFile || uploadExcelMutation.isPending}
