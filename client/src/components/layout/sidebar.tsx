@@ -66,6 +66,7 @@ export const navigationGroups: NavGroup[] = [
         icon: Bot,
         children: [
           { name: "Chat Regulasi", href: "/workspace/si-asef", icon: MessageSquare },
+          { name: "Activity Calendar", href: "/workspace/activity-calendar", icon: Calendar },
           { name: "Knowledge Base", href: "/workspace/si-asef/admin", icon: Database, requiredPermissions: [Permission.MANAGE_EMPLOYEES] }
         ]
       },
@@ -107,6 +108,7 @@ export const navigationGroups: NavGroup[] = [
                   { name: "Dashboard Overspeed", href: "/workspace/hse/overspeed", icon: AlertTriangle, requiredPermissions: [Permission.VIEW_SIDAK] },
                   { name: "Dashboard Jarak Aman", href: "/workspace/hse/jarak", icon: TrendingUp, requiredPermissions: [Permission.VIEW_SIDAK] },
                   { name: "Monitoring Validasi Fatigue", href: "/workspace/hse/fatigue-validation", icon: Monitor, requiredPermissions: [Permission.VIEW_SIDAK] },
+                  { name: "FMS Violation", href: "/workspace/hse/fms-dashboard", icon: Car, requiredPermissions: [Permission.VIEW_SIDAK] },
                 ]
               },
               {

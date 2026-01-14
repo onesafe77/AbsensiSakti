@@ -7,7 +7,7 @@ import fs from 'fs';
 import path from 'path';
 import bcrypt from 'bcrypt';
 import OpenAI from "openai";
-import { differenceInDays, parseISO, isValid, format } from "date-fns";
+import { differenceInDays, parseISO, isValid, format, addDays, addWeeks, addMonths } from "date-fns";
 import { exec } from "child_process";
 
 // Configure Multer
@@ -75,7 +75,8 @@ import {
   insertKompetensiMonitoringSchema,
   siAsefDocuments, siAsefChunks, siAsefChatSessions, siAsefChatMessages,
   insertSiAsefChatSessionSchema, insertSiAsefChatMessageSchema,
-  fmsFatigueAlerts
+  fmsFatigueAlerts,
+  insertActivityEventSchema
 } from "@shared/schema";
 import { eq, ilike, and, desc, sql } from "drizzle-orm";
 import { processAndSaveDocument, deleteDocument, processAndSaveGoogleSheet } from "./services/document-service";
@@ -2005,13 +2006,16 @@ Format sebagai bullet points singkat per insight.`;
       // Transform monitoring data to leave request format
       const pendingRequests = pendingFromMonitoring.map(monitoring => {
         const employee = employees.find(emp => emp.id === monitoring.nik);
+        // Prevent "Invalid Date" crash by providing fallback
+        const validDate = monitoring.nextLeaveDate || new Date().toISOString().split('T')[0];
+
         return {
           id: `monitoring-${monitoring.id}`,
           employeeId: monitoring.nik,
           employeeName: monitoring.name,
           phoneNumber: employee?.phone || "",
-          startDate: monitoring.nextLeaveDate || "",
-          endDate: "", // To be calculated
+          startDate: validDate,
+          endDate: validDate, // Default end date to match start date to avoid empty string
           leaveType: monitoring.leaveOption === "70" ? "Cuti Tahunan" : "Cuti Khusus",
           reason: `Cuti otomatis berdasarkan monitoring ${monitoring.leaveOption} hari kerja`,
           attachmentPath: null,
@@ -5808,6 +5812,15 @@ Format sebagai bullet points singkat per insight.`;
   // SIDAK WORKSHOP ROUTES
   // ============================================
 
+  app.get("/api/sidak-workshop", async (req, res) => {
+    try {
+      const sessions = await storage.getAllSidakWorkshopSessions();
+      res.json(sessions);
+    } catch (error) {
+      res.status(500).json({ message: "Gagal mengambil data" });
+    }
+  });
+
   app.post("/api/sidak-workshop", async (req, res) => {
     try {
       const validatedData = insertSidakWorkshopSessionSchema.parse(req.body);
@@ -5821,12 +5834,24 @@ Format sebagai bullet points singkat per insight.`;
     }
   });
 
-  app.get("/api/sidak-workshop", async (req, res) => {
+  app.get("/api/si-asef/sessions/:id", async (req, res) => {
     try {
-      const sessions = await storage.getAllSidakWorkshopSessions();
-      res.json(sessions);
+      const messages = await storage.getChatMessages(req.params.id);
+      res.json(messages);
     } catch (error) {
-      res.status(500).json({ message: "Gagal mengambil data" });
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.delete("/api/si-asef/sessions/:id", async (req, res) => {
+    try {
+      if (!(req.session as any).user) return res.sendStatus(401);
+      // Optional: Check ownership if session stores userId
+      await storage.deleteChatSession(req.params.id);
+      res.sendStatus(200);
+    } catch (error) {
+      console.error("Error deleting session:", error);
+      res.status(500).json({ error: "Internal server error" });
     }
   });
 
@@ -11271,6 +11296,7 @@ Format sebagai bullet points singkat per insight.`;
       const hourlyCounts = Array(24).fill(0);
       const supervisorStats: Record<string, { fast: number, slow5: number, slow10: number, slow15: number }> = {};
       const statusCounts: Record<string, number> = {};
+      const dailyTrendMap: Record<string, { date: string, fast: number, slow5: number, slow10: number, slow15: number }> = {};
 
       alerts.forEach(a => {
         // Status Counts
@@ -11303,7 +11329,25 @@ Format sebagai bullet points singkat per insight.`;
             hourlyCounts[hour]++;
           }
         }
+
+        // Daily Trend (by Date)
+        if (a.alertDate) {
+          const dateKey = typeof a.alertDate === 'string' ? a.alertDate : new Date(a.alertDate).toISOString().split('T')[0];
+          if (!dailyTrendMap[dateKey]) {
+            dailyTrendMap[dateKey] = { date: dateKey, fast: 0, slow5: 0, slow10: 0, slow15: 0 };
+          }
+
+          if (sla > 0) {
+            if (sla <= 300) dailyTrendMap[dateKey].fast++;
+            else if (sla <= 600) dailyTrendMap[dateKey].slow5++;
+            else if (sla <= 900) dailyTrendMap[dateKey].slow10++;
+            else dailyTrendMap[dateKey].slow15++;
+          }
+        }
       });
+
+      // Convert dailyTrendMap to array and sort
+      const dailyTrend = Object.values(dailyTrendMap).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
       res.json({
         kpi: {
@@ -11313,6 +11357,7 @@ Format sebagai bullet points singkat per insight.`;
           pctSlow: total > 0 ? ((slow / total) * 100).toFixed(1) : 0
         },
         hourlyTrend: hourlyCounts,
+        dailyTrend,
         supervisorLeaderboard: supervisorStats,
         statusDistribution: statusCounts,
         // Send a small sample for table preview
@@ -11487,12 +11532,63 @@ Format sebagai bullet points singkat per insight.`;
     }
   });
 
+  // Sync Leave Monitoring with Roster
+  app.post("/api/leave-roster-monitoring/sync", async (req, res) => {
+    try {
+      await storage.syncLeaveMonitoringWithRoster();
+      res.json({ message: "Sync successful" });
+    } catch (error: any) {
+      console.error("Error syncing roster:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Analyze Leave Data with Mystic AI
+  app.post("/api/leave-roster-monitoring/analyze", async (req, res) => {
+    try {
+      if (!process.env.OPENAI_API_KEY) {
+        return res.status(500).json({ message: "OpenAI API Key not configured" });
+      }
+
+      const monitoringData = await storage.getAllLeaveRosterMonitoring();
+
+      // Summarize data for AI
+      const upcoming = monitoringData.filter(d => d.status === 'Akan Cuti').map(d => `${d.name} (${d.nextLeaveDate})`);
+      const current = monitoringData.filter(d => d.status === 'Sedang Cuti').map(d => d.name);
+
+      const prompt = `
+        Analyze this leave monitoring data for a mining company roster:
+        
+        Total Monitored: ${monitoringData.length}
+        Currently on Leave: ${current.length} (${current.join(', ')})
+        Upcoming Leave (Next 7 Days): ${upcoming.length} (${upcoming.join(', ')})
+        
+        Provide a brief, professional executive summary (in Indonesian). 
+        Highlight potential shortages if many people are leaving.
+        Keep it under 3 sentences.
+      `;
+
+      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      const completion = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [{ role: "user", content: prompt }],
+      });
+
+      res.json({ analysis: completion.choices[0].message.content });
+
+    } catch (error: any) {
+      console.error("Error analyzing leave data:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   // Chat Endpoint
   app.post("/api/si-asef/chat", async (req, res) => {
     try {
       if (!(req.session as any).user) return res.sendStatus(401);
       const { message, sessionId } = req.body;
       const user = (req.session as any).user;
+      const userId = String(user.id || user.nik || user.username);
 
       let currentSessionId = sessionId;
 
@@ -11500,7 +11596,7 @@ Format sebagai bullet points singkat per insight.`;
       if (!currentSessionId) {
         const [newSession] = await db.insert(siAsefChatSessions).values({
           title: message.substring(0, 50) + "...",
-          userId: user.id || user.nik,
+          userId: userId,
         }).returning();
         currentSessionId = newSession.id;
       }
@@ -11514,70 +11610,269 @@ Format sebagai bullet points singkat per insight.`;
 
       console.log(`[Chat] Msg: "${message.substring(0, 20)}..." Session: ${currentSessionId}`);
 
-      // 3. RAG Retrieval
+      // 3. Define Tools
+      const tools = [
+        {
+          type: "function",
+          function: {
+            name: "create_activity",
+            description: "Schedule a new activity or event on the user's calendar.",
+            parameters: {
+              type: "object",
+              properties: {
+                title: { type: "string", description: "The title of the activity (e.g., 'Meeting with HSE')" },
+                date: { type: "string", description: "Date in YYYY-MM-DD format (e.g., '2025-10-25')" },
+                time: { type: "string", description: "Time in HH:mm format (24h) (e.g., '14:00')" },
+                description: { type: "string", description: "Optional details about the activity" },
+                participants: { type: "string", description: "Comma-separated names of other people to notify (e.g., 'Budi Santoso, Siti')" },
+                recurrence_type: { type: "string", enum: ["daily", "weekly", "monthly"], description: "Frequency of the activity (optional)" },
+                recurrence_count: { type: "integer", description: "Number of times to repeat (default 1 if recurrence_type set, max 12)" },
+                reminder_minutes: { type: "integer", description: "Minutes before event to send reminder (default 15)" }
+              },
+              required: ["title", "date", "time"]
+            }
+          }
+        },
+        {
+          type: "function",
+          function: {
+            name: "get_activities",
+            description: "Get user's scheduled activities for a specific date or date range.",
+            parameters: {
+              type: "object",
+              properties: {
+                date: { type: "string", description: "Date to check in YYYY-MM-DD format" }
+              },
+              required: ["date"]
+            }
+          }
+        },
+        {
+          type: "function",
+          function: {
+            name: "get_upcoming_leave",
+            description: "Get list of employees who are about to go on leave or are currently on leave from the roster monitoring system.",
+            parameters: {
+              type: "object",
+              properties: {}
+            }
+          }
+        },
+        {
+          type: "function",
+          function: {
+            name: "get_roster_schedule",
+            description: "Get roster schedule for a specific employee or date.",
+            parameters: {
+              type: "object",
+              properties: {
+                employeeName: { type: "string", description: "Name of the employee (partial match allowed)" },
+                date: { type: "string", description: "Date YYYY-MM-DD" },
+                nik: { type: "string", description: "NIK of the employee" }
+              }
+            }
+          }
+        }
+      ];
+
+      // 4. RAG Retrieval (Keep existing logic for regulations/general knowledge)
+      // Only do RAG if it looks like a question, OR just always do it as context?
+      // For now, let's keep it but maybe we can optimize to skip if it's clearly a command?
+      // Let's keep it simple and always fetch RAG context for now, the model can ignore it.
       const t1 = Date.now();
       const embedding = await generateEmbedding(message);
-      console.log(`[Chat] Embedding gen: ${Date.now() - t1}ms`);
 
-      // Optimize: Select only necessary fields to avoid memory overload
-      const t2 = Date.now();
       const allChunks = await db.select({
         id: siAsefChunks.id,
         content: siAsefChunks.content,
         embedding: siAsefChunks.embedding,
-        // Join with document for name if possible, or just select fields needed for similarity
       }).from(siAsefChunks);
-      console.log(`[Chat] DB Fetch (${allChunks.length} chunks): ${Date.now() - t2}ms`);
 
-      // Note: In a production app with pgvector, we would do the similarity search in the DB.
-      // Here we do it in-memory as per current architecture.
-      const t3 = Date.now();
       const relevantChunks = await searchSimilarChunks(embedding, allChunks as any);
-      console.log(`[Chat] Vector Search: ${Date.now() - t3}ms`);
+      const { prompt: ragPrompt, sources } = buildRAGPrompt(message, relevantChunks);
 
-      // 4. Build Prompt
-      const { prompt, sources } = buildRAGPrompt(message, relevantChunks);
-
-      // 5. Call OpenAI (with API Key Check)
+      // 5. Call OpenAI with Tools
       if (!process.env.OPENAI_API_KEY) {
-        console.warn("OPENAI_API_KEY missing. Returning mock response.");
-        await db.insert(siAsefChatMessages).values({
-          sessionId: currentSessionId,
-          role: "assistant",
-          content: "Maaf, saya belum terhubung ke otak AI (API Key tidak ditemukan). Hubungi admin untuk konfigurasi.",
-        });
         return res.json({
-          reply: "Maaf, saya belum terhubung ke otak AI (API Key tidak ditemukan). Hubungi admin untuk konfigurasi.",
+          reply: "Maaf, API Key OpenAI tidak ditemukan. Hubungi admin.",
           sessionId: currentSessionId
         });
       }
 
-      console.log("[Chat] Calling OpenAI...");
-      const t4 = Date.now();
       const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+      const messages: any[] = [
+        {
+          role: "system",
+          content: `You are 'Mystic AI', a smart assistant for OneTalent. 
+              Current time: ${format(new Date(), "yyyy-MM-dd HH:mm")}.
+              You can help users with regulations (using provided context) AND manage their calendar.
+              If the user asks to schedule something, use the create_activity tool.
+              If they ask about their schedule, use get_activities.
+              Always be helpful and polite. Layout responses simply.`
+        },
+        { role: "user", content: ragPrompt } // The RAG prompt contains the user question + context
+      ];
+
       const completion = await openai.chat.completions.create({
         model: "gpt-4o-mini",
-        messages: [
-          { role: "system", content: "You are a helpful assistant." },
-          { role: "user", content: prompt }
-        ],
+        messages: messages,
+        tools: tools as any,
+        tool_choice: "auto",
       });
-      console.log(`[Chat] OpenAI Response: ${Date.now() - t4}ms`);
 
-      const reply = completion.choices[0].message.content || "Maaf, saya tidak dapat menjawab saat ini.";
+      let reply = completion.choices[0].message.content;
+      const toolCalls = completion.choices[0].message.tool_calls;
 
-      // 6. Save Assistant Message
+      // 6. Handle Tool Calls
+      if (toolCalls) {
+        // Append the assistant's message with tool calls to history
+        messages.push(completion.choices[0].message);
+
+        for (const toolCall of toolCalls) {
+          const functionName = toolCall.function.name;
+          const functionArgs = JSON.parse(toolCall.function.arguments);
+          let functionResponse;
+
+          console.log(`[Destiny AI] Calling tool: ${functionName}`, functionArgs);
+
+          if (functionName === "create_activity") {
+            try {
+              const startTime = new Date(`${functionArgs.date}T${functionArgs.time}:00`);
+              const endTime = new Date(startTime.getTime() + 60 * 60 * 1000); // 1 hour default
+
+              console.log(`[Destiny AI] Creating activity for UserId: ${userId} | Title: ${functionArgs.title} | Start: ${startTime} | Participants: ${functionArgs.participants}`);
+
+              const count = functionArgs.recurrence_type ? (functionArgs.recurrence_count || 1) : 1;
+              // Cap at 12 to prevent abuse/errors
+              const actualCount = Math.min(Math.max(count, 1), 12);
+              const createdIds: string[] = [];
+
+              for (let i = 0; i < actualCount; i++) {
+                let currentStart = new Date(startTime);
+
+                if (i > 0) {
+                  if (functionArgs.recurrence_type === 'daily') currentStart = addDays(currentStart, i);
+                  if (functionArgs.recurrence_type === 'weekly') currentStart = addWeeks(currentStart, i);
+                  if (functionArgs.recurrence_type === 'monthly') currentStart = addMonths(currentStart, i);
+                }
+
+                const currentEnd = new Date(currentStart.getTime() + 60 * 60 * 1000); // 1 hour default
+
+                const newItem = await storage.createActivityEvent({
+                  userId: userId,
+                  title: functionArgs.title,
+                  description: functionArgs.description || "",
+                  startTime: currentStart,
+                  endTime: currentEnd,
+                  isAllDay: false,
+                  reminderMinutes: functionArgs.reminder_minutes || 15,
+                  participants: functionArgs.participants || "",
+                  isCompleted: false
+                });
+                createdIds.push(newItem.id);
+              }
+
+              functionResponse = JSON.stringify({ success: true, message: `Created ${createdIds.length} activities starting from ${format(startTime, "yyyy-MM-dd HH:mm")}`, ids: createdIds });
+            } catch (e: any) {
+              functionResponse = JSON.stringify({ success: false, error: e.message });
+            }
+          } else if (functionName === "get_activities") {
+            try {
+              // Logic to filter by date (using in-memory filtering for now as storage.getActivityEvents returns all)
+              // TODO: Add date filtering to storage if performance becomes issue
+              const allEvents = await storage.getActivityEvents(userId);
+              const targetDate = functionArgs.date;
+              const filtered = allEvents.filter(e => format(new Date(e.startTime), "yyyy-MM-dd") === targetDate);
+
+              if (filtered.length === 0) {
+                functionResponse = JSON.stringify({ activities: [], message: "No activities found for this date." });
+              } else {
+                functionResponse = JSON.stringify({
+                  activities: filtered.map(e => ({
+                    title: e.title,
+                    time: format(new Date(e.startTime), "HH:mm"),
+                    description: e.description
+                  }))
+                });
+              }
+            } catch (e: any) {
+              functionResponse = JSON.stringify({ success: false, error: e.message });
+            }
+          } else if (functionName === "get_upcoming_leave") {
+            try {
+              const data = await storage.getAllLeaveRosterMonitoring();
+              const upcoming = data.filter(d => d.status === 'Akan Cuti' || d.status === 'Sedang Cuti').map(d => ({
+                name: d.name,
+                status: d.status,
+                date: d.status === 'Akan Cuti' ? d.nextLeaveDate : 'Now'
+              }));
+              functionResponse = JSON.stringify({ upcoming_leave: upcoming });
+            } catch (e: any) {
+              functionResponse = JSON.stringify({ success: false, error: e.message });
+            }
+          } else if (functionName === "get_roster_schedule") {
+            try {
+              const functionArgs = JSON.parse(toolCall.function.arguments);
+              let schedules = [];
+              if (functionArgs.date) {
+                schedules = await storage.getRosterByDate(functionArgs.date);
+              } else if (functionArgs.nik) {
+                schedules = await storage.getRosterByEmployee(functionArgs.nik);
+              } else if (functionArgs.employeeName) {
+                const allEmployees = await storage.getAllEmployees();
+                const target = allEmployees.find(e => e.name.toLowerCase().includes(functionArgs.employeeName.toLowerCase()));
+                if (target) {
+                  schedules = await storage.getRosterByEmployee(target.id);
+                } else {
+                  functionResponse = JSON.stringify({ message: "Employee not found" });
+                }
+              }
+
+              if (!functionResponse) {
+                const limit = 10;
+                const result = schedules.slice(0, limit).map(s => ({
+                  name: s.employeeName || s.employeeId,
+                  date: s.date,
+                  shift: s.shift,
+                  status: s.status
+                }));
+                functionResponse = JSON.stringify({ schedules: result, count: schedules.length, note: schedules.length > limit ? "Result truncated" : "" });
+              }
+            } catch (e: any) {
+              functionResponse = JSON.stringify({ success: false, error: e.message });
+            }
+          }
+
+          messages.push({
+            tool_call_id: toolCall.id,
+            role: "tool",
+            name: functionName,
+            content: functionResponse,
+          });
+        }
+
+        // 7. Get final response after tool execution
+        const secondResponse = await openai.chat.completions.create({
+          model: "gpt-4o-mini",
+          messages: messages,
+        });
+
+        reply = secondResponse.choices[0].message.content;
+      }
+
+      // 8. Save Assistant Response
       await db.insert(siAsefChatMessages).values({
         sessionId: currentSessionId,
         role: "model",
-        content: reply,
+        content: reply || "No response generated.",
         sources: sources,
       });
 
       res.json({
         sessionId: currentSessionId,
         message: reply,
-        sources: sources
+        sources: toolCalls ? [] : sources // Don't show sources if tool was used (usually) or keep them? Let's hide if tool used to avoid clutter.
       });
 
     } catch (error: any) {
@@ -11640,7 +11935,195 @@ Format sebagai bullet points singkat per insight.`;
     }
   });
 
+
+  // ============================================
+  // ACTIVITY CALENDAR ROUTES (Mystic AI)
+  // ============================================
+
+  app.get("/api/activities", async (req, res) => {
+    try {
+      if (!(req.session as any).user) return res.sendStatus(401);
+      const user = (req.session as any).user;
+      const userId = String(user.id || user.nik || user.username);
+      // Ensure we have a valid ID. In this system 'id' or 'nik' is used as primary identifier.
+
+      console.log(`[GET /api/activities] Fetching for UserId: ${userId}`);
+      const activities = await storage.getActivityEvents(userId);
+      console.log(`[GET /api/activities] Found ${activities.length} events.`);
+      if (activities.length > 0) console.log(`[GET /api/activities] First event: ${JSON.stringify(activities[0])}`);
+      res.json(activities);
+    } catch (error) {
+      console.error("Error fetching activities:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.post("/api/activities", async (req, res) => {
+    try {
+      if (!(req.session as any).user) return res.sendStatus(401);
+      const user = (req.session as any).user;
+
+      const parsed = insertActivityEventSchema.safeParse({
+        ...req.body,
+        userId: user.id || user.nik || user.username
+      });
+
+      if (!parsed.success) {
+        return res.status(400).json({ error: parsed.error });
+      }
+
+      const activity = await storage.createActivityEvent(parsed.data);
+      res.status(201).json(activity);
+    } catch (error) {
+      console.error("Error creating activity:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.delete("/api/activities/:id", async (req, res) => {
+    try {
+      if (!(req.session as any).user) return res.sendStatus(401);
+
+      console.log(`[DELETE /api/activities/${req.params.id}] Deleting activity...`);
+
+      // Ideally check ownership here, but for now simple delete
+      const success = await storage.deleteActivityEvent(req.params.id);
+      if (success) {
+        res.json({ success: true });
+      } else {
+        res.status(404).json({ error: "Activity not found" });
+      }
+    } catch (error) {
+      console.error("Error deleting activity:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // ============================================
+  // FMS VIOLATIONS ROUTES (Violation FMS)
+  // ============================================
+
+  // 1. Get Analytics Dashboard Data
+  app.get("/api/fms/analytics", async (req, res) => {
+    try {
+      const { startDate, endDate, startTime, endTime, violationType, shift, validationStatus } = req.query;
+
+      const stats = await storage.getFmsAnalytics(
+        typeof startDate === 'string' ? startDate : undefined,
+        typeof endDate === 'string' ? endDate : undefined,
+        {
+          startTime: typeof startTime === 'string' ? startTime : undefined,
+          endTime: typeof endTime === 'string' ? endTime : undefined,
+          violationType: typeof violationType === 'string' ? violationType : undefined,
+          shift: typeof shift === 'string' ? shift : undefined,
+          validationStatus: typeof validationStatus === 'string' ? validationStatus : undefined,
+        }
+      );
+
+      res.json(stats);
+    } catch (error) {
+      console.error("Error fetching FMS analytics:", error);
+      res.status(500).json({ error: "Failed to fetch analytics" });
+    }
+  });
+
+  // 2. Upload Excel (Bulk Insert)
+  app.post("/api/fms/upload", upload.single('file'), async (req, res) => {
+    try {
+      if (!req.file) return res.status(400).json({ error: "No file uploaded" });
+
+      // Dynamic import to avoid crash if missing
+      const xlsxModule = await import('xlsx');
+      const XLSX = xlsxModule.default || xlsxModule;
+      const workbook = XLSX.readFile(req.file.path);
+      const sheetName = workbook.SheetNames[0];
+      const sheet = workbook.Sheets[sheetName];
+      const rawData = XLSX.utils.sheet_to_json(sheet);
+
+      console.log(`[FMS Upload] Processing ${rawData.length} rows...`);
+
+      console.log("[FMS Upload] Raw Row 0:", rawData[0]);
+
+      const violations = rawData.map((row: any, index: number) => {
+        // Safe mapping - find keys regardless of case/whitespace
+        const getValue = (possibleKeys: string[]) => {
+          const keys = Object.keys(row);
+          for (const pk of possibleKeys) {
+            const foundKey = keys.find(k => k.trim().toLowerCase() === pk.toLowerCase());
+            if (foundKey && row[foundKey] !== undefined) return row[foundKey];
+          }
+          return undefined;
+        };
+
+        // Date Handling
+        let vDate = getValue(['Date', 'Tanggal', 'violation_date']);
+        if (typeof vDate === 'number') {
+          vDate = new Date((vDate - (25567 + 2)) * 86400 * 1000).toISOString().split('T')[0];
+        } else if (vDate instanceof Date) {
+          vDate = vDate.toISOString().split('T')[0];
+        }
+
+        // Time Handling
+        let vTime = getValue(['Time', 'Waktu', 'violation_time']) || "00:00:00";
+        if (typeof vTime === 'number') {
+          const totalSeconds = Math.floor(vTime * 86400);
+          const hours = Math.floor(totalSeconds / 3600);
+          const minutes = Math.floor((totalSeconds % 3600) / 60);
+          const seconds = totalSeconds % 60;
+          vTime = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+        }
+
+        const vStatusRaw = String(getValue(['validation_status', 'validate', 'validation_validated', 'Validation', 'Status Validasi', 'Status']) || "Tidak Valid").trim();
+        // Normalize to 'Valid' or 'Tidak Valid'
+        const vStatus = (vStatusRaw.toLowerCase() === 'valid' || vStatusRaw.toLowerCase() === 'true') ? 'Valid' : 'Tidak Valid';
+
+        if (index === 0) console.log(`[FMS Upload] Row 0 Mapping: Date=${vDate}, Time=${vTime}, Status=${vStatus}`);
+
+        return {
+          violationDate: String(vDate || new Date().toISOString().split('T')[0]),
+          violationTime: String(vTime),
+          violationTimestamp: new Date(`${String(vDate).split('T')[0]}T${String(vTime)}`),
+
+          vehicleNo: String(getValue(['Vehicle No', 'Vehicle No Company', 'No Lambung', 'vehicle_no']) || "-"),
+          company: String(getValue(['Company', 'Perusahaan', 'company']) || "-"),
+          violationType: String(getValue(['Violation', 'Jenis Pelanggaran', 'violation_type']) || "Unknown"),
+          location: String(getValue(['Location', 'Lokasi', 'location']) || ""),
+          coordinate: String(getValue(['Coordinate Level', 'Coordinate', 'coordinate']) || ""),
+
+          shift: String(getValue(['Shift', 'shift']) || ""),
+          dateOpr: getValue(['Date Opr', 'date_opr']) ? new Date(getValue(['Date Opr', 'date_opr'])).toISOString().split('T')[0] : null,
+          week: Number(getValue(['Week', 'Minggu', 'week']) || 0),
+          month: String(getValue(['Month', 'Bulan', 'month']) || ""),
+          level: getValue(['Level', 'level']) ? Number(getValue(['Level', 'level'])) : null,
+
+          validationStatus: vStatus,
+        };
+      });
+
+      console.log(`[FMS Upload] Inserting/Updating ${violations.length} violations...`);
+      const result = await storage.batchInsertFmsViolations(violations);
+
+
+      // Cleanup
+      fs.unlinkSync(req.file.path);
+
+      res.json({
+        message: "Upload successful",
+        processed: rawData.length,
+        inserted: result.count
+      });
+
+    } catch (error: any) {
+      console.error("Error processing FMS upload:", error);
+      try {
+        fs.appendFileSync('server_error.log', `[${new Date().toISOString()}] FMS Upload Error: ${error.message}\nStack: ${error.stack}\n\n`);
+      } catch (e) { console.error("Log error", e); }
+      res.status(500).json({ error: "Failed to process Excel file: " + error.message });
+    }
+  });
+
   const httpServer = createServer(app);
+
   return httpServer;
 }
 

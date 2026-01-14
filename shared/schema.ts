@@ -1,5 +1,5 @@
 ﻿import { sql, relations } from "drizzle-orm";
-import { pgTable, text, varchar, timestamp, boolean, integer, unique, jsonb, index, uniqueIndex, real, date } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, timestamp, boolean, integer, unique, jsonb, index, uniqueIndex, real, date, time, uuid } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -2325,3 +2325,77 @@ export const fmsFatigueAlerts = pgTable("fms_fatigue_alerts", {
 export const insertFmsFatigueAlertSchema = createInsertSchema(fmsFatigueAlerts).omit({ id: true, createdAt: true, updatedAt: true });
 export type FmsFatigueAlert = typeof fmsFatigueAlerts.$inferSelect;
 export type InsertFmsFatigueAlert = z.infer<typeof insertFmsFatigueAlertSchema>;
+
+// ============================================
+// ACTIVITY CALENDAR (Mystic AI)
+// ============================================
+
+export const activityEvents = pgTable("activity_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: text("user_id").notNull(),
+  title: text("title").notNull(),
+  description: text("description"),
+  startTime: timestamp("start_time").notNull(),
+  endTime: timestamp("end_time"),
+  isAllDay: boolean("is_all_day").default(false),
+  reminderMinutes: integer("reminder_minutes").default(15),
+  reminderSent: boolean("reminder_sent").default(false),
+  participants: text("participants"), // Comma separated names or numbers
+  isCompleted: boolean("is_completed").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertActivityEventSchema = createInsertSchema(activityEvents).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type ActivityEvent = typeof activityEvents.$inferSelect;
+export type InsertActivityEvent = z.infer<typeof insertActivityEventSchema>;
+
+
+// ==========================================
+// FMS VIOLATION DATA WAREHOUSE (Analyst Dashboard)
+// ==========================================
+export const fmsViolations = pgTable("fms_violations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  violationDate: date("violation_date").notNull(),
+  violationTime: time("violation_time").notNull(),
+  violationTimestamp: timestamp("violation_timestamp").notNull(), // Combined for sorting: date + time
+
+  vehicleNo: varchar("vehicle_no", { length: 50 }).notNull(),
+  company: varchar("company", { length: 50 }),
+
+  violationType: varchar("violation_type", { length: 100 }).notNull(),
+  location: varchar("location", { length: 150 }),
+  coordinate: varchar("coordinate", { length: 50 }),
+
+  shift: varchar("shift", { length: 20 }), // 'Shift 1' or 'Shift 2'
+  dateOpr: date("date_opr"), // Operational Date
+  week: integer("week"),
+  month: varchar("month", { length: 20 }),
+  level: real("level"), // e.g., Speed value or severity
+
+  validationStatus: varchar("validation_status", { length: 50 }).default('Tidak Valid'), // 'Valid', 'Tidak Valid'
+
+  uploadedAt: timestamp("uploaded_at").defaultNow(),
+}, (table) => {
+  return {
+    // Unique constraint for "Smart Upsert" (Prevent duplicates based on event uniqueness)
+    uniqueEvent: uniqueIndex("idx_unique_fms_event").on(
+      table.violationDate,
+      table.violationTime,
+      table.vehicleNo,
+      table.violationType
+    ),
+    // Performance indexes for Dashboard
+    idxDate: index("idx_fms_date").on(table.violationDate),
+    idxShift: index("idx_fms_shift").on(table.shift),
+    idxStatus: index("idx_fms_status").on(table.validationStatus),
+    idxViolation: index("idx_fms_violation").on(table.violationType),
+  };
+});
+
+export const insertFmsViolationSchema = createInsertSchema(fmsViolations);
+export type InsertFmsViolation = z.infer<typeof insertFmsViolationSchema>;
+export type FmsViolation = typeof fmsViolations.$inferSelect;

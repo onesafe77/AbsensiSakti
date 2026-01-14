@@ -67,6 +67,8 @@ import DocumentControl from "@/pages/hse/k3/document-control";
 import DocumentDetail from "@/pages/hse/k3/document-detail";
 import SiAsefChatPage from "@/pages/si-asef-chat";
 import SiAsefAdminPage from "@/pages/si-asef-admin";
+import SiAsefProjectsPage from "@/pages/si-asef-projects";
+import SiAsefArtifactsPage from "@/pages/si-asef-artifacts";
 import Announcements from "@/pages/announcements";
 import News from "@/pages/news";
 import NewsFeed from "@/pages/news-feed";
@@ -75,6 +77,8 @@ import NotFound from "@/pages/not-found";
 import { NotificationPrompt } from "@/components/NotificationPrompt";
 import { WorkspaceHome } from "@/components/WorkspaceHome";
 import PushNotificationSimper from "@/pages/push-notification-simper";
+import ActivityCalendar from "@/pages/activity-calendar";
+import FmsDashboard from "@/pages/fms-dashboard";
 
 
 const workspaceRoutes = [
@@ -135,6 +139,14 @@ const workspaceRoutes = [
   { path: "/workspace/mobile-driver", component: MobileDriverView, title: "Driver Mobile View" },
   { path: "/workspace/employee-personal", component: EmployeePersonalData, title: "Data Pribadi Karyawan" },
   { path: "/workspace/push-notification/simper", component: PushNotificationSimper, title: "Push Notifikasi SIMPER" },
+  { path: "/workspace/activity-calendar", component: ActivityCalendar, title: "Activity Calendar (Mystic AI)" },
+
+  // Mystic Routes
+  { path: "/workspace/si-asef", component: SiAsefChatPage, title: "Mystic Chat" },
+  { path: "/workspace/si-asef/admin", component: SiAsefAdminPage, title: "Mystic Knowledge Base" },
+  { path: "/workspace/si-asef/projects", component: SiAsefProjectsPage, title: "Mystic Projects" },
+  { path: "/workspace/si-asef/artifacts", component: SiAsefArtifactsPage, title: "Mystic Artifacts" },
+  { path: "/workspace/hse/fms-dashboard", component: FmsDashboard, title: "FMS Violation Command Center" },
 ];
 
 export function Workspace() {
@@ -302,6 +314,10 @@ export function Workspace() {
 
               {/* Push Notification Routes */}
               <Route path="/workspace/push-notification/simper" component={PushNotificationSimper} />
+
+              <Route path="/workspace/activity-calendar" component={ActivityCalendar} />
+
+              <Route path="/workspace/hse/fms-dashboard" component={FmsDashboard} />
 
               <Route component={Dashboard} />
             </Switch>

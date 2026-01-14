@@ -22,13 +22,13 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { insertLeaveRequestSchema } from "@shared/schema";
 import type { Employee, LeaveRequest, InsertLeaveRequest } from "@shared/schema";
-import { 
-  CalendarDays, 
-  Clock, 
-  CheckCircle, 
-  XCircle, 
-  Eye, 
-  User, 
+import {
+  CalendarDays,
+  Clock,
+  CheckCircle,
+  XCircle,
+  Eye,
+  User,
   Phone,
   Upload,
   Download,
@@ -191,18 +191,18 @@ export default function Leave() {
   const [isUploading, setIsUploading] = useState(false);
   const [openCombobox, setOpenCombobox] = useState(false);
   const [employeeSearchValue, setEmployeeSearchValue] = useState("");
-  
+
   // Search and filter states
   const [searchName, setSearchName] = useState("");
   const [searchNIK, setSearchNIK] = useState("");
-  
+
   // HR PDF Upload states
-  const [hrUploadingFiles, setHrUploadingFiles] = useState<{[key: string]: boolean}>({});
-  const [hrUploadedFiles, setHrUploadedFiles] = useState<{[key: string]: string}>({});
-  
+  const [hrUploadingFiles, setHrUploadingFiles] = useState<{ [key: string]: boolean }>({});
+  const [hrUploadedFiles, setHrUploadedFiles] = useState<{ [key: string]: string }>({});
+
   // PDF Upload states  
   const [selectedPdfFile, setSelectedPdfFile] = useState<File | null>(null);
-  
+
   // Action PDF Upload states
   const [showActionDialog, setShowActionDialog] = useState(false);
   const [actionType, setActionType] = useState<'approve' | 'reject' | null>(null);
@@ -210,22 +210,22 @@ export default function Leave() {
   const [actionPdfFile, setActionPdfFile] = useState<File | null>(null);
   const [actionPdfUploading, setActionPdfUploading] = useState(false);
   const [actionPdfPath, setActionPdfPath] = useState<string>('');
-  
+
   // Upload Roster States
   const [file, setFile] = useState<File | null>(null);
   const [isUploadingRoster, setIsUploadingRoster] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadResults, setUploadResults] = useState<{ success: number; errors: string[] } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
+
   // Analytics States
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear().toString());
-  
+
   // Edit and Delete States
   const [editingRequest, setEditingRequest] = useState<LeaveRequest | null>(null);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [requestToDelete, setRequestToDelete] = useState<string | null>(null);
-  
+
   const { toast } = useToast();
 
   const { data: employees = [] } = useQuery<Employee[]>({
@@ -374,7 +374,7 @@ export default function Leave() {
     onSuccess: (result: { success: number; errors: string[] }) => {
       setUploadResults(result);
       queryClient.invalidateQueries({ queryKey: ["/api/leave"] });
-      
+
       if (result.errors.length === 0) {
         toast({
           title: "Upload Berhasil",
@@ -419,7 +419,7 @@ export default function Leave() {
 
   // Update leave request mutation
   const updateLeaveMutation = useMutation({
-    mutationFn: (data: { id: string; request: Partial<InsertLeaveRequest> }) => 
+    mutationFn: (data: { id: string; request: Partial<InsertLeaveRequest> }) =>
       apiRequest(`/api/leave/${data.id}`, "PUT", data.request),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/leave"] });
@@ -482,7 +482,7 @@ export default function Leave() {
     try {
       setIsUploading(true);
       const response = await apiRequest("/api/objects/upload", "POST");
-      
+
       const data = response;
       return {
         method: 'PUT' as const,
@@ -491,7 +491,7 @@ export default function Leave() {
     } catch (error) {
       setIsUploading(false);
       toast({
-        title: "Error", 
+        title: "Error",
         description: error instanceof Error ? error.message : "Layanan upload tidak tersedia saat ini",
         variant: "destructive",
       });
@@ -545,41 +545,41 @@ export default function Leave() {
         });
         return;
       }
-      
+
       // Check file size (max 5MB)
       if (file.size > 5 * 1024 * 1024) {
         toast({
-          title: "Error", 
+          title: "Error",
           description: "Ukuran file maksimal 5MB",
           variant: "destructive",
         });
         return;
       }
-      
+
       setSelectedPdfFile(file);
     }
   };
 
   const handleUploadPdf = async () => {
     if (!selectedPdfFile) return;
-    
+
     setIsUploading(true);
     const formData = new FormData();
     formData.append('pdf', selectedPdfFile);
-    
+
     try {
       const response = await fetch('/api/upload-pdf', {
         method: 'POST',
         body: formData,
       });
-      
+
       if (!response.ok) {
         throw new Error('Upload failed');
       }
-      
+
       const result = await response.json();
       setUploadedAttachmentPath(result.fileName);
-      
+
       toast({
         title: "Upload berhasil",
         description: "PDF berhasil diupload",
@@ -608,41 +608,41 @@ export default function Leave() {
         });
         return;
       }
-      
+
       // Check file size (max 5MB)
       if (file.size > 5 * 1024 * 1024) {
         toast({
-          title: "Error", 
+          title: "Error",
           description: "Ukuran file maksimal 5MB",
           variant: "destructive",
         });
         return;
       }
-      
+
       setActionPdfFile(file);
     }
   };
 
   const handleActionPdfUpload = async () => {
     if (!actionPdfFile) return;
-    
+
     setActionPdfUploading(true);
     const formData = new FormData();
     formData.append('pdf', actionPdfFile);
-    
+
     try {
       const response = await fetch('/api/upload-pdf', {
         method: 'POST',
         body: formData,
       });
-      
+
       if (!response.ok) {
         throw new Error('Upload failed');
       }
-      
+
       const result = await response.json();
       setActionPdfPath(result.fileName);
-      
+
       toast({
         title: "Upload berhasil",
         description: "PDF berhasil diupload",
@@ -695,47 +695,66 @@ export default function Leave() {
     }
   };
 
+  // Safe date formatter for display
+  const safeFormatDate = (dateStr: string) => {
+    try {
+      if (!dateStr) return "-";
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return "-";
+      return d.toLocaleDateString('id-ID');
+    } catch (e) {
+      return "-";
+    }
+  };
+
   const calculateDays = (startDate: string, endDate: string) => {
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-    const diffTime = Math.abs(end.getTime() - start.getTime());
-    return Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+    try {
+      if (!startDate || !endDate) return 0;
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      if (isNaN(start.getTime()) || isNaN(end.getTime())) return 0;
+
+      const diffTime = Math.abs(end.getTime() - start.getTime());
+      return Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+    } catch (e) {
+      return 0;
+    }
   };
 
   const convertToProxyPath = (attachmentPath: string): string => {
     if (!attachmentPath) return attachmentPath;
-    
+
     // Handle local uploaded files (PDF from local uploads/pdf directory)
     if (attachmentPath.startsWith('/uploads/pdf/') || attachmentPath.includes('/uploads/pdf/')) {
       const filename = attachmentPath.split('/').pop();
       return `/api/files/download/${filename}`;
     }
-    
+
     // Handle filename-only paths (from local /api/upload-pdf endpoint)
     // Check if it's just a filename (no path separators and ends with .pdf)
     if (!attachmentPath.includes('/') && attachmentPath.endsWith('.pdf')) {
       return `/api/files/download/${attachmentPath}`;
     }
-    
+
     // Handle object storage files
     if (attachmentPath.startsWith("https://storage.googleapis.com/")) {
       const url = new URL(attachmentPath);
       const pathname = url.pathname;
-      
+
       const uploadsIndex = pathname.indexOf("/.private/uploads/");
       if (uploadsIndex !== -1) {
         const objectId = pathname.substring(uploadsIndex + "/.private/uploads/".length);
         return `/objects/uploads/${objectId}`;
       }
     }
-    
+
     return attachmentPath;
   };
 
   const filteredLeaveRequests = leaveRequests.filter(request => {
     // Status filter
     let statusMatch = false;
-    
+
     if (statusFilter === "all") {
       statusMatch = true;
     } else if (statusFilter === "overdue") {
@@ -747,7 +766,19 @@ export default function Leave() {
     } else {
       statusMatch = request.status === statusFilter;
     }
-    
+
+    // Safe date formatter helper
+    const safeDateString = (dateStr: string) => {
+      try {
+        if (!dateStr) return "";
+        const d = new Date(dateStr);
+        if (isNaN(d.getTime())) return "";
+        return d.toLocaleDateString('id-ID');
+      } catch (e) {
+        return "";
+      }
+    };
+
     // Comprehensive search (case insensitive) - search across multiple fields
     let searchMatch = true;
     if (searchName !== "") {
@@ -756,17 +787,19 @@ export default function Leave() {
       const employeeId = request.employeeId.toLowerCase();
       const leaveType = getLeaveTypeLabel(request.leaveType).toLowerCase();
       const reason = (request.reason || "").toLowerCase();
-      const startDate = new Date(request.startDate).toLocaleDateString('id-ID');
-      const endDate = new Date(request.endDate).toLocaleDateString('id-ID');
-      
+
+      // Use safe formatter
+      const startDate = safeDateString(request.startDate);
+      const endDate = safeDateString(request.endDate);
+
       searchMatch = employeeName.includes(searchTerm) ||
-                   employeeId.includes(searchTerm) ||
-                   leaveType.includes(searchTerm) ||
-                   reason.includes(searchTerm) ||
-                   startDate.includes(searchTerm) ||
-                   endDate.includes(searchTerm);
+        employeeId.includes(searchTerm) ||
+        leaveType.includes(searchTerm) ||
+        reason.includes(searchTerm) ||
+        startDate.includes(searchTerm) ||
+        endDate.includes(searchTerm);
     }
-    
+
     return statusMatch && searchMatch;
   });
 
@@ -784,7 +817,7 @@ export default function Leave() {
     if (id.startsWith("monitoring-")) {
       // Extract the actual monitoring ID 
       const monitoringId = id.replace("monitoring-", "");
-      
+
       // Find the monitoring request data
       const monitoringRequest = Array.isArray(pendingFromMonitoring) ? pendingFromMonitoring.find((req: any) => req.id === id) : undefined;
       if (monitoringRequest) {
@@ -803,10 +836,10 @@ export default function Leave() {
       }
     } else {
       // Regular leave request
-      updateStatusMutation.mutate({ 
-        id, 
+      updateStatusMutation.mutate({
+        id,
         status: 'approved',
-        actionAttachment: pdfPath 
+        actionAttachment: pdfPath
       });
     }
     setShowActionDialog(false);
@@ -826,7 +859,7 @@ export default function Leave() {
     if (id.startsWith("monitoring-")) {
       // Extract the actual monitoring ID 
       const monitoringId = id.replace("monitoring-", "");
-      
+
       processMonitoringMutation.mutate({
         monitoringId: monitoringId,
         action: "reject",
@@ -834,10 +867,10 @@ export default function Leave() {
       });
     } else {
       // Regular leave request
-      updateStatusMutation.mutate({ 
-        id, 
+      updateStatusMutation.mutate({
+        id,
         status: 'rejected',
-        actionAttachment: pdfPath 
+        actionAttachment: pdfPath
       });
     }
     setShowActionDialog(false);
@@ -851,7 +884,7 @@ export default function Leave() {
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         "application/vnd.ms-excel",
       ];
-      
+
       if (allowedTypes.includes(selectedFile.type)) {
         setFile(selectedFile);
         setUploadResults(null);
@@ -877,13 +910,13 @@ export default function Leave() {
           const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
 
           const dataRows = jsonData.slice(1) as any[][];
-          
+
           const leaveData: LeaveRosterData[] = dataRows
             .filter(row => row.length >= 5 && row[0])
             .map((row, index) => {
               const startDate = parseExcelDate(row[2]);
               const endDate = parseExcelDate(row[3]);
-              
+
               if (!startDate || !endDate) {
                 throw new Error(`Baris ${index + 2}: Format tanggal tidak valid`);
               }
@@ -911,11 +944,11 @@ export default function Leave() {
 
   const parseExcelDate = (value: any): string | null => {
     if (!value) return null;
-    
+
     if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
       return value;
     }
-    
+
     if (typeof value === "string") {
       const parts = value.split(/[\/\-]/);
       if (parts.length === 3) {
@@ -925,7 +958,7 @@ export default function Leave() {
         return `${year}-${month}-${day}`;
       }
     }
-    
+
     if (typeof value === "number") {
       const date = XLSX.SSF.parse_date_code(value);
       if (date) {
@@ -935,7 +968,7 @@ export default function Leave() {
         return `${year}-${month}-${day}`;
       }
     }
-    
+
     return null;
   };
 
@@ -965,12 +998,12 @@ export default function Leave() {
       }, 1000);
 
       const leaveData = await processExcelFile(file);
-      
+
       clearInterval(progressInterval);
       setUploadProgress(95);
 
       await uploadMutation.mutateAsync(leaveData);
-      
+
       setUploadProgress(100);
     } catch (error) {
       toast({
@@ -989,7 +1022,7 @@ export default function Leave() {
     link.href = '/api/leave-roster/template';
     link.download = 'template-roster-cuti.csv';
     link.click();
-    
+
     toast({
       title: "Template Downloaded",
       description: "Template CSV berhasil didownload",
@@ -1111,7 +1144,7 @@ export default function Leave() {
                       employee.name.toLowerCase().includes(employeeSearchValue.toLowerCase()) ||
                       employee.id.toLowerCase().includes(employeeSearchValue.toLowerCase())
                     );
-                    
+
                     return (
                       <FormItem>
                         <FormLabel className="text-sm">Karyawan</FormLabel>
@@ -1135,8 +1168,8 @@ export default function Leave() {
                           </PopoverTrigger>
                           <PopoverContent className="w-[400px] p-0">
                             <Command>
-                              <CommandInput 
-                                placeholder="Cari nama atau NIK karyawan..." 
+                              <CommandInput
+                                placeholder="Cari nama atau NIK karyawan..."
                                 value={employeeSearchValue}
                                 onValueChange={setEmployeeSearchValue}
                               />
@@ -1150,7 +1183,7 @@ export default function Leave() {
                                       field.onChange(currentValue === field.value ? "" : currentValue);
                                       setOpenCombobox(false);
                                       setEmployeeSearchValue("");
-                                      
+
                                       // Auto-fill phone number
                                       const selectedEmp = employees.find(emp => emp.id === currentValue);
                                       if (selectedEmp) {
@@ -1187,7 +1220,7 @@ export default function Leave() {
                     <FormItem>
                       <FormLabel className="text-sm">Nomor WhatsApp</FormLabel>
                       <FormControl>
-                        <Input 
+                        <Input
                           {...field}
                           className="h-9 bg-gray-50 dark:bg-gray-800"
                           placeholder="Nomor akan terisi otomatis"
@@ -1199,7 +1232,7 @@ export default function Leave() {
                     </FormItem>
                   )}
                 />
-                
+
                 <FormField
                   control={form.control}
                   name="startDate"
@@ -1207,9 +1240,9 @@ export default function Leave() {
                     <FormItem>
                       <FormLabel className="text-sm">Tanggal Mulai</FormLabel>
                       <FormControl>
-                        <Input 
-                          type="date" 
-                          {...field} 
+                        <Input
+                          type="date"
+                          {...field}
                           className="h-9"
                           data-testid="leave-start-date-input"
                         />
@@ -1218,7 +1251,7 @@ export default function Leave() {
                     </FormItem>
                   )}
                 />
-                
+
                 <FormField
                   control={form.control}
                   name="endDate"
@@ -1226,9 +1259,9 @@ export default function Leave() {
                     <FormItem>
                       <FormLabel className="text-sm">Tanggal Selesai</FormLabel>
                       <FormControl>
-                        <Input 
-                          type="date" 
-                          {...field} 
+                        <Input
+                          type="date"
+                          {...field}
                           className="h-9"
                           data-testid="leave-end-date-input"
                         />
@@ -1237,7 +1270,7 @@ export default function Leave() {
                     </FormItem>
                   )}
                 />
-                
+
                 <FormField
                   control={form.control}
                   name="leaveType"
@@ -1261,7 +1294,7 @@ export default function Leave() {
                     </FormItem>
                   )}
                 />
-                
+
                 <FormField
                   control={form.control}
                   name="reason"
@@ -1269,12 +1302,12 @@ export default function Leave() {
                     <FormItem>
                       <FormLabel className="text-sm">Keterangan</FormLabel>
                       <FormControl>
-                        <Textarea 
-                          rows={2} 
+                        <Textarea
+                          rows={2}
                           className="resize-none"
-                          placeholder="Keterangan cuti..." 
+                          placeholder="Keterangan cuti..."
                           {...field}
-                          value={field.value || ""} 
+                          value={field.value || ""}
                           data-testid="leave-reason-textarea"
                         />
                       </FormControl>
@@ -1319,7 +1352,7 @@ export default function Leave() {
                   {uploadedAttachmentPath && (
                     <div className="flex items-center gap-2">
                       <p className="text-xs text-green-600 dark:text-green-400">✓ PDF uploaded successfully</p>
-                      <a 
+                      <a
                         href={`/api/files/download/${uploadedAttachmentPath.split('/').pop()}`}
                         target="_blank"
                         rel="noopener noreferrer"
@@ -1338,9 +1371,9 @@ export default function Leave() {
                     </p>
                   )}
                 </div>
-                
-                <Button 
-                  type="submit" 
+
+                <Button
+                  type="submit"
                   className="w-full h-9"
                   disabled={createMutation.isPending}
                   data-testid="submit-leave-button"
@@ -1351,7 +1384,7 @@ export default function Leave() {
             </Form>
           </CardContent>
         </Card>
-        
+
         {/* Compact Leave List */}
         <Card>
           <CardHeader className="pb-3">
@@ -1383,7 +1416,7 @@ export default function Leave() {
               </div>
             </div>
           </CardHeader>
-          
+
           <CardContent className="p-3">
             <div className="overflow-x-auto">
               <table className="w-full table-auto text-sm">
@@ -1418,9 +1451,9 @@ export default function Leave() {
                           <div className="font-medium">{getEmployeeName(request.employeeId)}</div>
                         </td>
                         <td className="py-2 px-2 text-xs text-gray-900 dark:text-white">
-                          <div>{new Date(request.startDate).toLocaleDateString('id-ID')}</div>
+                          <div>{safeFormatDate(request.startDate)}</div>
                           <div className="text-gray-500">-</div>
-                          <div>{new Date(request.endDate).toLocaleDateString('id-ID')}</div>
+                          <div>{safeFormatDate(request.endDate)}</div>
                         </td>
                         <td className="py-2 px-2 text-xs text-gray-900 dark:text-white">
                           {getLeaveTypeLabel(request.leaveType)}
@@ -1430,9 +1463,9 @@ export default function Leave() {
                         </td>
                         <td className="py-2 px-2 text-xs text-center">
                           {request.attachmentPath ? (
-                            <a 
-                              href={convertToProxyPath(request.attachmentPath)} 
-                              target="_blank" 
+                            <a
+                              href={convertToProxyPath(request.attachmentPath)}
+                              target="_blank"
                               rel="noopener noreferrer"
                               className="text-red-600 hover:text-red-700 dark:text-red-400 text-xs"
                               title="Lihat lampiran PDF"
@@ -1486,167 +1519,167 @@ export default function Leave() {
                                     Detail
                                   </Button>
                                 </DialogTrigger>
-                              <DialogContent className="max-w-md">
-                                <DialogHeader>
-                                  <DialogTitle>Detail Pengajuan Cuti</DialogTitle>
-                                </DialogHeader>
-                                <div className="space-y-4">
-                                  <div className="flex items-center space-x-2">
-                                    <User className="w-4 h-4 text-gray-500" />
-                                    <div>
-                                      <p className="font-medium">{request.employeeName || getEmployeeName(request.employeeId)}</p>
-                                      <p className="text-sm text-gray-500">{request.employeeId}</p>
-                                    </div>
-                                  </div>
-                                  
-                                  {request.phoneNumber && (
+                                <DialogContent className="max-w-md">
+                                  <DialogHeader>
+                                    <DialogTitle>Detail Pengajuan Cuti</DialogTitle>
+                                  </DialogHeader>
+                                  <div className="space-y-4">
                                     <div className="flex items-center space-x-2">
-                                      <Phone className="w-4 h-4 text-gray-500" />
-                                      <p className="text-sm">{request.phoneNumber}</p>
+                                      <User className="w-4 h-4 text-gray-500" />
+                                      <div>
+                                        <p className="font-medium">{request.employeeName || getEmployeeName(request.employeeId)}</p>
+                                        <p className="text-sm text-gray-500">{request.employeeId}</p>
+                                      </div>
                                     </div>
-                                  )}
-                                  
-                                  <div className="flex items-center space-x-2">
-                                    <CalendarDays className="w-4 h-4 text-gray-500" />
-                                    <div>
-                                      <p className="text-sm">
-                                        {new Date(request.startDate).toLocaleDateString('id-ID', {
-                                          weekday: 'long',
-                                          year: 'numeric',
-                                          month: 'long',
-                                          day: 'numeric'
-                                        })}
-                                      </p>
-                                      <p className="text-sm">s/d</p>
-                                      <p className="text-sm">
-                                        {new Date(request.endDate).toLocaleDateString('id-ID', {
-                                          weekday: 'long',
-                                          year: 'numeric',
-                                          month: 'long',
-                                          day: 'numeric'
-                                        })}
-                                      </p>
-                                    </div>
-                                  </div>
-                                  
-                                  <div className="flex items-center space-x-2">
-                                    <Clock className="w-4 h-4 text-gray-500" />
-                                    <div>
-                                      <p className="text-sm font-medium">{getLeaveTypeLabel(request.leaveType)}</p>
-                                      <p className="text-sm text-gray-500">
-                                        Durasi: {calculateDays(request.startDate, request.endDate)} hari
-                                      </p>
-                                    </div>
-                                  </div>
-                                  
-                                  {request.reason && (
-                                    <div>
-                                      <p className="font-medium text-sm mb-1">Keterangan:</p>
-                                      <p className="text-sm text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 p-3 rounded-lg">
-                                        {request.reason}
-                                      </p>
-                                    </div>
-                                  )}
 
-                                  {request.attachmentPath && (
-                                    <div>
-                                      <p className="font-medium text-sm mb-2">Lampiran Dokumen:</p>
-                                      <div className="flex gap-2">
-                                        <PDFViewer 
-                                          pdfPath={convertToProxyPath(request.attachmentPath)}
-                                          title="Lampiran Permohonan Cuti"
-                                          trigger={
-                                            <Button
-                                              variant="outline"
-                                              size="sm"
-                                              className="flex items-center space-x-2 text-red-600 hover:text-red-700 dark:text-red-400"
-                                              data-testid={`preview-pdf-${request.id}`}
-                                            >
-                                              <FileText className="w-4 h-4" />
-                                              <span className="text-sm">Preview PDF</span>
-                                            </Button>
-                                          }
-                                        />
-                                        <a 
-                                          href={convertToProxyPath(request.attachmentPath)} 
-                                          target="_blank" 
-                                          rel="noopener noreferrer"
-                                          className="inline-flex items-center space-x-1 text-red-600 hover:text-red-700 dark:text-red-400 text-sm underline"
-                                          data-testid={`download-pdf-${request.id}`}
-                                        >
-                                          <span>📎</span>
-                                          <span>Download</span>
-                                        </a>
+                                    {request.phoneNumber && (
+                                      <div className="flex items-center space-x-2">
+                                        <Phone className="w-4 h-4 text-gray-500" />
+                                        <p className="text-sm">{request.phoneNumber}</p>
+                                      </div>
+                                    )}
+
+                                    <div className="flex items-center space-x-2">
+                                      <CalendarDays className="w-4 h-4 text-gray-500" />
+                                      <div>
+                                        <p className="text-sm">
+                                          {new Date(request.startDate).toLocaleDateString('id-ID', {
+                                            weekday: 'long',
+                                            year: 'numeric',
+                                            month: 'long',
+                                            day: 'numeric'
+                                          })}
+                                        </p>
+                                        <p className="text-sm">s/d</p>
+                                        <p className="text-sm">
+                                          {new Date(request.endDate).toLocaleDateString('id-ID', {
+                                            weekday: 'long',
+                                            year: 'numeric',
+                                            month: 'long',
+                                            day: 'numeric'
+                                          })}
+                                        </p>
                                       </div>
                                     </div>
-                                  )}
-                                  
-                                  {/* HR Action Attachment */}
-                                  {(request as any).actionAttachmentPath && (
-                                    <div>
-                                      <p className="font-medium text-sm mb-2">Dokumen HR:</p>
-                                      <div className="flex gap-2">
-                                        <PDFViewer 
-                                          pdfPath={convertToProxyPath((request as any).actionAttachmentPath)}
-                                          title="Dokumen Keputusan HR"
-                                          trigger={
-                                            <Button
-                                              variant="outline"
-                                              size="sm"
-                                              className="flex items-center space-x-2 text-blue-600 hover:text-blue-700 dark:text-blue-400"
-                                              data-testid={`preview-hr-pdf-${request.id}`}
-                                            >
-                                              <FileText className="w-4 h-4" />
-                                              <span className="text-sm">Preview Keputusan HR</span>
-                                            </Button>
-                                          }
-                                        />
-                                        <a 
-                                          href={convertToProxyPath((request as any).actionAttachmentPath)} 
-                                          target="_blank" 
-                                          rel="noopener noreferrer"
-                                          className="inline-flex items-center space-x-1 text-blue-600 hover:text-blue-700 dark:text-blue-400 text-sm underline"
-                                          data-testid={`download-hr-pdf-${request.id}`}
-                                        >
-                                          <span>📎</span>
-                                          <span>Download</span>
-                                        </a>
+
+                                    <div className="flex items-center space-x-2">
+                                      <Clock className="w-4 h-4 text-gray-500" />
+                                      <div>
+                                        <p className="text-sm font-medium">{getLeaveTypeLabel(request.leaveType)}</p>
+                                        <p className="text-sm text-gray-500">
+                                          Durasi: {calculateDays(request.startDate, request.endDate)} hari
+                                        </p>
                                       </div>
                                     </div>
-                                  )}
-                                  
-                                  <div className="flex items-center justify-between pt-4 border-t">
-                                    <span className="text-sm text-gray-500">Status:</span>
-                                    {getStatusBadge(request.status)}
+
+                                    {request.reason && (
+                                      <div>
+                                        <p className="font-medium text-sm mb-1">Keterangan:</p>
+                                        <p className="text-sm text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 p-3 rounded-lg">
+                                          {request.reason}
+                                        </p>
+                                      </div>
+                                    )}
+
+                                    {request.attachmentPath && (
+                                      <div>
+                                        <p className="font-medium text-sm mb-2">Lampiran Dokumen:</p>
+                                        <div className="flex gap-2">
+                                          <PDFViewer
+                                            pdfPath={convertToProxyPath(request.attachmentPath)}
+                                            title="Lampiran Permohonan Cuti"
+                                            trigger={
+                                              <Button
+                                                variant="outline"
+                                                size="sm"
+                                                className="flex items-center space-x-2 text-red-600 hover:text-red-700 dark:text-red-400"
+                                                data-testid={`preview-pdf-${request.id}`}
+                                              >
+                                                <FileText className="w-4 h-4" />
+                                                <span className="text-sm">Preview PDF</span>
+                                              </Button>
+                                            }
+                                          />
+                                          <a
+                                            href={convertToProxyPath(request.attachmentPath)}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="inline-flex items-center space-x-1 text-red-600 hover:text-red-700 dark:text-red-400 text-sm underline"
+                                            data-testid={`download-pdf-${request.id}`}
+                                          >
+                                            <span>📎</span>
+                                            <span>Download</span>
+                                          </a>
+                                        </div>
+                                      </div>
+                                    )}
+
+                                    {/* HR Action Attachment */}
+                                    {(request as any).actionAttachmentPath && (
+                                      <div>
+                                        <p className="font-medium text-sm mb-2">Dokumen HR:</p>
+                                        <div className="flex gap-2">
+                                          <PDFViewer
+                                            pdfPath={convertToProxyPath((request as any).actionAttachmentPath)}
+                                            title="Dokumen Keputusan HR"
+                                            trigger={
+                                              <Button
+                                                variant="outline"
+                                                size="sm"
+                                                className="flex items-center space-x-2 text-blue-600 hover:text-blue-700 dark:text-blue-400"
+                                                data-testid={`preview-hr-pdf-${request.id}`}
+                                              >
+                                                <FileText className="w-4 h-4" />
+                                                <span className="text-sm">Preview Keputusan HR</span>
+                                              </Button>
+                                            }
+                                          />
+                                          <a
+                                            href={convertToProxyPath((request as any).actionAttachmentPath)}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="inline-flex items-center space-x-1 text-blue-600 hover:text-blue-700 dark:text-blue-400 text-sm underline"
+                                            data-testid={`download-hr-pdf-${request.id}`}
+                                          >
+                                            <span>📎</span>
+                                            <span>Download</span>
+                                          </a>
+                                        </div>
+                                      </div>
+                                    )}
+
+                                    <div className="flex items-center justify-between pt-4 border-t">
+                                      <span className="text-sm text-gray-500">Status:</span>
+                                      {getStatusBadge(request.status)}
+                                    </div>
+
+                                    {request.status === 'pending' && (
+                                      <div className="flex space-x-2 pt-2">
+                                        <Button
+                                          size="sm"
+                                          onClick={() => handleApprove(request.id)}
+                                          disabled={updateStatusMutation.isPending}
+                                          className="flex-1 bg-green-600 hover:bg-green-700"
+                                        >
+                                          <CheckCircle className="w-4 h-4 mr-1" />
+                                          Setujui
+                                        </Button>
+                                        <Button
+                                          size="sm"
+                                          variant="destructive"
+                                          onClick={() => handleReject(request.id)}
+                                          disabled={updateStatusMutation.isPending}
+                                          className="flex-1"
+                                        >
+                                          <XCircle className="w-4 h-4 mr-1" />
+                                          Tolak
+                                        </Button>
+                                      </div>
+                                    )}
                                   </div>
-                                  
-                                  {request.status === 'pending' && (
-                                    <div className="flex space-x-2 pt-2">
-                                      <Button
-                                        size="sm"
-                                        onClick={() => handleApprove(request.id)}
-                                        disabled={updateStatusMutation.isPending}
-                                        className="flex-1 bg-green-600 hover:bg-green-700"
-                                      >
-                                        <CheckCircle className="w-4 h-4 mr-1" />
-                                        Setujui
-                                      </Button>
-                                      <Button
-                                        size="sm"
-                                        variant="destructive"
-                                        onClick={() => handleReject(request.id)}
-                                        disabled={updateStatusMutation.isPending}
-                                        className="flex-1"
-                                      >
-                                        <XCircle className="w-4 h-4 mr-1" />
-                                        Tolak
-                                      </Button>
-                                    </div>
-                                  )}
-                                </div>
-                              </DialogContent>
+                                </DialogContent>
                               </Dialog>
-                              
+
                               <Button
                                 size="sm"
                                 variant="outline"
@@ -1657,7 +1690,7 @@ export default function Leave() {
                                 <Edit2 className="w-3 h-3 mr-1" />
                                 Edit
                               </Button>
-                              
+
                               <Button
                                 size="sm"
                                 variant="outline"
@@ -1715,16 +1748,16 @@ export default function Leave() {
               </div>
             </div>
           </CardHeader>
-            
+
           <CardContent className="space-y-3">
             {loadingPendingMonitoring ? (
-                <div className="text-center py-8">
-                  <div className="animate-pulse flex flex-col items-center">
-                    <div className="w-8 h-8 bg-gray-200 dark:bg-gray-800 rounded-full mb-2"></div>
-                    <div className="text-gray-600 dark:text-gray-400">Loading permohonan cuti...</div>
-                  </div>
+              <div className="text-center py-8">
+                <div className="animate-pulse flex flex-col items-center">
+                  <div className="w-8 h-8 bg-gray-200 dark:bg-gray-800 rounded-full mb-2"></div>
+                  <div className="text-gray-600 dark:text-gray-400">Loading permohonan cuti...</div>
                 </div>
-              ) : (
+              </div>
+            ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
@@ -1742,7 +1775,7 @@ export default function Leave() {
                       .filter((request: any) => {
                         // Status filter for monitoring
                         const statusMatch = statusFilter === "all" || statusFilter === "monitoring";
-                        
+
                         // Search filter for monitoring
                         let searchMatch = true;
                         if (searchName !== "") {
@@ -1751,67 +1784,67 @@ export default function Leave() {
                           const employeeId = (request.employeeId || "").toLowerCase();
                           const leaveType = (request.leaveType || "").toLowerCase();
                           const startDate = (request.startDate || "").toLowerCase();
-                          
+
                           searchMatch = employeeName.includes(searchTerm) ||
-                                       employeeId.includes(searchTerm) ||
-                                       leaveType.includes(searchTerm) ||
-                                       startDate.includes(searchTerm);
+                            employeeId.includes(searchTerm) ||
+                            leaveType.includes(searchTerm) ||
+                            startDate.includes(searchTerm);
                         }
-                        
+
                         return statusMatch && searchMatch;
                       })
                       .map((request: any) => (
-                      <tr key={`monitoring-${request.id}`} className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800">
-                        <td className="p-3">
-                          <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 bg-orange-100 dark:bg-orange-900/30 rounded-full flex items-center justify-center">
-                              <User className="w-4 h-4 text-orange-600 dark:text-orange-400" />
+                        <tr key={`monitoring-${request.id}`} className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800">
+                          <td className="p-3">
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 bg-orange-100 dark:bg-orange-900/30 rounded-full flex items-center justify-center">
+                                <User className="w-4 h-4 text-orange-600 dark:text-orange-400" />
+                              </div>
+                              <div>
+                                <div className="font-medium text-gray-900 dark:text-white">{request.employeeName}</div>
+                                <div className="text-xs text-gray-500 dark:text-gray-400">NIK: {request.employeeId}</div>
+                              </div>
                             </div>
-                            <div>
-                              <div className="font-medium text-gray-900 dark:text-white">{request.employeeName}</div>
-                              <div className="text-xs text-gray-500 dark:text-gray-400">NIK: {request.employeeId}</div>
+                          </td>
+                          <td className="p-3">
+                            <div className="text-sm">
+                              <div>{request.startDate || 'Belum ditentukan'}</div>
+                              <div className="text-xs text-gray-500">{request.monitoringDays} hari lagi</div>
                             </div>
-                          </div>
-                        </td>
-                        <td className="p-3">
-                          <div className="text-sm">
-                            <div>{request.startDate || 'Belum ditentukan'}</div>
-                            <div className="text-xs text-gray-500">{request.monitoringDays} hari lagi</div>
-                          </div>
-                        </td>
-                        <td className="p-3">
-                          <span className="text-green-600 dark:text-green-400 font-medium">{request.leaveType}</span>
-                        </td>
-                        <td className="p-3">
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800 dark:bg-orange-900/20 dark:text-orange-400">
-                            🔍 Monitoring
-                          </span>
-                        </td>
-                        <td className="p-3">
-                          <div className="flex gap-2">
-                            <Button
-                              size="sm"
-                              onClick={() => handleApprove(request.id)}
-                              disabled={updateStatusMutation.isPending}
-                              className="bg-green-600 hover:bg-green-700"
-                            >
-                              <CheckCircle className="w-4 h-4 mr-1" />
-                              Setujui
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="destructive"
-                              onClick={() => handleReject(request.id)}
-                              disabled={updateStatusMutation.isPending}
-                            >
-                              <XCircle className="w-4 h-4 mr-1" />
-                              Tolak
-                            </Button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                    
+                          </td>
+                          <td className="p-3">
+                            <span className="text-green-600 dark:text-green-400 font-medium">{request.leaveType}</span>
+                          </td>
+                          <td className="p-3">
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800 dark:bg-orange-900/20 dark:text-orange-400">
+                              🔍 Monitoring
+                            </span>
+                          </td>
+                          <td className="p-3">
+                            <div className="flex gap-2">
+                              <Button
+                                size="sm"
+                                onClick={() => handleApprove(request.id)}
+                                disabled={updateStatusMutation.isPending}
+                                className="bg-green-600 hover:bg-green-700"
+                              >
+                                <CheckCircle className="w-4 h-4 mr-1" />
+                                Setujui
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                onClick={() => handleReject(request.id)}
+                                disabled={updateStatusMutation.isPending}
+                              >
+                                <XCircle className="w-4 h-4 mr-1" />
+                                Tolak
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+
                     {/* Data dari Manual Request */}
                     {filteredLeaveRequests.map((request: any) => (
                       <tr key={`manual-${request.id}`} className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800">
@@ -1868,20 +1901,20 @@ export default function Leave() {
                         </td>
                       </tr>
                     ))}
-                    
+
                     {/* Empty State */}
-                    {(!Array.isArray(pendingFromMonitoring) || pendingFromMonitoring.length === 0) && 
-                     filteredLeaveRequests.length === 0 && (
-                      <tr>
-                        <td colSpan={5} className="text-center py-8">
-                          <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-3">
-                            <FileText className="w-8 h-8 text-gray-400" />
-                          </div>
-                          <p className="text-gray-600 dark:text-gray-400 font-medium">Tidak ada permohonan cuti</p>
-                          <p className="text-gray-500 dark:text-gray-500 text-sm mt-1">Gunakan form di atas untuk mengajukan cuti baru</p>
-                        </td>
-                      </tr>
-                    )}
+                    {(!Array.isArray(pendingFromMonitoring) || pendingFromMonitoring.length === 0) &&
+                      filteredLeaveRequests.length === 0 && (
+                        <tr>
+                          <td colSpan={5} className="text-center py-8">
+                            <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-3">
+                              <FileText className="w-8 h-8 text-gray-400" />
+                            </div>
+                            <p className="text-gray-600 dark:text-gray-400 font-medium">Tidak ada permohonan cuti</p>
+                            <p className="text-gray-500 dark:text-gray-500 text-sm mt-1">Gunakan form di atas untuk mengajukan cuti baru</p>
+                          </td>
+                        </tr>
+                      )}
                   </tbody>
                 </table>
               </div>
@@ -1905,7 +1938,7 @@ export default function Leave() {
               Anda akan {actionType === 'approve' ? 'menyetujui' : 'menolak'} permohonan cuti ini.
               Anda dapat melampirkan dokumen pendukung (opsional).
             </p>
-            
+
             {/* PDF Upload Section */}
             <div className="space-y-3">
               <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -1941,11 +1974,11 @@ export default function Leave() {
                   </Button>
                 )}
               </div>
-              
+
               {actionPdfPath && (
                 <div className="flex items-center gap-2">
                   <p className="text-sm text-green-600 dark:text-green-400">✓ PDF uploaded successfully</p>
-                  <a 
+                  <a
                     href={`/api/files/download/${actionPdfPath}`}
                     target="_blank"
                     rel="noopener noreferrer"
@@ -1955,11 +1988,11 @@ export default function Leave() {
                   </a>
                 </div>
               )}
-              
+
               {actionPdfUploading && (
                 <p className="text-sm text-blue-600 dark:text-blue-400">Uploading PDF...</p>
               )}
-              
+
               {actionPdfFile && !actionPdfPath && (
                 <p className="text-sm text-gray-500 dark:text-gray-400">
                   File size: {(actionPdfFile.size / 1024 / 1024).toFixed(2)} MB
@@ -1979,11 +2012,10 @@ export default function Leave() {
               <Button
                 onClick={handleActionConfirm}
                 disabled={updateStatusMutation.isPending || processMonitoringMutation.isPending}
-                className={`flex-1 ${
-                  actionType === 'approve' 
-                    ? 'bg-green-600 hover:bg-green-700' 
-                    : 'bg-red-600 hover:bg-red-700'
-                }`}
+                className={`flex-1 ${actionType === 'approve'
+                  ? 'bg-green-600 hover:bg-green-700'
+                  : 'bg-red-600 hover:bg-red-700'
+                  }`}
               >
                 {actionType === 'approve' ? 'Setujui' : 'Tolak'}
               </Button>
@@ -2033,42 +2065,42 @@ export default function Leave() {
                           </PopoverTrigger>
                           <PopoverContent className="p-0">
                             <Command>
-                              <CommandInput 
-                                placeholder="Cari karyawan..." 
+                              <CommandInput
+                                placeholder="Cari karyawan..."
                                 value={employeeSearchValue}
                                 onValueChange={setEmployeeSearchValue}
                               />
                               <CommandEmpty>Karyawan tidak ditemukan.</CommandEmpty>
                               <CommandGroup>
                                 {employees
-                                  .filter(emp => 
-                                    employeeSearchValue === "" || 
+                                  .filter(emp =>
+                                    employeeSearchValue === "" ||
                                     emp.name.toLowerCase().includes(employeeSearchValue.toLowerCase()) ||
                                     emp.id.toLowerCase().includes(employeeSearchValue.toLowerCase())
                                   )
                                   .slice(0, 10)
                                   .map((emp) => (
-                                  <CommandItem
-                                    key={emp.id}
-                                    value={emp.id}
-                                    onSelect={() => {
-                                      field.onChange(emp.id);
-                                      setOpenCombobox(false);
-                                      setEmployeeSearchValue("");
-                                    }}
-                                  >
-                                    <Check
-                                      className={cn(
-                                        "mr-2 h-4 w-4",
-                                        field.value === emp.id ? "opacity-100" : "opacity-0"
-                                      )}
-                                    />
-                                    <div>
-                                      <div className="font-medium">{emp.name}</div>
-                                      <div className="text-sm text-gray-500">{emp.id}</div>
-                                    </div>
-                                  </CommandItem>
-                                ))}
+                                    <CommandItem
+                                      key={emp.id}
+                                      value={emp.id}
+                                      onSelect={() => {
+                                        field.onChange(emp.id);
+                                        setOpenCombobox(false);
+                                        setEmployeeSearchValue("");
+                                      }}
+                                    >
+                                      <Check
+                                        className={cn(
+                                          "mr-2 h-4 w-4",
+                                          field.value === emp.id ? "opacity-100" : "opacity-0"
+                                        )}
+                                      />
+                                      <div>
+                                        <div className="font-medium">{emp.name}</div>
+                                        <div className="text-sm text-gray-500">{emp.id}</div>
+                                      </div>
+                                    </CommandItem>
+                                  ))}
                               </CommandGroup>
                             </Command>
                           </PopoverContent>
@@ -2077,7 +2109,7 @@ export default function Leave() {
                       </FormItem>
                     )}
                   />
-                  
+
                   <FormField
                     control={form.control}
                     name="phoneNumber"
@@ -2092,7 +2124,7 @@ export default function Leave() {
                     )}
                   />
                 </div>
-                
+
                 <div className="grid grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
@@ -2107,7 +2139,7 @@ export default function Leave() {
                       </FormItem>
                     )}
                   />
-                  
+
                   <FormField
                     control={form.control}
                     name="endDate"
@@ -2122,7 +2154,7 @@ export default function Leave() {
                     )}
                   />
                 </div>
-                
+
                 <FormField
                   control={form.control}
                   name="leaveType"
@@ -2146,7 +2178,7 @@ export default function Leave() {
                     </FormItem>
                   )}
                 />
-                
+
                 <FormField
                   control={form.control}
                   name="reason"
@@ -2160,7 +2192,7 @@ export default function Leave() {
                     </FormItem>
                   )}
                 />
-                
+
                 <div className="flex justify-end space-x-2">
                   <Button type="button" variant="outline" onClick={() => setEditingRequest(null)}>
                     Batal
@@ -2188,8 +2220,8 @@ export default function Leave() {
             <Button variant="outline" onClick={() => setShowDeleteDialog(false)}>
               Batal
             </Button>
-            <Button 
-              variant="destructive" 
+            <Button
+              variant="destructive"
               onClick={() => requestToDelete && deleteLeaveMutation.mutate(requestToDelete)}
               disabled={deleteLeaveMutation.isPending}
             >

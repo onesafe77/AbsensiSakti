@@ -1,0 +1,4 @@
+[2026-01-13T16:40:26.079Z] FMS Upload Error: XLSX.readFile is not a function
+Stack: TypeError: XLSX.readFile is not a function
+    at <anonymous> (C:\OneTalent\server\routes.ts:12032:29)
+

@@ -196,12 +196,16 @@ export default function SiAsefChatPage() {
                         Chats
                     </button>
                     <div className="group relative">
-                        <button className="w-full text-left px-3 py-2 text-sm font-medium text-zinc-600 hover:bg-white hover:shadow-sm rounded-lg flex items-center gap-3 transition-all">
+                        <button
+                            onClick={() => setLocation('/workspace/si-asef/projects')}
+                            className="w-full text-left px-3 py-2 text-sm font-medium text-zinc-600 hover:bg-white hover:shadow-sm rounded-lg flex items-center gap-3 transition-all"
+                        >
                             <Folder className="w-4 h-4 text-zinc-500" />
                             Projects
                         </button>
                     </div>
                     <button
+                        onClick={() => setLocation('/workspace/si-asef/artifacts')}
                         className="w-full text-left px-3 py-2 text-sm font-medium text-zinc-600 hover:bg-white hover:shadow-sm rounded-lg flex items-center gap-3 transition-all"
                     >
                         <Box className="w-4 h-4 text-zinc-500" />
@@ -225,16 +229,17 @@ export default function SiAsefChatPage() {
             <ScrollArea className="flex-1 px-3 pb-4">
                 <div className="space-y-0.5">
                     {sessions.map((session) => (
-                        <div key={session.id} className="group relative flex items-center">
+                        <div key={session.id} className="group flex items-center gap-1 w-full relative">
                             <button
                                 onClick={() => loadSessionMessages(session.id)}
-                                className={`flex-1 text-left px-3 py-2 rounded-lg text-sm transition-all flex items-center gap-3 pr-8
-                    ${currentSessionId === session.id
+                                className={`flex-1 text-left px-3 py-2 rounded-lg text-sm transition-all flex items-center gap-2 min-w-0
+                                ${currentSessionId === session.id
                                         ? 'bg-white shadow-sm text-zinc-900 font-medium ring-1 ring-zinc-200'
                                         : 'text-zinc-600 hover:bg-white/60 hover:text-zinc-900'
                                     }`}
                             >
-                                <span className="truncate flex-1">{session.title}</span>
+                                <MessageSquare className="w-3.5 h-3.5 flex-none opacity-70" />
+                                <span className="truncate">{session.title}</span>
                             </button>
                             <button
                                 onClick={async (e) => {
@@ -254,7 +259,7 @@ export default function SiAsefChatPage() {
                                         alert("Gagal menghapus chat");
                                     }
                                 }}
-                                className="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-zinc-400 hover:text-white hover:bg-red-500 rounded-lg transition-all z-20"
+                                className="p-2 text-zinc-300 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all absolute right-1 top-1/2 -translate-y-1/2 z-10 hover:shadow-sm"
                                 title="Hapus chat"
                             >
                                 <Trash2 className="w-4 h-4" />

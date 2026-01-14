@@ -15,8 +15,7 @@ app.post("/api/hse/tna/delete-entry", async (req, res) => {
   try {
     console.log("EMERGENCY ROUTE HIT:", req.body);
     if (!req.body.id) return res.status(400).json({ error: "No ID" });
-    const success = await storage.deleteTnaEntry(req.body.id);
-    if (!success) return res.status(404).json({ error: "Not found" });
+    await storage.deleteTnaEntry(req.body.id);
     res.json({ success: true, method: "emergency" });
   } catch (e: any) {
     console.error("EMERGENCY ROUTE ERROR:", e);
@@ -241,6 +240,10 @@ app.put("/api/employees/:id", async (req, res) => {
   // Initialize cron jobs for leave monitoring
   const { initializeCronJobs } = await import('./cronJobs');
   initializeCronJobs();
+
+  // Start Activity Reminder Scheduler
+  const { startReminderScheduler } = await import("./services/reminder-scheduler");
+  startReminderScheduler();
 
   // Serve static files from uploads folder (for meeting photos, P5M photos, etc.)
   app.use('/uploads', express.static('uploads'));
