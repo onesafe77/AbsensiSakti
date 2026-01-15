@@ -224,7 +224,7 @@ export default function FmsDashboard() {
                             <span className="ml-auto">▼</span>
                         </summary>
                         <div className="absolute z-10 mt-1 w-64 bg-white border rounded-lg shadow-lg p-2 max-h-60 overflow-y-auto">
-                            {analytics?.byViolation?.map((v: any) => (
+                            {(analytics?.availableViolationTypes || analytics?.byViolation)?.map((v: any) => (
                                 <label key={v.type} className="flex items-center gap-2 px-2 py-1 hover:bg-slate-100 rounded cursor-pointer text-sm">
                                     <input
                                         type="checkbox"

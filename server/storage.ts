@@ -7225,6 +7225,43 @@ export class DrizzleStorage implements IStorage {
 
     const dateFilter = conditions.length > 0 ? and(...conditions) : undefined;
 
+    // Separate filter for "Available Types" (ignores violationType filter but keeps others)
+    const conditionsForTypes = conditions.filter(c => {
+      // Logic to exclude violationType conditions
+      // Since we construct conditions procedurally, we can't easily identify them by object reference.
+      // Strategy: Reconstruct conditions excluding violationType.
+      return true;
+    });
+
+    // Better Strategy: Rebuild the conditions for available types
+    const conditionsForAvailableTypes: any[] = [];
+    if (startDate && endDate) {
+      conditionsForAvailableTypes.push(sql`${fmsViolations.violationDate} >= ${startDate}`);
+      conditionsForAvailableTypes.push(sql`${fmsViolations.violationDate} <= ${endDate}`);
+    }
+    if (options?.startTime) conditionsForAvailableTypes.push(sql`${fmsViolations.violationTime}::time >= ${options.startTime}::time`);
+    if (options?.endTime) conditionsForAvailableTypes.push(sql`${fmsViolations.violationTime}::time <= ${options.endTime}::time`);
+    // Skip Violation Type filter
+    if (options?.shift && options.shift !== 'all') {
+      const shifts = options.shift.split(',').map(s => s.trim()).filter(s => s);
+      if (shifts.length === 1) conditionsForAvailableTypes.push(eq(fmsViolations.shift, shifts[0]));
+      else if (shifts.length > 1) conditionsForAvailableTypes.push(inArray(fmsViolations.shift, shifts));
+    }
+    if (options?.validationStatus && options.validationStatus !== 'all') {
+      const statuses = options.validationStatus.split(',').map(s => s.trim()).filter(s => s);
+      const statusConditions: any[] = [];
+      for (const status of statuses) {
+        if (status === 'Valid') {
+          statusConditions.push(sql`${fmsViolations.validationStatus} = 'Valid' OR ${fmsViolations.validationStatus} = 'True'`);
+        } else if (status === 'Tidak Valid') {
+          statusConditions.push(sql`${fmsViolations.validationStatus} = 'Tidak Valid' OR ${fmsViolations.validationStatus} = 'False'`);
+        }
+      }
+      if (statusConditions.length > 0) conditionsForAvailableTypes.push(or(...statusConditions));
+    }
+
+    const availableTypesFilter = conditionsForAvailableTypes.length > 0 ? and(...conditionsForAvailableTypes) : undefined;
+
     console.log(`[FMS Analytics] Fetching with filter: start=${startDate}, end=${endDate}, options=`, options);
 
     // 1. Summary Stats
@@ -7334,7 +7371,19 @@ export class DrizzleStorage implements IStorage {
       validCount: Number(d.validCount || 0),
     }));
 
+    // 9. Available Violation Types (Independent of violationType filter) - NEW
+    const availableViolationTypes = await db
+      .select({
+        type: fmsViolations.violationType,
+        count: sql<number>`count(*)`,
+      })
+      .from(fmsViolations)
+      .where(availableTypesFilter)
+      .groupBy(fmsViolations.violationType)
+      .orderBy(desc(sql`count(*)`));
+
     return {
+      availableViolationTypes: availableViolationTypes.map(v => ({ ...v, count: Number(v.count || 0) })),
       summary: {
         totalViolations: Number(summary?.totalViolations || 0),
         totalUnits: Number(summary?.totalUnits || 0),

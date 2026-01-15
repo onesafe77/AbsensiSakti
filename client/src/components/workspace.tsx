@@ -22,6 +22,7 @@ import MeetingScanner from "@/pages/meeting-scanner";
 import DriverView from "@/pages/driver-view";
 import MobileDriverView from "@/pages/mobile-driver-view";
 import EmployeePersonalData from "@/pages/employee-personal-data";
+import HistoryPage from "@/pages/history";
 import SidakDashboard from "@/pages/sidak";
 import SidakFatigueForm from "@/pages/sidak-fatigue-form";
 import SidakRosterForm from "@/pages/sidak-roster-form";
@@ -79,6 +80,7 @@ import { WorkspaceHome } from "@/components/WorkspaceHome";
 import PushNotificationSimper from "@/pages/push-notification-simper";
 import ActivityCalendar from "@/pages/activity-calendar";
 import FmsDashboard from "@/pages/fms-dashboard";
+import { BottomNav } from "@/components/layout/bottom-nav";
 
 
 const workspaceRoutes = [
@@ -150,8 +152,20 @@ const workspaceRoutes = [
 ];
 
 export function Workspace() {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  // Initialize based on window width - Default OPEN for desktop, CLOSED for mobile
+  const [sidebarOpen, setSidebarOpen] = useState(() => window.innerWidth >= 1024);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Handle resize events to auto-adjust if needed (optional UX polisher)
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth < 1024) {
+        setSidebarOpen(false); // Auto-close on small screens
+      }
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const getCurrentTitle = () => {
     const currentPath = window.location.pathname;
@@ -197,13 +211,13 @@ export function Workspace() {
       >
         <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
-        <div className="flex-1 flex flex-col overflow-hidden lg:ml-64">
+        <div className={`flex-1 flex flex-col overflow-hidden transition-all duration-300 ease-in-out ${sidebarOpen ? 'lg:ml-64' : 'lg:ml-0'}`}>
           <Header
             title={getCurrentTitle()}
-            onMenuClick={() => setSidebarOpen(true)}
+            onMenuClick={() => setSidebarOpen(!sidebarOpen)}
           />
 
-          <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-50 dark:bg-gray-900 p-3 sm:p-4 lg:p-6">
+          <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-50 dark:bg-gray-900 p-0 sm:p-4 lg:p-6 pb-20 sm:pb-4 lg:pb-6">
             <Switch>
               <Route path="/workspace" component={WorkspaceHome} />
               <Route path="/workspace/dashboard" component={Dashboard} />
@@ -236,6 +250,7 @@ export function Workspace() {
                 </PermissionGuard>
               </Route>
               <Route path="/workspace/sidak" component={SidakDashboard} />
+              <Route path="/workspace/history" component={HistoryPage} />
               <Route path="/workspace/sidak/fatigue/new" component={SidakFatigueForm} />
               <Route path="/workspace/sidak/roster/new" component={SidakRosterForm} />
               <Route path="/workspace/sidak/seatbelt/new" component={SidakSeatbeltForm} />
@@ -322,6 +337,8 @@ export function Workspace() {
               <Route component={Dashboard} />
             </Switch>
           </main>
+
+          <BottomNav />
         </div>
       </div>
     </div>

@@ -394,13 +394,12 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
 
       {/* Sidebar Container */}
       <div className={cn(
-        "bg-white dark:bg-gray-900 overflow-hidden hidden lg:flex flex-col transition-all duration-300 cubic-bezier(0.16, 1, 0.3, 1)",
-        "lg:fixed lg:inset-y-0 lg:left-0 lg:z-auto lg:w-64 lg:h-full lg:shadow-none lg:rounded-none lg:transform-none lg:opacity-100 lg:pointer-events-auto lg:translate-y-0 lg:scale-100",
-        "fixed z-[110] shadow-2xl",
-        "inset-4 md:inset-x-[20%] md:inset-y-[10%] rounded-3xl",
-        isOpen
-          ? "opacity-100 scale-100 translate-y-0 pointer-events-auto delay-75"
-          : "opacity-0 scale-95 translate-y-8 pointer-events-none"
+        "bg-white dark:bg-gray-900 overflow-hidden flex flex-col transition-all duration-300 cubic-bezier(0.16, 1, 0.3, 1)",
+        // Desktop styles (fixed, full height) - ONLY VISIBLE ON DESKTOP
+        "hidden lg:flex lg:fixed lg:inset-y-0 lg:left-0 lg:z-auto lg:h-full lg:shadow-none lg:rounded-none lg:opacity-100 lg:pointer-events-auto",
+
+        // Desktop width & transform control based on isOpen
+        isOpen ? "lg:w-64 lg:translate-x-0" : "lg:w-0 lg:-translate-x-full"
       )}>
         {/* Logo Header */}
         <div className="flex items-center h-16 px-6 bg-transparent">

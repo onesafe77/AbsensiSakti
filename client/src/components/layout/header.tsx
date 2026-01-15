@@ -76,7 +76,7 @@ export function Header({ title, onMenuClick }: HeaderProps) {
           <Button
             variant="ghost"
             size="icon"
-            className="hidden flex-shrink-0 h-9 w-9"
+            className="hidden lg:inline-flex flex-shrink-0 h-9 w-9 mr-2 text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800 rounded-full"
             onClick={onMenuClick}
             data-testid="menu-button"
           >

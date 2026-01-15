@@ -602,6 +602,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ============================================
+  // SIDAK STATS API
+  // ============================================
+  app.get("/api/sidak/stats/:nik", async (req, res) => {
+    try {
+      const { nik } = req.params;
+
+      const fatigue = await storage.getAllSidakFatigueSessions();
+      const roster = await storage.getAllSidakRosterSessions();
+      const seatbelt = await storage.getAllSidakSeatbeltSessions();
+      const rambu = await storage.getAllSidakRambuSessions();
+      const antrian = await storage.getAllSidakAntrianSessions();
+      const apd = await storage.getAllSidakApdSessions();
+      const jarak = await storage.getAllSidakJarakSessions();
+      const kecepatan = await storage.getAllSidakKecepatanSessions();
+      const loto = await storage.getAllSidakLotoSessions();
+      const digital = await storage.getAllSidakDigitalSessions();
+      const workshop = await storage.getAllSidakWorkshopSessions();
+
+      const stats = {
+        fatigue: fatigue.filter(s => s.createdBy === nik).length,
+        roster: roster.filter(s => s.createdBy === nik).length,
+        seatbelt: seatbelt.filter(s => s.createdBy === nik).length,
+        rambu: rambu.filter(s => s.createdBy === nik).length,
+        antrian: antrian.filter(s => s.createdBy === nik).length,
+        apd: apd.filter(s => s.createdBy === nik).length,
+        jarak: jarak.filter(s => s.createdBy === nik).length,
+        kecepatan: kecepatan.filter(s => s.createdBy === nik).length,
+        loto: ((loto || []) as any[]).filter(s => s.createdBy === nik).length,
+        digital: ((digital || []) as any[]).filter(s => s.createdBy === nik).length,
+        workshop: ((workshop || []) as any[]).filter(s => s.createdBy === nik).length,
+      };
+
+      const total = Object.values(stats).reduce((a, b) => a + b, 0);
+
+      res.json({ ...stats, total });
+    } catch (error) {
+      console.error("Error fetching sidak stats:", error);
+      res.status(500).json({ message: "Failed to fetch stats" });
+    }
+  });
+
   app.post("/api/ai/analyze-statistics", async (req, res) => {
     try {
       const { data } = req.body;
