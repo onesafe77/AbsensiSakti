@@ -13,6 +13,10 @@ export function LoadingScreen({ isLoading, onComplete, className }: LoadingScree
   useEffect(() => {
     if (!isLoading) return;
 
+    // If onComplete is not provided, this is a persistent loader (e.g. Suspense/Protected fallback)
+    // Do NOT fade out automatically. Just stay visible until unmounted by parent.
+    if (!onComplete) return;
+
     let timeoutId: NodeJS.Timeout;
 
     const startLoading = () => {
@@ -21,8 +25,8 @@ export function LoadingScreen({ isLoading, onComplete, className }: LoadingScree
         setTimeout(() => {
           setFadeOut(false);
           onComplete?.();
-        }, 300);
-      }, 1500);
+        }, 200); // Reduce fade out delay
+      }, 800); // Reduce from 1500ms to 800ms for faster loading
     };
 
     startLoading();
@@ -34,51 +38,11 @@ export function LoadingScreen({ isLoading, onComplete, className }: LoadingScree
 
   if (!isLoading && !fadeOut) return null;
 
-  const brandName = "OneTalent";
-
   return (
-    <div
-      className={cn(
-        "fixed inset-0 z-50 flex items-center justify-center",
-        "bg-white dark:bg-gray-900",
-        "transition-opacity duration-300 ease-in-out",
-        fadeOut ? "opacity-0" : "opacity-100",
-        className
-      )}
-    >
-      <div className="flex flex-col items-center space-y-8">
-        
-        {/* Bouncing OneTalent letters */}
-        <div className="flex items-end justify-center">
-          {brandName.split('').map((letter, index) => (
-            <div key={index} className="flex flex-col items-center">
-              <span
-                className="text-4xl font-bold text-[#E53935] animate-bounce-dot"
-                style={{ animationDelay: `${index * 0.08}s` }}
-              >
-                {letter}
-              </span>
-              <div
-                className="w-4 h-1 rounded-full bg-red-300/40 mt-1 animate-shadow-pulse"
-                style={{ animationDelay: `${index * 0.08}s` }}
-              />
-            </div>
-          ))}
-        </div>
-
-        {/* Subtitle */}
-        <div className="text-center">
-          <p className="text-gray-600 dark:text-gray-400 text-sm font-medium">
-            Kerja Aman Keselamatan Number One
-          </p>
-        </div>
-
-        {/* Loading text */}
-        <p className="text-gray-500 dark:text-gray-400 text-sm animate-pulse">
-          Memuat aplikasi...
-        </p>
-        
-      </div>
+    <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-white dark:bg-gray-900">
+      <div className="w-16 h-16 border-4 border-red-600 border-t-transparent rounded-full animate-spin mb-4" />
+      <h1 className="text-2xl font-bold text-red-600 mb-2">OneTalent</h1>
+      <p className="text-gray-500 font-medium">Memuat Aplikasi...</p>
     </div>
   );
 }

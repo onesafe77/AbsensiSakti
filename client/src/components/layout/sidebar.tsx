@@ -31,7 +31,8 @@ import {
   MessageSquare,
   Database,
   Bell,
-  Car
+  Car,
+  BookOpen
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import oneTalentLogo from "@assets/onetalent-logo.png";
@@ -67,6 +68,8 @@ export const navigationGroups: NavGroup[] = [
         children: [
           { name: "Chat Regulasi", href: "/workspace/si-asef", icon: MessageSquare },
           { name: "Activity Calendar", href: "/workspace/activity-calendar", icon: Calendar },
+          { name: "Projects", href: "/workspace/si-asef/projects", icon: FolderOpen },
+          { name: "Artifacts", href: "/workspace/si-asef/artifacts", icon: FileText },
           { name: "Knowledge Base", href: "/workspace/si-asef/admin", icon: Database, requiredPermissions: [Permission.MANAGE_EMPLOYEES] }
         ]
       },
@@ -122,6 +125,7 @@ export const navigationGroups: NavGroup[] = [
                   // Kept items present in old menu but missed in strict list to avoid data loss, clustered in Kegiatan
                   { name: "Pengumuman", href: "/workspace/announcements", icon: Megaphone, requiredPermissions: [Permission.MANAGE_EMPLOYEES] },
                   { name: "Kelola Berita", href: "/workspace/news", icon: Newspaper, requiredPermissions: [Permission.MANAGE_EMPLOYEES] },
+                  { name: "Induksi", href: "/workspace/hse/induction-admin", icon: BookOpen, requiredPermissions: [Permission.VIEW_SIDAK] },
                 ]
               },
               {
@@ -147,6 +151,12 @@ export const navigationGroups: NavGroup[] = [
                   { name: "Record Control", href: "/workspace/hse/k3/document-control?tab=records", icon: ClipboardList, requiredPermissions: [Permission.VIEW_DOCUMENTS] },
                 ]
               },
+              {
+                name: "MCU",
+                icon: Activity,
+                href: "/workspace/hse/mcu",
+                // requiredPermissions: [Permission.VIEW_SIDAK] // Temporarily removed for dev
+              },
             ]
           },
           {
@@ -168,6 +178,8 @@ export const navigationGroups: NavGroup[] = [
         icon: Bell,
         children: [
           { name: "SIMPER", href: "/workspace/push-notification/simper", icon: Car, requiredPermissions: [Permission.MANAGE_EMPLOYEES] },
+          { name: "Blast WhatsApp", href: "/workspace/blast-whatsapp", icon: MessageSquare, requiredPermissions: [Permission.MANAGE_EMPLOYEES] },
+          { name: "Pengingat Induksi", href: "/workspace/push-notification-induction", icon: Bell, requiredPermissions: [Permission.MANAGE_EMPLOYEES] },
         ]
       }
     ]
@@ -182,7 +194,8 @@ interface SidebarProps {
 export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const [location] = useLocation();
   const [search, setSearch] = useState(window.location.search);
-  const { hasAnyPermission } = useAuth();
+  const { hasAnyPermission, user } = useAuth();
+  const [expandedMenus, setExpandedMenus] = useState<string[]>([]);
 
   // Sync search state on navigation
   useEffect(() => {
@@ -202,12 +215,8 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
     };
   }, []);
 
-  const [expandedMenus, setExpandedMenus] = useState<string[]>([]);
-
   // Sync expansion with location and initial load
   useEffect(() => {
-    const newExpanded: string[] = [];
-
     const findActiveItems = (items: NavItem[]) => {
       items.forEach(item => {
         if (item.children) {
@@ -216,8 +225,11 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
             || (child.children && findRecursive(child))
           );
 
-          if (isActive && !expandedMenus.includes(item.name)) {
-            setExpandedMenus(prev => prev.includes(item.name) ? prev : [...prev, item.name]);
+          if (isActive) {
+            setExpandedMenus(prev => {
+              if (prev.includes(item.name)) return prev;
+              return [...prev, item.name];
+            });
           }
           findActiveItems(item.children);
         }
@@ -254,38 +266,27 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
 
   // Recursive Sidebar Item Component
   const SidebarItemRenderer = ({ item, depth = 0 }: { item: NavItem, depth?: number }) => {
+    // Permission check immediately
     if (!hasPermission(item)) return null;
 
     const hasChildren = item.children && item.children.length > 0;
     const isExpanded = expandedMenus.includes(item.name);
-    // Active if matches href exactly (including query) or is a parent of active child
+
+    // Active check logic
     const currentFullHref = location + search;
     const isActiveLink = item.href && (() => {
-      // 1. Exact match of full URL (path + search)
       if (currentFullHref === item.href) return true;
-
-      // 2. If item.href has query params, STRICTLY check if they differ
-      if (item.href.includes('?')) {
-        return currentFullHref === item.href;
-      }
-
-      // 3. If item.href has NO query params (e.g. Masterlist), 
-      // ONLY match if the current location has NO query params (or strict base match)
-      // This prevents "Masterlist" from being active when "Document Control" (?tab=control) is active
+      if (item.href.includes('?')) return currentFullHref === item.href;
       if (!item.href.includes('?') && location === item.href) {
-        // If current location has search params, this 'base' item should NOT be active 
-        // unless it's a parent, but here we are leaf nodes.
-        // UNLESS the item logic specifically allows it. 
-        // For Masterlist logic: /workspace/.../document-control should NOT match /workspace/.../document-control?tab=control
         if (search && search !== '?tab=masterlist') return false;
         return true;
       }
-
       return false;
     })();
+
     const IconComponent = item.icon;
 
-    // Permissions check for children (hide parent if no visible children)
+    // Filter children for permission
     if (hasChildren) {
       const visibleChildren = item.children!.filter(hasPermission);
       if (visibleChildren.length === 0) return null;
@@ -376,14 +377,14 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
     );
   };
 
-  const filteredGroups = navigationGroups.map(group => ({
-    ...group,
-    items: group.items.filter(hasPermission)
-  })).filter(group => group.items.length > 0);
+  // Safe User Data Access with Fallbacks
+  const safeUser = user || { name: 'User', role: 'Guest', position: '', permissions: [] };
+  const userRole = safeUser.role || 'Welcome';
+  const userName = safeUser.name || 'Tamu';
+  const userPosition = safeUser.position || 'Pengguna Aplikasi';
 
   return (
     <>
-      {/* Mobile overlay */}
       <div
         className={cn(
           "fixed inset-0 z-[100] hidden bg-black/80 backdrop-blur-sm transition-opacity duration-300",
@@ -392,13 +393,9 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         onClick={onClose}
       />
 
-      {/* Sidebar Container */}
       <div className={cn(
         "bg-white dark:bg-gray-900 overflow-hidden flex flex-col transition-all duration-300 cubic-bezier(0.16, 1, 0.3, 1)",
-        // Desktop styles (fixed, full height) - ONLY VISIBLE ON DESKTOP
         "hidden lg:flex lg:fixed lg:inset-y-0 lg:left-0 lg:z-auto lg:h-full lg:shadow-none lg:rounded-none lg:opacity-100 lg:pointer-events-auto",
-
-        // Desktop width & transform control based on isOpen
         isOpen ? "lg:w-64 lg:translate-x-0" : "lg:w-0 lg:-translate-x-full"
       )}>
         {/* Logo Header */}
@@ -423,21 +420,27 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         {/* Navigation Items */}
         <div className="flex flex-col h-[calc(100vh-4rem)]">
           <nav className="flex-1 overflow-y-auto py-4 px-3 custom-scrollbar">
-            {filteredGroups.map((group, groupIndex) => (
-              <div key={group.title} className={cn(groupIndex > 0 && "mt-6")}>
-                {group.title && (
-                  <p className="px-4 mb-2 text-[11px] font-extrabold text-gray-400 dark:text-gray-500 uppercase tracking-widest opacity-90">
-                    {group.title}
-                  </p>
-                )}
+            {navigationGroups.map((group, groupIndex) => {
+              // Filter items inside the loop, but NOT hooks
+              const visibleItems = group.items.filter(item => hasPermission(item));
+              if (visibleItems.length === 0) return null;
 
-                <div className="space-y-1">
-                  {group.items.map((item) => (
-                    <SidebarItemRenderer key={item.name} item={item} />
-                  ))}
+              return (
+                <div key={group.title} className={cn(groupIndex > 0 && "mt-6")}>
+                  {group.title && (
+                    <p className="px-4 mb-2 text-[11px] font-extrabold text-gray-400 dark:text-gray-500 uppercase tracking-widest opacity-90">
+                      {group.title}
+                    </p>
+                  )}
+
+                  <div className="space-y-1">
+                    {visibleItems.map((item) => (
+                      <SidebarItemRenderer key={item.name} item={item} />
+                    ))}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </nav>
         </div>
       </div>

@@ -66,7 +66,7 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({ message, onRegenerate, onOpenSo
         h2: ({ node, ...props }: any) => <h2 className="text-xl font-bold text-zinc-900 mt-6 mb-3 font-sans tracking-tight" {...props} />,
         h3: ({ node, ...props }: any) => <h3 className="text-lg font-bold text-zinc-900 mt-5 mb-2 font-sans tracking-tight" {...props} />,
         p: ({ node, children, ...props }: any) => (
-            <p className="mb-4 leading-7 text-zinc-800 font-serif text-[16px]" {...props}>
+            <p className="mb-4 leading-7 text-zinc-800 font-sans text-[15px]" {...props}>
                 {React.Children.map(children, (child) => {
                     if (typeof child === 'string') {
                         return renderTextWithCitations(child, message.sources);
@@ -95,8 +95,8 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({ message, onRegenerate, onOpenSo
                 })}
             </em>
         ),
-        ul: ({ node, ...props }: any) => <ul className="list-disc pl-5 mb-5 space-y-2 marker:text-zinc-400 font-serif leading-7" {...props} />,
-        ol: ({ node, ...props }: any) => <ol className="list-decimal pl-5 mb-5 space-y-2 marker:text-zinc-500 font-serif leading-7" {...props} />,
+        ul: ({ node, ...props }: any) => <ul className="list-disc pl-5 mb-5 space-y-2 marker:text-zinc-400 font-sans leading-7" {...props} />,
+        ol: ({ node, ...props }: any) => <ol className="list-decimal pl-5 mb-5 space-y-2 marker:text-zinc-500 font-sans leading-7" {...props} />,
         li: ({ node, children, ...props }: any) => (
             <li className="pl-1" {...props}>
                 {React.Children.map(children, (child) => {
@@ -107,7 +107,7 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({ message, onRegenerate, onOpenSo
                 })}
             </li>
         ),
-        blockquote: ({ node, ...props }: any) => <blockquote className="border-l-4 border-emerald-500/50 pl-4 italic text-zinc-600 my-5 bg-zinc-50/50 py-2 rounded-r-lg" {...props} />,
+        blockquote: ({ node, ...props }: any) => <blockquote className="border-l-4 border-red-500/50 pl-4 italic text-zinc-600 my-5 bg-red-50/50 py-2 rounded-r-lg" {...props} />,
     }), [message.sources, onOpenSource]);
 
     return (
@@ -116,12 +116,12 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({ message, onRegenerate, onOpenSo
 
                 <div className="flex-shrink-0 flex flex-col pt-1">
                     {isUser ? (
-                        <div className="w-8 h-8 bg-zinc-200/50 rounded-full text-zinc-500 flex items-center justify-center border border-zinc-200">
-                            <span className="font-bold text-xs">US</span>
+                        <div className="w-8 h-8 bg-zinc-100 rounded-full text-zinc-500 flex items-center justify-center border border-zinc-200 shadow-sm">
+                            <User className="w-4 h-4" />
                         </div>
                     ) : (
-                        <div className="w-8 h-8 rounded-lg text-emerald-700 flex items-center justify-center mt-1">
-                            <ShieldCheck className="w-6 h-6" strokeWidth={2} />
+                        <div className="w-8 h-8 rounded-lg text-red-600 flex items-center justify-center mt-1 bg-red-50 border border-red-100 shadow-sm">
+                            <ShieldCheck className="w-5 h-5" strokeWidth={2.5} />
                         </div>
                     )}
                 </div>
@@ -131,14 +131,14 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({ message, onRegenerate, onOpenSo
             ${isUser ? 'flex justify-end' : ''}
         `}>
                     <div className={`
-             text-[16px] max-w-full
+             text-[15px] max-w-full
              ${isUser
-                            ? 'bg-[#F4F4F5] text-zinc-800 px-5 py-3.5 rounded-2xl rounded-tr-sm font-sans leading-relaxed max-w-[85%]'
+                            ? 'bg-zinc-100 text-zinc-800 px-5 py-3.5 rounded-2xl rounded-tr-sm font-sans leading-relaxed max-w-[85%] border border-zinc-200'
                             : 'bg-transparent text-zinc-800 prose-content pl-0 w-full'}
           `}>
 
                         {!isUser && (
-                            <div className="font-bold text-sm text-zinc-900 mb-4 select-none font-sans tracking-wide flex items-center gap-2">
+                            <div className="font-bold text-sm text-zinc-900 mb-2 select-none font-sans tracking-wide flex items-center gap-2">
                                 Mystic
                             </div>
                         )}
@@ -146,7 +146,7 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({ message, onRegenerate, onOpenSo
                         {isUser && message.content.startsWith('[Attachment]') && (
                             <div className="mb-3">
                                 <div className="inline-flex items-center gap-2 px-3 py-2 bg-white rounded-lg border border-zinc-200 text-xs font-medium text-zinc-600 shadow-sm">
-                                    <FileText className="w-4 h-4 text-emerald-500" />
+                                    <FileText className="w-4 h-4 text-red-500" />
                                     <span>Image Uploaded</span>
                                 </div>
                             </div>
@@ -159,15 +159,15 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({ message, onRegenerate, onOpenSo
                                 {isThinking && (
                                     <div className="flex items-center gap-3 py-2 animate-fade-in-up">
                                         <span className="relative flex h-2.5 w-2.5">
-                                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                                            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+                                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                                            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500"></span>
                                         </span>
                                         <span className="text-zinc-400 text-sm font-medium animate-pulse font-sans">Menelusuri regulasi...</span>
                                     </div>
                                 )}
 
                                 {message.content && (
-                                    <div className="markdown-body font-serif text-[#2D2D2D]">
+                                    <div className="markdown-body font-sans text-[#2D2D2D]">
                                         <ReactMarkdown components={markdownComponents}>
                                             {message.content}
                                         </ReactMarkdown>
@@ -175,7 +175,7 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({ message, onRegenerate, onOpenSo
                                 )}
 
                                 {isTyping && (
-                                    <span className="inline-block w-2.5 h-5 bg-emerald-500 ml-1 align-middle animate-pulse"></span>
+                                    <span className="inline-block w-2.5 h-5 bg-red-500 ml-1 align-middle animate-pulse"></span>
                                 )}
                             </>
                         )}
@@ -187,7 +187,7 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({ message, onRegenerate, onOpenSo
                                 onClick={handleCopy}
                                 className="flex items-center gap-1.5 px-2 py-1.5 text-xs font-medium text-zinc-400 hover:text-zinc-700 hover:bg-zinc-100 rounded-md transition-all"
                             >
-                                {copied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                                {copied ? <Check className="w-3.5 h-3.5 text-red-600" /> : <Copy className="w-3.5 h-3.5" />}
                                 {copied ? 'Copied' : 'Copy'}
                             </button>
 

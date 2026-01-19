@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
+import { MobileSidakLayout } from "@/components/sidak/mobile-sidak-layout";
+import { cn } from "@/lib/utils";
 import { Activity, Check, X, ArrowLeft, ArrowRight, Save, Camera, Users, Pen, UserPlus } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -234,7 +236,7 @@ export default function SidakFatigueForm() {
 
   const createSessionMutation = useMutation({
     mutationFn: async (data: typeof headerData) => {
-      const response = await apiRequest("/api/sidak-fatigue", "POST", data);
+      const response = await apiRequest("/api/sidak-fatigue", "POST", { ...data, waktu: data.waktuMulai });
       return response;
     },
     onSuccess: (data) => {
@@ -330,10 +332,7 @@ export default function SidakFatigueForm() {
       });
       return;
     }
-    createSessionMutation.mutate({
-      ...headerData,
-      waktu: headerData.waktuMulai // Map waktuMulai to mandatory 'waktu' field
-    });
+    createSessionMutation.mutate(headerData);
   };
 
   const handleSaveEmployee = () => {
@@ -459,9 +458,76 @@ export default function SidakFatigueForm() {
     });
   };
 
-  const progress = (step / 4) * 100;
   const maxEmployees = 20;
   const canAddMore = employees.length < maxEmployees;
+
+  // Helper for bottom actions based on step
+  const renderBottomAction = () => {
+    if (step === 1) {
+      return (
+        <Button
+          onClick={handleStep1Submit}
+          className="w-full h-12 text-lg font-medium shadow-md shadow-blue-200 dark:shadow-none transition-all active:scale-[0.98]"
+          disabled={createSessionMutation.isPending}
+        >
+          {createSessionMutation.isPending ? "Membuat Sesi..." : "Lanjut ke Karyawan"}
+          <ArrowRight className="ml-2 h-5 w-5" />
+        </Button>
+      );
+    }
+    if (step === 2) {
+      return (
+        <div className="flex flex-col gap-3">
+          <Button
+            onClick={handleSaveEmployee}
+            disabled={!canAddMore || addEmployeeMutation.isPending || !currentEmployee.employeeSignature}
+            className="w-full h-12 text-lg font-medium shadow-md shadow-blue-200 dark:shadow-none"
+          >
+            <Save className="mr-2 h-5 w-5" />
+            {addEmployeeMutation.isPending ? "Menyimpan..." : "Simpan & Input Lagi"}
+          </Button>
+
+          {employees.length > 0 && (
+            <Button
+              onClick={handleFinishEmployees}
+              variant="outline"
+              className="w-full h-12 border-2 border-gray-200 dark:border-gray-800 text-gray-600 dark:text-gray-300"
+            >
+              Selesai Input Karyawan
+              <ArrowRight className="ml-2 h-5 w-5" />
+            </Button>
+          )}
+        </div>
+      );
+    }
+    if (step === 3) {
+      return (
+        <Button
+          onClick={() => setStep(4)}
+          className="w-full h-12"
+          disabled={observers.length === 0}
+        >
+          Lanjut ke Preview ({observers.length})
+          <ArrowRight className="ml-2 h-5 w-5" />
+        </Button>
+      );
+    }
+    if (step === 4) {
+      return (
+        <Button
+          onClick={() => {
+            clearDraft();
+            navigate("/workspace/sidak");
+          }}
+          className="w-full h-12 bg-green-600 hover:bg-green-700 text-white"
+        >
+          Selesai & Kembali
+          <Check className="ml-2 h-5 w-5" />
+        </Button>
+      )
+    }
+    return null;
+  };
 
   return (
     <>
@@ -473,502 +539,417 @@ export default function SidakFatigueForm() {
         formType="fatigue"
       />
 
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950 dark:to-blue-900 p-4">
-        <div className="container max-w-4xl mx-auto space-y-4">
-          <div className="flex items-center gap-3 mb-6">
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => navigate("/workspace/sidak")}
-              data-testid="button-back"
-            >
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-            <div className="flex-1">
-              <h1 className="text-2xl md:text-3xl font-bold text-blue-900 dark:text-blue-100 flex items-center gap-2">
-                <Activity className="h-8 w-8" />
-                Sidak Fatigue
-              </h1>
-              <p className="text-sm text-blue-700 dark:text-blue-300">Form BIB-HSE-ES-F-3.02-16</p>
+      <MobileSidakLayout
+        title="Sidak Fatigue"
+        subtitle="Form BIB-HSE-ES-F-3.02-16"
+        step={step}
+        totalSteps={4}
+        onBack={() => navigate("/workspace/sidak")}
+        bottomAction={renderBottomAction()}
+      >
+        {step === 1 && (
+          <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <div className="bg-blue-50 dark:bg-blue-900/10 p-4 rounded-2xl border border-blue-100 dark:border-blue-800">
+              <p className="text-sm text-blue-800 dark:text-blue-200 font-medium mb-1">Informasi Header</p>
+              <p className="text-xs text-blue-600 dark:text-blue-400">Pastikan data lokasi dan waktu sesuai dengan kondisi lapangan.</p>
             </div>
-          </div>
 
-          <div className="space-y-2">
-            <div className="flex justify-between text-sm font-medium text-blue-900 dark:text-blue-100">
-              <span>Step {step} of 4</span>
-              <span>{Math.round(progress)}%</span>
-            </div>
-            <Progress value={progress} className="h-3" />
-            <div className="flex justify-between text-xs text-blue-700 dark:text-blue-300">
-              <span>Header</span>
-              <span>Karyawan</span>
-              <span>Observer</span>
-              <span>Selesai</span>
-            </div>
-          </div>
-
-          {step === 1 && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Step 1: Informasi Header</CardTitle>
-                <CardDescription>Isi informasi dasar sidak fatigue</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="tanggal">Tanggal <span className="text-red-500">*</span></Label>
-                    <Input
-                      id="tanggal"
-                      type="date"
-                      value={headerData.tanggal}
-                      onChange={(e) => setHeaderData({ ...headerData, tanggal: e.target.value })}
-                      data-testid="input-tanggal"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="shift">Shift <span className="text-red-500">*</span></Label>
-                    <Select
-                      value={headerData.shift}
-                      onValueChange={(value) => setHeaderData({ ...headerData, shift: value })}
-                    >
-                      <SelectTrigger data-testid="select-shift">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Shift 1">Shift 1</SelectItem>
-                        <SelectItem value="Shift 2">Shift 2</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="waktuMulai">Waktu Mulai <span className="text-red-500">*</span></Label>
-                    <Input
-                      id="waktuMulai"
-                      type="time"
-                      value={headerData.waktuMulai}
-                      onChange={(e) => setHeaderData({ ...headerData, waktuMulai: e.target.value })}
-                      data-testid="input-waktu-mulai"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="waktuSelesai">Waktu Selesai <span className="text-red-500">*</span></Label>
-                    <Input
-                      id="waktuSelesai"
-                      type="time"
-                      value={headerData.waktuSelesai}
-                      onChange={(e) => setHeaderData({ ...headerData, waktuSelesai: e.target.value })}
-                      data-testid="input-waktu-selesai"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <Label htmlFor="lokasi">Lokasi <span className="text-red-500">*</span></Label>
-                  <Input
-                    id="lokasi"
-                    value={headerData.lokasi}
-                    onChange={(e) => setHeaderData({ ...headerData, lokasi: e.target.value })}
-                    placeholder="Contoh: Workshop A"
-                    data-testid="input-lokasi"
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="area">Area</Label>
-                  <Input
-                    id="area"
-                    value={headerData.area}
-                    onChange={(e) => setHeaderData({ ...headerData, area: e.target.value })}
-                    placeholder="Contoh: Area Produksi"
-                    data-testid="input-area"
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="departemen">Departemen</Label>
-                  <Input
-                    id="departemen"
-                    value={headerData.departemen}
-                    onChange={(e) => setHeaderData({ ...headerData, departemen: e.target.value })}
-                    placeholder="Contoh: Operasional"
-                    data-testid="input-departemen"
-                  />
-                </div>
-
-                <Button
-                  onClick={handleStep1Submit}
-                  className="w-full h-14 text-lg"
-                  disabled={createSessionMutation.isPending}
-                  data-testid="button-next-step"
-                >
-                  {createSessionMutation.isPending ? "Membuat Sesi..." : "Lanjut ke Step 2"}
-                  <ArrowRight className="ml-2 h-5 w-5" />
-                </Button>
-              </CardContent>
-            </Card>
-          )}
-
-          {step === 2 && (
             <div className="space-y-4">
-              <Card className="bg-blue-50 dark:bg-blue-900/20 border-2 border-blue-300">
-                <CardContent className="pt-6">
-                  <div className="text-center">
-                    <p className="text-3xl font-bold text-blue-900 dark:text-blue-100">
-                      {employees.length} / {maxEmployees}
-                    </p>
-                    <p className="text-sm text-blue-700 dark:text-blue-300">Karyawan Tercatat</p>
-                  </div>
-                </CardContent>
-              </Card>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-xs font-semibold uppercase tracking-wider text-gray-500">Tanggal</Label>
+                  <Input
+                    type="date"
+                    className="h-12 bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700"
+                    value={headerData.tanggal}
+                    onChange={(e) => setHeaderData({ ...headerData, tanggal: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs font-semibold uppercase tracking-wider text-gray-500">Shift</Label>
+                  <Select
+                    value={headerData.shift}
+                    onValueChange={(value) => setHeaderData({ ...headerData, shift: value })}
+                  >
+                    <SelectTrigger className="h-12 bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Shift 1">Shift 1</SelectItem>
+                      <SelectItem value="Shift 2">Shift 2</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
 
-              <Card>
-                <CardHeader>
-                  <CardTitle>Step 2: Data Karyawan #{employees.length + 1}</CardTitle>
-                  <CardDescription>Isi data pemeriksaan karyawan secara sequential</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-xs font-semibold uppercase tracking-wider text-gray-500">Mulai</Label>
+                  <Input
+                    type="time"
+                    className="h-12 bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700"
+                    value={headerData.waktuMulai}
+                    onChange={(e) => setHeaderData({ ...headerData, waktuMulai: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs font-semibold uppercase tracking-wider text-gray-500">Selesai</Label>
+                  <Input
+                    type="time"
+                    className="h-12 bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700"
+                    value={headerData.waktuSelesai}
+                    onChange={(e) => setHeaderData({ ...headerData, waktuSelesai: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-xs font-semibold uppercase tracking-wider text-gray-500">Lokasi Sidak</Label>
+                <Input
+                  className="h-12 bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700"
+                  placeholder="Contoh: Workshop A"
+                  value={headerData.lokasi}
+                  onChange={(e) => setHeaderData({ ...headerData, lokasi: e.target.value })}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-xs font-semibold uppercase tracking-wider text-gray-500">Area (Opsional)</Label>
+                <Input
+                  className="h-12 bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700"
+                  placeholder="Area Produksi"
+                  value={headerData.area}
+                  onChange={(e) => setHeaderData({ ...headerData, area: e.target.value })}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-xs font-semibold uppercase tracking-wider text-gray-500">Departemen (Opsional)</Label>
+                <Input
+                  className="h-12 bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700"
+                  placeholder="Operasional"
+                  value={headerData.departemen}
+                  onChange={(e) => setHeaderData({ ...headerData, departemen: e.target.value })}
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {step === 2 && (
+          <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            {/* Quick Stats */}
+            <div className="flex items-center justify-between bg-white dark:bg-gray-800 p-4 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
+              <div>
+                <p className="text-xs text-gray-500 uppercase font-semibold">Total Karyawan</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">{employees.length} <span className="text-sm text-gray-400 font-normal">/ {maxEmployees}</span></p>
+              </div>
+              <div className="h-10 w-10 bg-blue-50 dark:bg-blue-900/30 rounded-full flex items-center justify-center text-blue-600">
+                <Users className="h-5 w-5" />
+              </div>
+            </div>
+
+            {/* Main Input Card */}
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-bold text-gray-900 dark:text-white">Input Data Karyawan</h2>
+                <Button variant="ghost" size="sm" onClick={() => setShowScanner(true)} className="text-blue-600">
+                  Manual Input
+                </Button>
+              </div>
+
+              <Button
+                onClick={() => setShowEmployeeScanner(true)}
+                className="w-full h-16 text-lg bg-indigo-600 hover:bg-indigo-700 text-white shadow-xl shadow-indigo-200 dark:shadow-none rounded-2xl flex items-center justify-between px-6"
+              >
+                <span className="flex flex-col items-start">
+                  <span className="font-bold">Scan QR Code</span>
+                  <span className="text-xs opacity-80 font-normal">Isi data otomatis</span>
+                </span>
+                <div className="h-10 w-10 bg-white/20 rounded-full flex items-center justify-center">
+                  <Camera className="h-5 w-5" />
+                </div>
+              </Button>
+
+              {/* Identity Section */}
+              <div className="bg-white dark:bg-gray-800 p-5 rounded-2xl border border-gray-100 dark:border-gray-700 space-y-4 shadow-sm">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="h-8 w-8 bg-orange-100 dark:bg-orange-900/30 rounded-lg flex items-center justify-center text-orange-600">
+                    <UserPlus className="h-4 w-4" />
+                  </div>
+                  <h3 className="font-semibold text-gray-900 dark:text-white">Identitas</h3>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <Label className="text-[10px] uppercase text-gray-400 font-bold">Nama</Label>
+                    <Input
+                      value={currentEmployee.nama}
+                      readOnly
+                      className="bg-gray-50 border-0 font-medium"
+                      placeholder="-"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-[10px] uppercase text-gray-400 font-bold">NIK</Label>
+                    <Input
+                      value={currentEmployee.nik}
+                      readOnly
+                      className="bg-gray-50 border-0 font-medium"
+                      placeholder="-"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-[10px] uppercase text-gray-400 font-bold">Jabatan</Label>
+                  <Input
+                    value={currentEmployee.jabatan}
+                    readOnly
+                    className="bg-gray-50 border-0 font-medium"
+                    placeholder="-"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-[10px] uppercase text-gray-400 font-bold">Nomor Lambung</Label>
+                  <Input
+                    value={currentEmployee.nomorLambung}
+                    onChange={(e) => setCurrentEmployee({ ...currentEmployee, nomorLambung: e.target.value })}
+                    className="bg-white border-gray-200"
+                    placeholder="Masukkan nomor lambung"
+                  />
+                </div>
+              </div>
+
+              {/* Sleep Hours - Big Input */}
+              <div className="bg-white dark:bg-gray-800 p-5 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="font-semibold text-gray-900 dark:text-white">Jam Tidur</h3>
+                  <span className="text-xs bg-gray-100 px-2 py-1 rounded text-gray-600">Dalam 24 jam</span>
+                </div>
+                <div className="flex items-center gap-4">
                   <Button
                     variant="outline"
-                    onClick={() => setShowEmployeeScanner(true)}
-                    className="w-full h-14 text-lg border-2 border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20"
-                    data-testid="button-scan-employee-qr"
+                    size="icon"
+                    className="h-12 w-12 rounded-full border-2"
+                    onClick={() => setCurrentEmployee(prev => ({ ...prev, jamTidur: Math.max(0, (prev.jamTidur || 0) - 1) }))}
                   >
-                    <Camera className="mr-2 h-5 w-5" />
-                    Scan QR Karyawan untuk Isi Otomatis
+                    -
                   </Button>
+                  <Input
+                    type="number"
+                    className="h-12 text-center text-3xl font-bold border-0 bg-transparent flex-1"
+                    value={currentEmployee.jamTidur}
+                    onChange={(e) => setCurrentEmployee({ ...currentEmployee, jamTidur: parseInt(e.target.value) || 0 })}
+                  />
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="h-12 w-12 rounded-full border-2"
+                    onClick={() => setCurrentEmployee(prev => ({ ...prev, jamTidur: (prev.jamTidur || 0) + 1 }))}
+                  >
+                    +
+                  </Button>
+                </div>
+              </div>
 
-                  <Separator />
+              {/* Checklist Questions */}
+              <div className="space-y-4">
+                <h3 className="font-bold text-gray-900 dark:text-white px-1">Pemeriksaan Kondisi</h3>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="nama">Nama Karyawan <span className="text-red-500">*</span></Label>
-                      <Input
-                        id="nama"
-                        value={currentEmployee.nama}
-                        readOnly
-                        placeholder={isLoadedFromQr ? "" : "Scan QR untuk mengisi"}
-                        className="bg-gray-100 dark:bg-gray-800 cursor-not-allowed"
-                        data-testid="input-emp-nama"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="nik">NIK <span className="text-red-500">*</span></Label>
-                      <Input
-                        id="nik"
-                        value={currentEmployee.nik}
-                        readOnly
-                        placeholder={isLoadedFromQr ? "" : "Scan QR untuk mengisi"}
-                        className="bg-gray-100 dark:bg-gray-800 cursor-not-allowed"
-                        data-testid="input-emp-nik"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="jabatan">Jabatan <span className="text-red-500">*</span></Label>
-                      <Input
-                        id="jabatan"
-                        value={currentEmployee.jabatan}
-                        readOnly
-                        placeholder={isLoadedFromQr ? "" : "Scan QR untuk mengisi"}
-                        className="bg-gray-100 dark:bg-gray-800 cursor-not-allowed"
-                        data-testid="input-emp-jabatan"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="nomorLambung">Nomor Lambung</Label>
-                      <Input
-                        id="nomorLambung"
-                        value={currentEmployee.nomorLambung}
-                        onChange={(e) => setCurrentEmployee({ ...currentEmployee, nomorLambung: e.target.value })}
-                        placeholder="No. Lambung (opsional)"
-                        data-testid="input-emp-nomor-lambung"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <Label htmlFor="jamTidur">Jam Tidur (dalam jam)</Label>
-                    <Input
-                      id="jamTidur"
-                      type="number"
-                      min="0"
-                      max="24"
-                      value={currentEmployee.jamTidur}
-                      onChange={(e) => setCurrentEmployee({ ...currentEmployee, jamTidur: parseInt(e.target.value) || 0 })}
-                      placeholder="Contoh: 7"
-                      className="text-2xl font-bold text-center h-16"
-                      data-testid="input-emp-jam-tidur"
-                    />
-                  </div>
-
-                  <Separator className="my-6" />
-
-                  <div className="space-y-4">
-                    <h3 className="font-semibold text-lg">Pemeriksaan Ya/Tidak</h3>
-
-                    {[
-                      { key: 'konsumiObat', label: 'Ada konsumsi obat' },
-                      { key: 'masalahPribadi', label: 'Ada masalah pribadi' },
-                      { key: 'pemeriksaanRespon', label: 'Pemeriksaan respon' },
-                      { key: 'pemeriksaanKonsentrasi', label: 'Pemeriksaan konsentrasi' },
-                      { key: 'pemeriksaanKesehatan', label: 'Pemeriksaan kesehatan' },
-                      { key: 'karyawanSiapBekerja', label: 'Karyawan siap bekerja' },
-                      { key: 'fitUntukBekerja', label: 'Fit untuk bekerja' },
-                      { key: 'istirahatDanMonitor', label: 'Istirahat sebentar dan monitor' },
-                      { key: 'istirahatLebihdariSatuJam', label: 'Pekerja diistirahatkan >1jam' },
-                      { key: 'tidakBolehBekerja', label: 'Tidak diijinkan bekerja' }
-                    ].map((field) => (
-                      <div key={field.key} className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 sm:p-4 border rounded-lg bg-gray-50 dark:bg-gray-800 gap-2 sm:gap-4">
-                        <Label htmlFor={field.key} className="font-medium text-sm sm:text-base">{field.label}</Label>
-                        <div className="flex gap-2 flex-shrink-0">
-                          <Button
-                            type="button"
-                            variant={currentEmployee[field.key as keyof EmployeeRecord] === true ? "default" : "outline"}
-                            onClick={() => setCurrentEmployee({ ...currentEmployee, [field.key]: true })}
-                            className="flex-1 sm:flex-none w-auto sm:w-20 h-10 sm:h-12 text-sm"
-                            data-testid={`button-${field.key}-ya`}
-                          >
-                            <Check className="h-4 w-4 sm:h-5 sm:w-5 mr-1" />
-                            Ya
-                          </Button>
-                          <Button
-                            type="button"
-                            variant={currentEmployee[field.key as keyof EmployeeRecord] === false ? "destructive" : "outline"}
-                            onClick={() => setCurrentEmployee({ ...currentEmployee, [field.key]: false })}
-                            className="flex-1 sm:flex-none w-auto sm:w-20 h-10 sm:h-12 text-sm"
-                            data-testid={`button-${field.key}-tidak`}
-                          >
-                            <X className="h-4 w-4 sm:h-5 sm:w-5 mr-1" />
-                            Tidak
-                          </Button>
+                {[
+                  { key: 'konsumiObat', label: 'Mengkonsumsi Obat?', desc: 'Sedang dalam pengaruh obat' },
+                  { key: 'masalahPribadi', label: 'Masalah Pribadi?', desc: 'Sedang ada beban pikiran' },
+                  { key: 'pemeriksaanRespon', label: 'Respon Baik?', desc: 'Reaksi cepat dan tanggap' },
+                  { key: 'pemeriksaanKonsentrasi', label: 'Konsentrasi Baik?', desc: 'Fokus saat diajak bicara' },
+                  { key: 'pemeriksaanKesehatan', label: 'Kesehatan Baik?', desc: 'Tidak ada keluhan fisik' },
+                  { key: 'karyawanSiapBekerja', label: 'Siap Bekerja?', desc: 'Mental dan fisik siap' },
+                  { key: 'fitUntukBekerja', label: 'Fit to Work?', desc: 'Status kelayakan kerja' },
+                ].map((field) => {
+                  const value = currentEmployee[field.key as keyof EmployeeRecord] as boolean | null;
+                  return (
+                    <div key={field.key} className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm transition-all">
+                      <div className="flex justify-between items-start mb-3">
+                        <div>
+                          <p className="font-semibold text-gray-900 dark:text-white">{field.label}</p>
+                          <p className="text-xs text-gray-500">{field.desc}</p>
                         </div>
+                        {value !== null && (
+                          <div className={cn(
+                            "h-6 w-6 rounded-full flex items-center justify-center",
+                            value ? "bg-green-100 text-green-600" : "bg-red-100 text-red-600"
+                          )}>
+                            {value ? <Check className="h-4 w-4" /> : <X className="h-4 w-4" />}
+                          </div>
+                        )}
                       </div>
-                    ))}
-                  </div>
-
-                  <Separator className="my-6" />
-
-                  {/* Employee Signature */}
-                  <div className="space-y-3">
-                    <h3 className="font-semibold text-lg flex items-center gap-2">
-                      <Pen className="h-5 w-5" />
-                      Tanda Tangan Pekerja <span className="text-red-500">*</span>
-                    </h3>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                      Pekerja harus menandatangani untuk konfirmasi hasil pemeriksaan
-                    </p>
-                    <SignaturePad
-                      onSave={(signatureDataUrl) => {
-                        setCurrentEmployee({
-                          ...currentEmployee,
-                          employeeSignature: signatureDataUrl
-                        });
-                      }}
-                      data-testid="signature-pad-employee"
-                    />
-                    {currentEmployee.employeeSignature && (
-                      <Card className="bg-green-50 dark:bg-green-900/20 border-green-300">
-                        <CardContent className="pt-4">
-                          <div className="flex items-center gap-2 text-green-700 dark:text-green-300">
-                            <Check className="h-5 w-5" />
-                            <span className="font-medium">Tanda tangan tersimpan</span>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    )}
-                  </div>
-
-                  <div className="flex flex-col gap-2">
-                    <Button
-                      onClick={handleSaveEmployee}
-                      disabled={!canAddMore || addEmployeeMutation.isPending || !currentEmployee.employeeSignature}
-                      className="w-full h-12 text-sm sm:text-base"
-                      data-testid="button-save-continue"
-                    >
-                      <Save className="mr-2 h-4 w-4 flex-shrink-0" />
-                      {addEmployeeMutation.isPending ? "Menyimpan..." : "Simpan & Lanjut"}
-                    </Button>
-                    <Button
-                      onClick={handleFinishEmployees}
-                      variant="outline"
-                      className="w-full h-12 text-sm sm:text-base"
-                      data-testid="button-finish-employees"
-                    >
-                      Selesai ({employees.length} karyawan)
-                      <ArrowRight className="ml-2 h-4 w-4 flex-shrink-0" />
-                    </Button>
-                  </div>
-
-                  {!canAddMore && (
-                    <div className="bg-yellow-50 dark:bg-yellow-900/20 border-2 border-yellow-300 rounded-lg p-4 text-center">
-                      <p className="font-semibold text-yellow-800 dark:text-yellow-200">
-                        Batas maksimal 10 karyawan tercapai
-                      </p>
+                      <div className="grid grid-cols-2 gap-3">
+                        <button
+                          onClick={() => setCurrentEmployee({ ...currentEmployee, [field.key]: true })}
+                          className={cn(
+                            "py-3 rounded-lg font-medium text-sm transition-all border",
+                            value === true
+                              ? "bg-green-600 text-white border-green-600 shadow-lg shadow-green-200 dark:shadow-none"
+                              : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50"
+                          )}
+                        >
+                          Ya
+                        </button>
+                        <button
+                          onClick={() => setCurrentEmployee({ ...currentEmployee, [field.key]: false })}
+                          className={cn(
+                            "py-3 rounded-lg font-medium text-sm transition-all border",
+                            value === false
+                              ? "bg-red-600 text-white border-red-600 shadow-lg shadow-red-200 dark:shadow-none"
+                              : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50"
+                          )}
+                        >
+                          Tidak
+                        </button>
+                      </div>
                     </div>
+                  );
+                })}
+              </div>
+
+              {/* Signature */}
+              <div className="bg-white dark:bg-gray-800 p-5 rounded-2xl border border-gray-100 dark:border-gray-700 space-y-4 shadow-sm">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-bold text-gray-900 dark:text-white">Tanda Tangan</h3>
+                  {currentEmployee.employeeSignature ? (
+                    <span className="text-xs text-green-600 flex items-center gap-1 font-medium bg-green-50 px-2 py-1 rounded">
+                      <Check className="h-3 w-3" /> Tersimpan
+                    </span>
+                  ) : (
+                    <span className="text-xs text-red-500 bg-red-50 px-2 py-1 rounded">Wajib</span>
                   )}
-                </CardContent>
-              </Card>
+                </div>
+                <SignaturePad
+                  onSave={(signatureDataUrl) => {
+                    setCurrentEmployee({
+                      ...currentEmployee,
+                      employeeSignature: signatureDataUrl
+                    });
+                  }}
+                />
+              </div>
             </div>
-          )}
+          </div>
+        )}
 
-          {step === 3 && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Step 3: Observer & Tanda Tangan</CardTitle>
-                <CardDescription>Scan QR Observer dan tambahkan tanda tangan digital</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                {/* Observer List */}
-                {observers.length > 0 && (
-                  <div className="space-y-3">
-                    <h3 className="font-semibold flex items-center gap-2">
-                      <Users className="h-5 w-5" />
-                      Observer Terdaftar ({observers.length})
-                    </h3>
-                    {observers.map((obs, idx) => (
-                      <Card key={idx} className="bg-green-50 dark:bg-green-900/20 border-green-300">
-                        <CardContent className="pt-4">
-                          <div className="flex items-start gap-3">
-                            <div className="flex-1">
-                              <p className="font-semibold">{obs.nama}</p>
-                              <p className="text-sm text-gray-600 dark:text-gray-400">NIK: {obs.nik}</p>
-                              <p className="text-sm text-gray-600 dark:text-gray-400">{obs.jabatan} - {obs.perusahaan}</p>
-                            </div>
-                            <div className="flex-shrink-0">
-                              {obs.signatureDataUrl && (
-                                <div className="w-20 h-12 border rounded bg-white">
-                                  <img src={obs.signatureDataUrl} alt="Signature" className="w-full h-full object-contain" />
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                )}
+        {step === 3 && (
+          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm space-y-6">
+              <div>
+                <h3 className="font-bold text-lg text-gray-900 dark:text-white">Daftar Observer</h3>
+                <p className="text-sm text-gray-500">Minimal 1 observer wajib diisi</p>
+              </div>
 
-                {/* Add Observer - Manual Input */}
-                <div className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="observer-nama">Nama Pemantau <span className="text-red-500">*</span></Label>
-                      <Input
-                        id="observer-nama"
-                        value={manualObserver.nama}
-                        onChange={(e) => setManualObserver({ ...manualObserver, nama: e.target.value })}
-                        placeholder="Nama lengkap pemantau"
-                        data-testid="input-observer-nama"
-                      />
+              {/* Observer List */}
+              {observers.length > 0 ? (
+                <div className="grid gap-3">
+                  {observers.map((obs, idx) => (
+                    <div key={idx} className="bg-green-50 dark:bg-green-900/10 p-4 rounded-xl border border-green-100 dark:border-green-900/30 flex items-center justify-between">
+                      <div>
+                        <p className="font-semibold text-gray-900 dark:text-white">{obs.nama}</p>
+                        <p className="text-xs text-gray-500">{obs.perusahaan}</p>
+                      </div>
+                      <Check className="h-5 w-5 text-green-600" />
                     </div>
-                    <div>
-                      <Label htmlFor="observer-perusahaan">Perusahaan <span className="text-red-500">*</span></Label>
-                      <Input
-                        id="observer-perusahaan"
-                        value={manualObserver.perusahaan}
-                        onChange={(e) => setManualObserver({ ...manualObserver, perusahaan: e.target.value })}
-                        placeholder="Nama perusahaan"
-                        data-testid="input-observer-perusahaan"
-                      />
-                    </div>
-                  </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 bg-gray-50 rounded-xl border border-dashed text-gray-400">
+                  <Users className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                  <p>Belum ada observer</p>
+                </div>
+              )}
 
-                  <div>
+              {/* Add Observer Form */}
+              <div className="space-y-4 pt-4 border-t border-gray-100">
+                <p className="font-semibold text-gray-900 dark:text-white">Tambah Observer Baru</p>
+
+                <div className="space-y-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs font-semibold uppercase text-gray-500">Nama</Label>
+                    <Input
+                      value={manualObserver.nama}
+                      onChange={(e) => setManualObserver({ ...manualObserver, nama: e.target.value })}
+                      placeholder="Nama Observer"
+                      className="bg-gray-50 border-gray-200"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs font-semibold uppercase text-gray-500">Perusahaan</Label>
+                    <Input
+                      value={manualObserver.perusahaan}
+                      onChange={(e) => setManualObserver({ ...manualObserver, perusahaan: e.target.value })}
+                      placeholder="Asal Perusahaan"
+                      className="bg-gray-50 border-gray-200"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs font-semibold uppercase text-gray-500">Tanda Tangan</Label>
                     <SignaturePad
                       onSave={(signatureDataUrl) => setManualObserver({ ...manualObserver, signatureDataUrl })}
-                      disabled={addObserverMutation.isPending}
-                      title="Tanda Tangan Pemantau"
                     />
                   </div>
 
                   <Button
                     onClick={handleAddManualObserver}
-                    size="lg"
-                    className="w-full h-12"
+                    className="w-full h-12 mt-2"
                     disabled={!manualObserver.nama || !manualObserver.perusahaan || !manualObserver.signatureDataUrl || addObserverMutation.isPending}
-                    data-testid="button-add-observer"
                   >
-                    <UserPlus className="mr-2 h-5 w-5" />
-                    Tambah Observer
+                    <UserPlus className="h-4 w-4 mr-2" />
+                    Tambah ke Daftar
                   </Button>
                 </div>
+              </div>
+            </div>
+          </div>
+        )}
 
-                {/* Navigation */}
-                <Separator />
-                <Button
-                  onClick={() => setStep(4)}
-                  className="w-full h-14 text-lg"
-                  disabled={observers.length === 0}
-                  data-testid="button-next-preview"
-                >
-                  Lanjut ke Preview ({observers.length} observer)
-                  <ArrowRight className="ml-2 h-5 w-5" />
-                </Button>
+        {step === 4 && (
+          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-6">
+            <div className="bg-green-50 dark:bg-green-900/20 p-6 rounded-2xl border border-green-200 dark:border-green-900 text-center space-y-2">
+              <div className="h-16 w-16 bg-green-100 dark:bg-green-800 rounded-full flex items-center justify-center mx-auto text-green-600 dark:text-green-300">
+                <Check className="h-8 w-8" />
+              </div>
+              <h2 className="text-xl font-bold text-green-800 dark:text-green-200">Data Siap Disimpan</h2>
+              <p className="text-sm text-green-700 dark:text-green-300">
+                {employees.length} karyawan dan {observers.length} observer berhasil didata.
+              </p>
+            </div>
 
-                {observers.length === 0 && (
-                  <p className="text-sm text-center text-gray-500">
-                    Tambahkan minimal 1 observer untuk melanjutkan
-                  </p>
-                )}
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Employee Scanner for Step 2 - Karyawan data input */}
-          {showEmployeeScanner && (
-            <SidakEmployeeScanner
-              isOpen={showEmployeeScanner}
-              onClose={() => setShowEmployeeScanner(false)}
-              onEmployeeScanned={handleEmployeeScanned}
-            />
-          )}
-
-          {step === 4 && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Step 4: Preview & Simpan</CardTitle>
-                <CardDescription>Review data sebelum menyimpan</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <h3 className="font-semibold">Header Info:</h3>
-                  <div className="text-sm space-y-1">
-                    <p>Tanggal: {headerData.tanggal}</p>
-                    <p>Shift: {headerData.shift}</p>
-                    <p>Waktu: {headerData.waktuMulai} - {headerData.waktuSelesai}</p>
-                    <p>Lokasi: {headerData.lokasi}</p>
-                  </div>
+            <div className="bg-white dark:bg-gray-800 p-5 rounded-2xl border border-gray-100 dark:border-gray-700 space-y-4">
+              <h3 className="font-semibold text-gray-900 dark:text-white border-b pb-2">Ringkasan</h3>
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Lokasi</span>
+                  <span className="font-medium text-gray-900 dark:text-white">{headerData.lokasi}</span>
                 </div>
-
-                <Separator />
-
-                <div className="space-y-2">
-                  <h3 className="font-semibold">Total Karyawan: {employees.length}</h3>
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Waktu</span>
+                  <span className="font-medium text-gray-900 dark:text-white">{headerData.waktuMulai} - {headerData.waktuSelesai}</span>
                 </div>
-
-                <div className="flex gap-3">
-                  <Button
-                    onClick={() => {
-                      clearDraft();
-                      navigate("/workspace/sidak");
-                    }}
-                    className="flex-1 h-14 text-lg"
-                    data-testid="button-finish"
-                  >
-                    <Check className="mr-2 h-5 w-5" />
-                    Selesai
-                  </Button>
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Observer</span>
+                  <span className="font-medium text-gray-900 dark:text-white">{observers.length} orang</span>
                 </div>
-              </CardContent>
-            </Card>
-          )}
-        </div>
-      </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Employee Scanner for Step 2 - Karyawan data input */}
+        {showEmployeeScanner && (
+          <SidakEmployeeScanner
+            isOpen={showEmployeeScanner}
+            onClose={() => setShowEmployeeScanner(false)}
+            onEmployeeScanned={handleEmployeeScanned}
+          />
+        )}
+
+      </MobileSidakLayout>
     </>
   );
 }

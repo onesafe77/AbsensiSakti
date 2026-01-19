@@ -104,8 +104,7 @@ const InputArea: React.FC<InputAreaProps> = ({ onSendMessage, isLoading }) => {
     };
 
     return (
-        <div className="w-full max-w-3xl mx-auto px-4 pb-6">
-
+        <div className="w-full">
             {/* Hidden File Input */}
             <input
                 type="file"
@@ -117,11 +116,11 @@ const InputArea: React.FC<InputAreaProps> = ({ onSendMessage, isLoading }) => {
 
             <div
                 className={`
-            relative bg-white border transition-all duration-300 ease-in-out
+            relative bg-white/80 backdrop-blur-2xl border transition-all duration-300 ease-in-out
             ${isFocused
-                        ? 'border-emerald-400 ring-4 ring-emerald-500/10 shadow-xl shadow-emerald-500/5'
-                        : 'border-zinc-200 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:border-zinc-300'}
-            rounded-[26px] overflow-hidden
+                        ? 'border-red-400/50 ring-4 ring-red-500/5 shadow-2xl shadow-red-500/10'
+                        : 'border-white/60 shadow-[0_8px_40px_rgb(0,0,0,0.04)] hover:border-red-200/50 hover:shadow-[0_8px_40px_rgb(0,0,0,0.08)]'}
+            rounded-[2.5rem] overflow-hidden
         `}
             >
                 {/* Image Preview Chip */}
@@ -152,8 +151,8 @@ const InputArea: React.FC<InputAreaProps> = ({ onSendMessage, isLoading }) => {
                     onKeyDown={handleKeyDown}
                     placeholder={isListening ? "Mendengarkan..." : "Tanya Mystic tentang regulasi K3..."}
                     className={`
-            w-full max-h-[200px] min-h-[56px] bg-transparent border-0 focus:ring-0 text-zinc-800 placeholder:text-zinc-400 resize-none py-4 px-5 text-[16px] leading-relaxed
-            ${isListening ? 'animate-pulse placeholder:text-emerald-600 font-medium' : ''}
+            w-full max-h-[200px] min-h-[56px] bg-transparent border-0 focus:ring-0 text-zinc-800 placeholder:text-zinc-400 resize-none py-4 px-6 text-[16px] leading-relaxed font-sans
+            ${isListening ? 'animate-pulse placeholder:text-red-600 font-medium' : ''}
           `}
                     rows={1}
                     style={{ overflowY: input.length > 100 ? 'auto' : 'hidden' }}
@@ -161,22 +160,19 @@ const InputArea: React.FC<InputAreaProps> = ({ onSendMessage, isLoading }) => {
 
                 {/* Toolbar */}
                 <div className="flex items-center justify-between px-3 pb-3 pt-1">
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-1 pl-2">
                         <button
                             onClick={handleFileClick}
-                            className="p-2.5 text-zinc-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-xl transition-all duration-200 group relative"
+                            className="p-2.5 text-zinc-400 hover:text-red-600 hover:bg-red-50 rounded-full transition-all duration-200 group relative"
                             title="Upload Image"
                         >
                             <Paperclip className="w-5 h-5" strokeWidth={2} />
-                            <span className="hidden group-hover:block absolute left-0 -top-10 bg-zinc-800 text-white text-xs py-1.5 px-3 rounded-lg whitespace-nowrap shadow-lg font-medium">
-                                Upload Gambar
-                            </span>
                         </button>
                         <button
                             onClick={handleMicClick}
                             className={`
-                        p-2.5 rounded-xl transition-all duration-200 relative group
-                        ${isListening ? 'text-white bg-red-500 shadow-lg shadow-red-500/30 animate-pulse' : 'text-zinc-400 hover:text-emerald-600 hover:bg-emerald-50'}
+                        p-2.5 rounded-full transition-all duration-200 relative group
+                        ${isListening ? 'text-white bg-red-500 shadow-lg shadow-red-500/30 animate-pulse' : 'text-zinc-400 hover:text-red-600 hover:bg-red-50'}
                     `}
                             title="Voice Input"
                         >
@@ -188,10 +184,10 @@ const InputArea: React.FC<InputAreaProps> = ({ onSendMessage, isLoading }) => {
                         onClick={handleSubmit}
                         disabled={isLoading || (!input.trim() && !selectedImage)}
                         className={`
-                p-2.5 rounded-xl transition-all duration-200 flex items-center justify-center
+                p-3 rounded-full transition-all duration-200 flex items-center justify-center mr-1
                 ${isLoading || (!input.trim() && !selectedImage)
                                 ? 'bg-zinc-100 text-zinc-300 cursor-not-allowed'
-                                : 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-lg shadow-emerald-600/20 hover:shadow-emerald-600/40 hover:-translate-y-0.5 active:translate-y-0'}
+                                : 'bg-gradient-to-r from-red-600 to-rose-600 text-white hover:shadow-lg hover:shadow-red-500/30 hover:-translate-y-0.5 active:translate-y-0'}
               `}
                     >
                         {isLoading ? (
@@ -202,7 +198,7 @@ const InputArea: React.FC<InputAreaProps> = ({ onSendMessage, isLoading }) => {
                     </button>
                 </div>
             </div>
-            <p className="text-center text-[10px] text-zinc-400 mt-4 font-medium tracking-wide opacity-60">
+            <p className="text-center text-[10px] text-zinc-400 mt-3 font-medium tracking-wide opacity-60">
                 AI dapat membuat kesalahan. Selalu verifikasi regulasi K3 yang penting.
             </p>
         </div>

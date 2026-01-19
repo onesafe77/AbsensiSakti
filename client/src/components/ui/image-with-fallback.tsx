@@ -114,13 +114,16 @@ export function PhotoGalleryItem({
   );
 }
 
+import { cn } from "@/lib/utils";
+
 interface PhotoThumbnailProps {
   photo: string;
   index: number;
   onClick?: () => void;
+  className?: string;
 }
 
-export function PhotoThumbnail({ photo, index, onClick }: PhotoThumbnailProps) {
+export function PhotoThumbnail({ photo, index, onClick, className }: PhotoThumbnailProps) {
   const [hasError, setHasError] = useState(false);
 
   useEffect(() => {
@@ -129,7 +132,10 @@ export function PhotoThumbnail({ photo, index, onClick }: PhotoThumbnailProps) {
 
   return (
     <div
-      className="h-12 w-12 rounded border cursor-pointer hover:opacity-80 bg-gray-100 dark:bg-gray-700 flex-shrink-0 overflow-hidden"
+      className={cn(
+        "h-12 w-12 rounded border cursor-pointer hover:opacity-80 bg-gray-100 dark:bg-gray-700 flex-shrink-0 overflow-hidden",
+        className
+      )}
       onClick={onClick}
     >
       {hasError ? (

@@ -2399,3 +2399,234 @@ export const fmsViolations = pgTable("fms_violations", {
 export const insertFmsViolationSchema = createInsertSchema(fmsViolations);
 export type InsertFmsViolation = z.infer<typeof insertFmsViolationSchema>;
 export type FmsViolation = typeof fmsViolations.$inferSelect;
+
+// ============================================
+// WHATSAPP BLAST HISTORY & TRACKING
+// ============================================
+
+export const whatsappBlasts = pgTable("whatsapp_blasts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  subject: text("subject"), // Internal tracking title
+  message: text("message").notNull(),
+  blastType: varchar("blast_type", { length: 20 }).notNull(), // 'text' | 'image' | 'video'
+  mediaUrls: text("media_urls").array(), // Array of image/video URLs
+  totalRecipients: integer("total_recipients").notNull().default(0),
+  sentCount: integer("sent_count").notNull().default(0),
+  failedCount: integer("failed_count").notNull().default(0),
+  createdBy: varchar("created_by"), // NIK of sender
+  createdByName: text("created_by_name"), // Name of sender
+  status: varchar("status", { length: 20 }).notNull().default("pending"), // pending, sending, completed, failed
+  createdAt: timestamp("created_at").defaultNow(),
+  completedAt: timestamp("completed_at"),
+}, (table) => [
+  index("IDX_whatsapp_blasts_created_at").on(table.createdAt),
+  index("IDX_whatsapp_blasts_status").on(table.status),
+]);
+
+export const whatsappBlastRecipients = pgTable("whatsapp_blast_recipients", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  blastId: varchar("blast_id").notNull().references(() => whatsappBlasts.id, { onDelete: "cascade" }),
+  employeeId: varchar("employee_id").references(() => employees.id),
+  employeeName: text("employee_name").notNull(),
+  phone: text("phone").notNull(),
+  status: varchar("status", { length: 20 }).notNull().default("pending"), // pending, sent, failed
+  error: text("error"), // Error message if failed
+  sentAt: timestamp("sent_at"),
+}, (table) => [
+  index("IDX_blast_recipients_blast").on(table.blastId),
+  index("IDX_blast_recipients_status").on(table.status),
+  index("IDX_blast_recipients_employee").on(table.employeeId),
+]);
+
+export const insertWhatsappBlastSchema = createInsertSchema(whatsappBlasts).omit({
+  id: true,
+  createdAt: true,
+  completedAt: true,
+});
+
+export const insertWhatsappBlastRecipientSchema = createInsertSchema(whatsappBlastRecipients).omit({
+  id: true,
+  sentAt: true,
+});
+
+export type WhatsappBlast = typeof whatsappBlasts.$inferSelect;
+export type InsertWhatsappBlast = z.infer<typeof insertWhatsappBlastSchema>;
+export type WhatsappBlastRecipient = typeof whatsappBlastRecipients.$inferSelect;
+export type InsertWhatsappBlastRecipient = z.infer<typeof insertWhatsappBlastRecipientSchema>;
+
+// ============================================
+// INDUCTION (INDUKSI K3) TABLES
+// ============================================
+
+// Induction Materials - stores uploaded PPT/PDF materials
+export const inductionMaterials = pgTable("induction_materials", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  title: text("title").notNull(),
+  description: text("description"),
+  fileName: text("file_name").notNull(),
+  fileUrl: text("file_url").notNull(),
+  fileType: varchar("file_type", { length: 10 }).notNull(), // 'pdf' | 'pptx'
+  isActive: boolean("is_active").default(true),
+  uploadedBy: varchar("uploaded_by").references(() => employees.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("IDX_induction_materials_active").on(table.isActive),
+]);
+
+// Induction Questions - stores quiz questions
+export const inductionQuestions = pgTable("induction_questions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  materialId: varchar("material_id").references(() => inductionMaterials.id, { onDelete: "cascade" }),
+  questionText: text("question_text").notNull(),
+  options: jsonb("options").notNull(), // Array of { label: 'A', text: '...' }
+  correctAnswerIndex: integer("correct_answer_index").notNull(), // 0-3 for A-D
+  order: integer("order").notNull().default(1),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("IDX_induction_questions_material").on(table.materialId),
+  index("IDX_induction_questions_active").on(table.isActive),
+]);
+
+// Induction Schedules - auto-generated schedules for drivers returning from leave
+export const inductionSchedules = pgTable("induction_schedules", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  employeeId: varchar("employee_id").notNull().references(() => employees.id),
+  scheduledDate: date("scheduled_date").notNull(), // H-1 before returning to work
+  reason: text("reason").notNull(), // e.g., "Pasca Cuti", "New Employee"
+  status: varchar("status", { length: 20 }).notNull().default("pending"), // pending, completed, expired, failed
+  score: integer("score"), // Quiz score (0-100)
+  passingScore: integer("passing_score").default(70), // Minimum score to pass
+  completedAt: timestamp("completed_at"),
+  notifiedAt: timestamp("notified_at"), // WhatsApp reminder sent
+  notifiedVia: varchar("notified_via", { length: 20 }), // 'whatsapp'
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("IDX_induction_schedules_employee").on(table.employeeId),
+  index("IDX_induction_schedules_date").on(table.scheduledDate),
+  index("IDX_induction_schedules_status").on(table.status),
+]);
+
+// Induction Answers - records driver's quiz answers
+export const inductionAnswers = pgTable("induction_answers", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  scheduleId: varchar("schedule_id").notNull().references(() => inductionSchedules.id, { onDelete: "cascade" }),
+  questionId: varchar("question_id").notNull().references(() => inductionQuestions.id),
+  selectedAnswerIndex: integer("selected_answer_index").notNull(),
+  isCorrect: boolean("is_correct").notNull(),
+  answeredAt: timestamp("answered_at").defaultNow(),
+}, (table) => [
+  index("IDX_induction_answers_schedule").on(table.scheduleId),
+  index("IDX_induction_answers_question").on(table.questionId),
+]);
+
+// Relations
+export const inductionMaterialsRelations = relations(inductionMaterials, ({ many }) => ({
+  questions: many(inductionQuestions),
+}));
+
+export const inductionQuestionsRelations = relations(inductionQuestions, ({ one }) => ({
+  material: one(inductionMaterials, {
+    fields: [inductionQuestions.materialId],
+    references: [inductionMaterials.id],
+  }),
+}));
+
+export const inductionSchedulesRelations = relations(inductionSchedules, ({ one, many }) => ({
+  employee: one(employees, {
+    fields: [inductionSchedules.employeeId],
+    references: [employees.id],
+  }),
+  answers: many(inductionAnswers),
+}));
+
+export const inductionAnswersRelations = relations(inductionAnswers, ({ one }) => ({
+  schedule: one(inductionSchedules, {
+    fields: [inductionAnswers.scheduleId],
+    references: [inductionSchedules.id],
+  }),
+  question: one(inductionQuestions, {
+    fields: [inductionAnswers.questionId],
+    references: [inductionQuestions.id],
+  }),
+}));
+
+// Insert Schemas
+export const insertInductionMaterialSchema = createInsertSchema(inductionMaterials).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertInductionQuestionSchema = createInsertSchema(inductionQuestions).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertInductionScheduleSchema = createInsertSchema(inductionSchedules).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertInductionAnswerSchema = createInsertSchema(inductionAnswers).omit({
+  id: true,
+  answeredAt: true,
+});
+
+// Types
+export type InductionMaterial = typeof inductionMaterials.$inferSelect;
+export type InsertInductionMaterial = z.infer<typeof insertInductionMaterialSchema>;
+export type InductionQuestion = typeof inductionQuestions.$inferSelect;
+export type InsertInductionQuestion = z.infer<typeof insertInductionQuestionSchema>;
+export type InductionSchedule = typeof inductionSchedules.$inferSelect;
+export type InsertInductionSchedule = z.infer<typeof insertInductionScheduleSchema>;
+export type InductionAnswer = typeof inductionAnswers.$inferSelect;
+export type InsertInductionAnswer = z.infer<typeof insertInductionAnswerSchema>;
+
+// ============================================
+// MCU (Medical Check Up) RECORDS
+// ============================================
+
+export const mcuRecords = pgTable("mcu_records", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  employeeId: varchar("employee_id").references(() => employees.id),
+  no: integer("no"), // Nomor urut manual jika migrasi excel
+  nama: text("nama").notNull(),
+  perusahaan: text("perusahaan"),
+  posisi: text("posisi"),
+  klinik: text("klinik"),
+
+  // Tanggal MCU
+  tanggalBaru: date("tanggal_baru"),
+  tanggalBerkala: date("tanggal_berkala"), // Berkala/Perpanjang
+  tanggalAkhir: date("tanggal_akhir"), // Tanggal MCU Akhir
+
+  // Kesimpulan MCU
+  kesimpulanBerkala: text("kesimpulan_berkala"),
+  kesimpulanAkhir: text("kesimpulan_akhir"),
+
+  hasilKesimpulan: text("hasil_kesimpulan"), // FIT, UNFIT, dst
+  verifikasiSaran: text("verifikasi_saran"),
+  followUp: text("follow_up"),
+  fileUrl: text("file_url"),
+
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("IDX_mcu_records_employee").on(table.employeeId),
+  index("IDX_mcu_records_hasil").on(table.hasilKesimpulan),
+]);
+
+export const insertMcuRecordSchema = createInsertSchema(mcuRecords).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type McuRecord = typeof mcuRecords.$inferSelect;
+export type InsertMcuRecord = z.infer<typeof insertMcuRecordSchema>;

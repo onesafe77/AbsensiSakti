@@ -69,7 +69,7 @@ export function Header({ title, onMenuClick }: HeaderProps) {
   };
 
   return (
-    <header className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700 relative z-30">
+    <header className="hidden lg:block bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700 relative z-30">
       <div className="flex items-center justify-between px-3 sm:px-4 lg:px-6 py-3 lg:py-4">
         {/* Left side - Menu + Title */}
         <div className="flex items-center min-w-0 flex-shrink-0">

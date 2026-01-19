@@ -10,6 +10,8 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Eye, EyeOff, Hexagon, ArrowLeft } from "lucide-react";
 import { ParticleBackground } from "@/components/ui/particle-background";
+import Spline from '@splinetool/react-spline';
+import { Suspense } from "react";
 
 const loginFormSchema = z.object({
   nik: z.string().min(1, "NIK wajib diisi"),
@@ -92,11 +94,23 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen w-full flex items-center justify-center p-4 relative bg-slate-50 overflow-hidden font-sans selection:bg-red-100">
 
-      {/* Background Layer 1: Gradient */}
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-white via-slate-50 to-slate-100 -z-20"></div>
+      {/* Spline Background */}
+      <div className="absolute inset-0 z-0">
+        <Suspense fallback={<div className="w-full h-full bg-slate-50" />}>
+          <Spline scene="https://prod.spline.design/DM9x2ADdMUM5XlDE/scene.splinecode" />
+        </Suspense>
+      </div>
 
-      {/* Background Layer 2: Moving Particles */}
-      <ParticleBackground variant="login" />
+      {/* Hide Spline Logo Badge (Aggressive) */}
+      <style>{`
+        a[href^="https://spline.design"],
+        a[href*="spline.design"] {
+            display: none !important;
+            opacity: 0 !important;
+            visibility: hidden !important;
+            pointer-events: none !important;
+        }
+      `}</style>
 
       {/* Main Glassmorphism Card */}
       <div className="w-full max-w-md bg-white/70 backdrop-blur-xl rounded-[32px] shadow-2xl overflow-hidden relative z-10 border border-white/50 ring-1 ring-slate-900/5 transition-all duration-500 hover:shadow-red-900/5">

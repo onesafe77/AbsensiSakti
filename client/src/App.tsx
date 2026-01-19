@@ -178,16 +178,22 @@ function Router() {
  * - Mobile driver view untuk QR scan
  * - Driver view untuk tampilan desktop
  */
+import { ErrorBoundary } from "@/components/ErrorBoundary";
+
+// ... existing imports
+
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider defaultTheme="light" storageKey="attendance-theme">
-        <AuthProvider>
-          <TooltipProvider>
-            <Router />
-            <Toaster />
-          </TooltipProvider>
-        </AuthProvider>
+        <ErrorBoundary>
+          <AuthProvider>
+            <TooltipProvider>
+              <Router />
+              <Toaster />
+            </TooltipProvider>
+          </AuthProvider>
+        </ErrorBoundary>
       </ThemeProvider>
     </QueryClientProvider>
   );

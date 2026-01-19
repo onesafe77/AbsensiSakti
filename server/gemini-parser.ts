@@ -317,3 +317,105 @@ Fokus pada:
     }
   }
 }
+
+// ==========================================
+// MCU PARSING LOGIC
+// ==========================================
+
+export interface ParsedMCU {
+  nama: string;
+  perusahaan: string;
+  posisi: string;
+  klinik: string;
+  tanggalBaru?: string;
+  tanggalBerkala?: string;
+  tanggalAkhir?: string;
+  kesimpulanBerkala?: string;
+  kesimpulanAkhir?: string;
+  hasilKesimpulan: string;
+  verifikasiSaran?: string;
+  followUp?: string;
+}
+
+async function urlToGenerativePart(url: string, mimeType: string = "image/jpeg") {
+  try {
+    const response = await fetch(url);
+    if (!response.ok) throw new Error(`Failed to fetch image: ${response.statusText}`);
+    const arrayBuffer = await response.arrayBuffer();
+    return {
+      inlineData: {
+        data: Buffer.from(arrayBuffer).toString("base64"),
+        mimeType,
+      },
+    };
+  } catch (error) {
+    console.error("Error fetching image for Gemini:", error);
+    return null;
+  }
+}
+
+export async function parseMCUWithGemini(caption: string, imageUrl?: string): Promise<ParsedMCU | null> {
+  const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+
+  const prompt = `Analisis Dokumen/Foto Hasil MCU (Medical Check Up).
+  
+  TUGAS: Ekstrak data berikut dari gambar atau caption yang diberikan ke dalam format JSON.
+  
+  FIELD YANG DICARI:
+  1. nama: Nama karyawan (Cari di Header/Biodata Pasien)
+  2. perusahaan: Nama perusahaan (PT ...)
+  3. posisi: Jabatan/Posisi
+  4. klinik: Nama klinik/rumah sakit pemeriksa
+  5. tanggalBaru: Tanggal MCU Baru (YYYY-MM-DD)
+  6. tanggalBerkala: Tanggal MCU Berkala (YYYY-MM-DD)
+  7. tanggalAkhir: Tanggal berakhirnya masa berlaku MCU (YYYY-MM-DD) / Expired Date / Valid Until
+  8. kesimpulanBerkala: Kesimpulan dokter untuk MCU berkala (text)
+  9. kesimpulanAkhir: Kesimpulan akhir (text) - Biasanya: "Fit to Work", "Unfit", "Fit with Restrictions"
+  10. hasilKesimpulan: FIT_TO_WORK / UNFIT / FIT_WITH_NOTE / TEMPORARY_UNFIT (Standarisasi ke 4 nilai ini)
+      - Fit to work -> FIT_TO_WORK
+      - Fit with note/catatan -> FIT_WITH_NOTE
+      - Unfit -> UNFIT
+      - Temporary Unfit -> TEMPORARY_UNFIT
+  11. verifikasiSaran: Saran dokter / Rekomendasi Medis
+  12. followUp: Tindakan lanjut yang disarankan
+
+  CAPTION DARI PENGIRIM: "${caption}"
+  (Gunakan caption sebagai petunjuk tambahan jika teks di gambar kurang jelas, terutama Nama atau Perusahaan).
+
+  ATURAN OUTPUT:
+  - Berikan HANYA JSON valid.
+  - Tanggal format YYYY-MM-DD.
+  - Jika data tidak ditemukan, isi dengan string kosong "" atau null.
+  `;
+
+  try {
+    let result;
+    if (imageUrl) {
+      console.log("📷 Processing MCU with Vision AI:", imageUrl);
+      const imagePart = await urlToGenerativePart(imageUrl);
+      if (imagePart) {
+        result = await model.generateContent([prompt, imagePart]);
+      } else {
+        result = await model.generateContent(prompt);
+      }
+    } else {
+      result = await model.generateContent(prompt);
+    }
+
+    const text = result.response.text();
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+
+    if (jsonMatch) {
+      const parsed = JSON.parse(jsonMatch[0]) as ParsedMCU;
+      // Basic cleanup & Defaults
+      if (!parsed.nama && caption.length < 50) parsed.nama = caption.replace(/mcu/i, "").trim();
+      if (!parsed.hasilKesimpulan) parsed.hasilKesimpulan = "FIT_TO_WORK"; // Default fallback
+
+      return parsed;
+    }
+    return null;
+  } catch (error) {
+    console.error("Error parsing MCU with Gemini:", error);
+    return null;
+  }
+}

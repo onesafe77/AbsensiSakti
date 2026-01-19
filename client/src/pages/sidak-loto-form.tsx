@@ -1,7 +1,6 @@
-
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
-import { ClipboardCheck, Check, X, ArrowLeft, ArrowRight, Save, Trash2, Plus, Lock } from "lucide-react";
+import { ClipboardCheck, Check, X, ArrowLeft, ArrowRight, Save, Trash2, Plus, Lock, Key } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,6 +15,8 @@ import { apiRequest } from "@/lib/queryClient";
 import { SignaturePad } from "@/components/sidak/signature-pad";
 import { DraftRecoveryDialog } from "@/components/sidak/draft-recovery-dialog";
 import { useSidakDraft } from "@/hooks/use-sidak-draft";
+import { MobileSidakLayout } from "@/components/sidak/mobile-sidak-layout";
+import { cn } from "@/lib/utils";
 
 interface LotoRecord {
     ordinal?: number;
@@ -189,280 +190,59 @@ export default function SidakLotoForm() {
 
     const maxRecords = 20;
     const canAddMore = draft.records.length < maxRecords;
-    const progress = (draft.step / 3) * 100;
 
-    const renderStep1 = () => (
-        <Card className="border-t-4 border-t-slate-600 shadow-lg">
-            <CardHeader>
-                <CardTitle>Informasi Pelaksanaan Sidak</CardTitle>
-                <CardDescription>Isi detail waktu dan lokasi inspeksi LOTO</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                        <Label>Tanggal</Label>
-                        <Input
-                            type="date"
-                            value={draft.headerData.tanggal}
-                            onChange={(e) => setDraft(prev => ({ ...prev, headerData: { ...prev.headerData, tanggal: e.target.value } }))}
-                        />
-                    </div>
-                    <div className="space-y-2">
-                        <Label>Waktu</Label>
-                        <Input
-                            type="time"
-                            value={draft.headerData.waktu}
-                            onChange={(e) => setDraft(prev => ({ ...prev, headerData: { ...prev.headerData, waktu: e.target.value } }))}
-                        />
-                    </div>
-                    <div className="space-y-2">
-                        <Label>Shift</Label>
-                        <Select
-                            value={draft.headerData.shift}
-                            onValueChange={(val) => setDraft(prev => ({ ...prev, headerData: { ...prev.headerData, shift: val } }))}
-                        >
-                            <SelectTrigger>
-                                <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="Shift 1">Shift 1</SelectItem>
-                                <SelectItem value="Shift 2">Shift 2</SelectItem>
-                            </SelectContent>
-                        </Select>
-                    </div>
-                    <div className="space-y-2">
-                        <Label>Departemen</Label>
-                        <Input
-                            value={draft.headerData.departemen}
-                            onChange={(e) => setDraft(prev => ({ ...prev, headerData: { ...prev.headerData, departemen: e.target.value } }))}
-                            placeholder="Contoh: Plant, Mining"
-                        />
-                    </div>
-                    <div className="space-y-2">
-                        <Label>Lokasi</Label>
-                        <Input
-                            placeholder="Contoh: Workshop A, Area Crusher"
-                            value={draft.headerData.lokasi}
-                            onChange={(e) => setDraft(prev => ({ ...prev, headerData: { ...prev.headerData, lokasi: e.target.value } }))}
-                        />
-                    </div>
-                </div>
+
+    const renderBottomAction = () => {
+        if (draft.step === 1) {
+            return (
                 <Button
-                    className="w-full mt-4 bg-slate-700 hover:bg-slate-800 text-white"
+                    className="w-full h-12 text-lg font-medium shadow-md shadow-slate-200 dark:shadow-none bg-slate-700 hover:bg-slate-800 text-white"
                     disabled={!draft.headerData.lokasi || handleCreateSession.isPending}
                     onClick={() => handleCreateSession.mutate(draft.headerData)}
                 >
                     {handleCreateSession.isPending ? "Membuat Sesi..." : "Lanjut ke Inspeksi"}
-                    <ArrowRight className="ml-2 h-4 w-4" />
+                    <ArrowRight className="ml-2 h-5 w-5" />
                 </Button>
-            </CardContent>
-        </Card>
-    );
-
-    const renderStep2 = () => (
-        <div className="space-y-6">
-            <Card className="bg-slate-100 dark:bg-slate-800/50 border-2 border-slate-300">
-                <CardContent className="pt-6 text-center">
-                    <p className="text-3xl font-bold text-slate-900 dark:text-slate-100">
-                        {draft.records.length} / {maxRecords}
-                    </p>
-                    <p className="text-sm text-slate-600 dark:text-slate-400">Log LOTO Tercatat</p>
-                </CardContent>
-            </Card>
-
-            <Card className="border-t-4 border-t-slate-600 shadow-md">
-                <CardHeader>
-                    <CardTitle>Input Data LOTO</CardTitle>
-                    <CardDescription>Catat detail pemasangan Lock Out Tag Out</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                            <Label>Nama Karyawan <span className="text-red-500">*</span></Label>
-                            <Input
-                                value={currentRecord.namaKaryawan}
-                                onChange={(e) => setCurrentRecord(prev => ({ ...prev, namaKaryawan: e.target.value }))}
-                                placeholder="Nama pemasang LOTO"
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <Label>Perusahaan</Label>
-                            <Input
-                                value={currentRecord.perusahaan}
-                                onChange={(e) => setCurrentRecord(prev => ({ ...prev, perusahaan: e.target.value }))}
-                                placeholder="PT ..."
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <Label>Jenis Pekerjaan</Label>
-                            <Input
-                                value={currentRecord.jenisPekerjaan}
-                                onChange={(e) => setCurrentRecord(prev => ({ ...prev, jenisPekerjaan: e.target.value }))}
-                                placeholder="Contoh: Perbaikan AC Unit"
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <Label>Lokasi Isolasi / Unit</Label>
-                            <Input
-                                value={currentRecord.lokasiIsolasi}
-                                onChange={(e) => setCurrentRecord(prev => ({ ...prev, lokasiIsolasi: e.target.value }))}
-                                placeholder="Unit Number / Panel ID"
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <Label>Nomor Gembok (Padlock ID)</Label>
-                            <Input
-                                value={currentRecord.nomorGembok}
-                                onChange={(e) => setCurrentRecord(prev => ({ ...prev, nomorGembok: e.target.value }))}
-                                placeholder="ID Gembok"
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <Label>Jam Pasang</Label>
-                            <Input
-                                type="time"
-                                value={currentRecord.jamPasang}
-                                onChange={(e) => setCurrentRecord(prev => ({ ...prev, jamPasang: e.target.value }))}
-                            />
-                        </div>
-                    </div>
-
-                    <div className="space-y-2 mt-4">
-                        <Label>Keterangan</Label>
-                        <Textarea
-                            value={currentRecord.keterangan}
-                            onChange={(e) => setCurrentRecord(prev => ({ ...prev, keterangan: e.target.value }))}
-                            placeholder="Catatan tambahan (opsional)"
-                        />
-                    </div>
-
+            );
+        }
+        if (draft.step === 2) {
+            return (
+                <div className="flex flex-col gap-3">
                     <Button
-                        className="w-full bg-slate-700 hover:bg-slate-800 text-white mt-4"
                         onClick={() => handleAddRecord.mutate(currentRecord)}
                         disabled={!currentRecord.namaKaryawan || !canAddMore || handleAddRecord.isPending}
+                        className="w-full h-12 text-lg font-medium shadow-md shadow-slate-200 dark:shadow-none bg-slate-700 hover:bg-slate-800 text-white"
                     >
-                        <Plus className="w-4 h-4 mr-2" />
-                        {canAddMore ? "Tambahkan Data" : "Batas Maksimal Mencapai"}
+                        <Plus className="w-5 h-5 mr-2" />
+                        {canAddMore ? "Simpan Log" : "Batas Maksimal"}
                     </Button>
-                </CardContent>
-            </Card>
-
-            {draft.records.length > 0 && (
-                <Card>
-                    <CardHeader><CardTitle>Daftar LOTO ({draft.records.length})</CardTitle></CardHeader>
-                    <CardContent>
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-sm border-collapse">
-                                <thead>
-                                    <tr className="bg-gray-100 dark:bg-gray-800 text-left">
-                                        <th className="p-2 border">No</th>
-                                        <th className="p-2 border">Nama / PT</th>
-                                        <th className="p-2 border">Lokasi / Unit</th>
-                                        <th className="p-2 border text-center">Gembok</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {draft.records.map((rec, idx) => (
-                                        <tr key={idx} className="border-b">
-                                            <td className="p-2 border">{idx + 1}</td>
-                                            <td className="p-2 border">
-                                                <div className="font-bold">{rec.namaKaryawan}</div>
-                                                <div className="text-xs text-gray-500">{rec.perusahaan}</div>
-                                            </td>
-                                            <td className="p-2 border">
-                                                <div>{rec.lokasiIsolasi}</div>
-                                                <div className="text-xs text-slate-500">{rec.jenisPekerjaan}</div>
-                                            </td>
-                                            <td className="p-2 border text-center font-mono text-slate-700">
-                                                {rec.nomorGembok}
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                        <div className="mt-4 flex justify-end">
-                            <Button onClick={() => setDraft(prev => ({ ...prev, step: 3 }))} className="bg-slate-700 hover:bg-slate-800 text-white">
-                                Lanjut ke Observer <ArrowRight className="ml-2 w-4 h-4" />
-                            </Button>
-                        </div>
-                    </CardContent>
-                </Card>
-            )}
-        </div>
-    );
-
-    const renderStep3 = () => (
-        <Card className="border-t-4 border-t-slate-600 shadow-lg">
-            <CardHeader>
-                <CardTitle>Data Pengawas (Observer)</CardTitle>
-                <CardDescription>Masukkan data pengawas dan tanda tangan</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                        <Label>Nama Pengawas <span className="text-red-500">*</span></Label>
-                        <Input
-                            value={currentObserver.nama}
-                            onChange={(e) => setCurrentObserver(prev => ({ ...prev, nama: e.target.value }))}
-                            placeholder="Nama Lengkap"
-                        />
-                    </div>
-                    <div className="space-y-2">
-                        <Label>NIK</Label>
-                        <Input
-                            value={currentObserver.nik}
-                            onChange={(e) => setCurrentObserver(prev => ({ ...prev, nik: e.target.value }))}
-                            placeholder="NIK"
-                        />
-                    </div>
-                    <div className="space-y-2 md:col-span-2">
-                        <Label>Perusahaan</Label>
-                        <Input
-                            value={currentObserver.perusahaan}
-                            onChange={(e) => setCurrentObserver(prev => ({ ...prev, perusahaan: e.target.value }))}
-                            placeholder="PT ..."
-                        />
-                    </div>
-                </div>
-                <div className="space-y-2">
-                    <Label>Tanda Tangan <span className="text-red-500">*</span></Label>
-                    <div className="border rounded-md p-2 bg-gray-50">
-                        <SignaturePad
-                            onSave={(dataUrl) => setCurrentObserver(prev => ({ ...prev, tandaTangan: dataUrl }))}
-                        />
-                    </div>
-                </div>
-
-                <Button
-                    className="w-full bg-slate-700 text-white mt-4"
-                    onClick={() => handleAddObserver.mutate(currentObserver)}
-                    disabled={!currentObserver.nama || !currentObserver.tandaTangan || handleAddObserver.isPending}
-                >
-                    <Plus className="w-4 h-4 mr-2" /> Tambahkan Observer
-                </Button>
-
-                {draft.observers.length > 0 && (
-                    <div className="mt-6 space-y-4">
-                        <h4 className="font-semibold">Daftar Observer ({draft.observers.length})</h4>
-                        {draft.observers.map((obs, idx) => (
-                            <div key={idx} className="flex items-center justify-between p-3 border rounded bg-white">
-                                <div>
-                                    <div className="font-medium">{obs.nama}</div>
-                                    <div className="text-xs text-gray-500">{obs.nik} - {obs.perusahaan}</div>
-                                </div>
-                                <Check className="w-5 h-5 text-green-600" />
-                            </div>
-                        ))}
-                        <Separator />
-                        <Button className="w-full h-14 text-lg font-bold bg-green-700 hover:bg-green-800 text-white" onClick={handleFinish}>
-                            <Save className="w-5 h-5 mr-3" /> SELESAI & SIMPAN
+                    {draft.records.length > 0 && (
+                        <Button
+                            onClick={() => setDraft(prev => ({ ...prev, step: 3 }))}
+                            variant="outline"
+                            className="w-full h-12 border-2 border-gray-200"
+                        >
+                            Lanjut ke Observer ({draft.records.length})
+                            <ArrowRight className="ml-2 h-5 w-5" />
                         </Button>
-                    </div>
-                )}
-            </CardContent>
-        </Card>
-    );
+                    )}
+                </div>
+            );
+        }
+        if (draft.step === 3) {
+            return (
+                <Button
+                    className="w-full h-12 bg-green-600 hover:bg-green-700 text-white font-bold shadow-lg shadow-green-200 dark:shadow-none"
+                    onClick={handleFinish}
+                    disabled={draft.observers.length === 0}
+                >
+                    <Save className="w-5 h-5 mr-3" /> SELESAI & SIMPAN
+                </Button>
+            );
+        }
+        return null;
+    };
+
 
     return (
         <>
@@ -473,34 +253,279 @@ export default function SidakLotoForm() {
                 timestamp={draftTimestamp}
                 formType="loto"
             />
-            <div className="min-h-screen bg-gray-50 dark:bg-gray-900 pb-20">
-                <div className="bg-slate-700 text-white p-4 shadow-md sticky top-0 z-50">
-                    <div className="container max-w-2xl mx-auto">
-                        <div className="flex items-center gap-4 mb-3">
-                            <Button variant="ghost" size="icon" className="hover:bg-slate-600 text-white" onClick={() => navigate("/workspace/sidak")}>
-                                <ArrowLeft className="h-6 w-6" />
-                            </Button>
-                            <div>
-                                <h1 className="text-lg font-bold">Sidak LOTO</h1>
-                                <p className="text-xs text-slate-300">Form Inspeksi Lock Out Tag Out</p>
+
+            <MobileSidakLayout
+                title="Sidak LOTO"
+                subtitle="Form Inspeksi Lock Out Tag Out"
+                step={draft.step}
+                totalSteps={3}
+                onBack={() => navigate("/workspace/sidak")}
+                bottomAction={renderBottomAction()}
+            >
+                {draft.step === 1 && (
+                    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                        <div className="bg-slate-50 dark:bg-slate-900/10 p-4 rounded-2xl border border-slate-100 dark:border-slate-800">
+                            <div className="flex items-center gap-3 mb-2">
+                                <div className="h-8 w-8 bg-slate-100 rounded-lg flex items-center justify-center text-slate-600">
+                                    <ClipboardCheck className="h-5 w-5" />
+                                </div>
+                                <h3 className="font-semibold text-slate-900 dark:text-slate-100">Info Pelaksanaan</h3>
                             </div>
+                            <p className="text-xs text-slate-600 dark:text-slate-300">
+                                Pastikan detail waktu dan lokasi inspeksi LOTO sudah benar.
+                            </p>
                         </div>
-                        <div className="space-y-2">
-                            <div className="flex justify-between text-sm font-medium">
-                                <span>Langkah {draft.step} dari 3</span>
-                                <span>{Math.round(progress)}%</span>
+
+                        <div className="space-y-4">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label className="text-xs font-semibold uppercase text-gray-500">Tanggal</Label>
+                                    <Input
+                                        type="date"
+                                        className="h-12 bg-gray-50 border-gray-200"
+                                        value={draft.headerData.tanggal}
+                                        onChange={(e) => setDraft(prev => ({ ...prev, headerData: { ...prev.headerData, tanggal: e.target.value } }))}
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label className="text-xs font-semibold uppercase text-gray-500">Waktu</Label>
+                                    <Input
+                                        type="time"
+                                        className="h-12 bg-gray-50 border-gray-200"
+                                        value={draft.headerData.waktu}
+                                        onChange={(e) => setDraft(prev => ({ ...prev, headerData: { ...prev.headerData, waktu: e.target.value } }))}
+                                    />
+                                </div>
                             </div>
-                            <Progress value={progress} className="h-3 bg-slate-900" />
+
+                            <div className="space-y-2">
+                                <Label className="text-xs font-semibold uppercase text-gray-500">Shift</Label>
+                                <Select
+                                    value={draft.headerData.shift}
+                                    onValueChange={(val) => setDraft(prev => ({ ...prev, headerData: { ...prev.headerData, shift: val } }))}
+                                >
+                                    <SelectTrigger className="h-12 bg-gray-50 border-gray-200">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="Shift 1">Shift 1</SelectItem>
+                                        <SelectItem value="Shift 2">Shift 2</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label className="text-xs font-semibold uppercase text-gray-500">Departemen</Label>
+                                <Input
+                                    className="h-12 bg-gray-50 border-gray-200"
+                                    value={draft.headerData.departemen}
+                                    onChange={(e) => setDraft(prev => ({ ...prev, headerData: { ...prev.headerData, departemen: e.target.value } }))}
+                                    placeholder="Contoh: Plant, Mining"
+                                />
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label className="text-xs font-semibold uppercase text-gray-500">Lokasi</Label>
+                                <Input
+                                    className="h-12 bg-gray-50 border-gray-200"
+                                    placeholder="Contoh: Workshop A, Area Crusher"
+                                    value={draft.headerData.lokasi}
+                                    onChange={(e) => setDraft(prev => ({ ...prev, headerData: { ...prev.headerData, lokasi: e.target.value } }))}
+                                />
+                            </div>
                         </div>
                     </div>
-                </div>
+                )}
 
-                <div className="container max-w-2xl mx-auto p-4 space-y-6">
-                    {draft.step === 1 && renderStep1()}
-                    {draft.step === 2 && renderStep2()}
-                    {draft.step === 3 && renderStep3()}
-                </div>
-            </div>
+                {draft.step === 2 && (
+                    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                        {/* Stats */}
+                        <div className="flex items-center justify-between bg-white dark:bg-gray-800 p-4 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
+                            <div>
+                                <p className="text-xs text-gray-500 uppercase font-semibold">Log LOTO Tercatat</p>
+                                <p className="text-2xl font-bold text-gray-900 dark:text-white">{draft.records.length} <span className="text-sm text-gray-400 font-normal">/ {maxRecords}</span></p>
+                            </div>
+                            <div className="h-10 w-10 bg-slate-50 dark:bg-slate-900/30 rounded-full flex items-center justify-center text-slate-600">
+                                <Lock className="h-5 w-5" />
+                            </div>
+                        </div>
+
+                        {/* Input Form */}
+                        <div className="space-y-6">
+                            <h2 className="text-lg font-bold text-gray-900 dark:text-white">Input Data LOTO</h2>
+
+                            <div className="bg-white dark:bg-gray-800 p-5 rounded-2xl border border-gray-100 dark:border-gray-700 space-y-4 shadow-sm">
+                                <div className="space-y-2">
+                                    <Label className="text-xs font-semibold uppercase text-gray-500">Nama Pemasang <span className="text-red-500">*</span></Label>
+                                    <Input
+                                        className="h-12 bg-gray-50 border-gray-200"
+                                        value={currentRecord.namaKaryawan}
+                                        onChange={(e) => setCurrentRecord(prev => ({ ...prev, namaKaryawan: e.target.value }))}
+                                        placeholder="Nama Karyawan"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label className="text-xs font-semibold uppercase text-gray-500">Perusahaan</Label>
+                                    <Input
+                                        className="h-12 bg-gray-50 border-gray-200"
+                                        value={currentRecord.perusahaan}
+                                        onChange={(e) => setCurrentRecord(prev => ({ ...prev, perusahaan: e.target.value }))}
+                                        placeholder="PT..."
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label className="text-xs font-semibold uppercase text-gray-500">Jenis Pekerjaan</Label>
+                                    <Input
+                                        className="h-12 bg-gray-50 border-gray-200"
+                                        value={currentRecord.jenisPekerjaan}
+                                        onChange={(e) => setCurrentRecord(prev => ({ ...prev, jenisPekerjaan: e.target.value }))}
+                                        placeholder="Contoh: Perbaikan AC"
+                                    />
+                                </div>
+
+                                <div className="space-y-4 pt-2">
+                                    <div className="p-3 bg-gray-50 rounded-xl border border-gray-100 space-y-3">
+                                        <div className="space-y-2">
+                                            <Label className="text-xs font-semibold uppercase text-gray-500">Lokasi Isolasi / Unit</Label>
+                                            <Input
+                                                className="h-12 bg-white border-gray-200"
+                                                value={currentRecord.lokasiIsolasi}
+                                                onChange={(e) => setCurrentRecord(prev => ({ ...prev, lokasiIsolasi: e.target.value }))}
+                                                placeholder="Unit ID / Panel"
+                                            />
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <div className="space-y-2">
+                                                <Label className="text-xs font-semibold uppercase text-gray-500">Gembok ID</Label>
+                                                <Input
+                                                    className="h-12 bg-white border-gray-200 font-mono"
+                                                    value={currentRecord.nomorGembok}
+                                                    onChange={(e) => setCurrentRecord(prev => ({ ...prev, nomorGembok: e.target.value }))}
+                                                    placeholder="LOTO-XXX"
+                                                />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label className="text-xs font-semibold uppercase text-gray-500">Jam Pasang</Label>
+                                                <Input
+                                                    type="time"
+                                                    className="h-12 bg-white border-gray-200"
+                                                    value={currentRecord.jamPasang}
+                                                    onChange={(e) => setCurrentRecord(prev => ({ ...prev, jamPasang: e.target.value }))}
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label className="text-xs font-semibold uppercase text-gray-500">Keterangan</Label>
+                                    <Textarea
+                                        value={currentRecord.keterangan}
+                                        onChange={(e) => setCurrentRecord(prev => ({ ...prev, keterangan: e.target.value }))}
+                                        placeholder="Catatan tambahan"
+                                        className="bg-gray-50 border-gray-200"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Recent List */}
+                        {draft.records.length > 0 && (
+                            <div className="pt-4 border-t">
+                                <h3 className="font-semibold mb-3">Tercatat ({draft.records.length})</h3>
+                                <div className="space-y-2">
+                                    {draft.records.map((rec, idx) => (
+                                        <div key={idx} className="bg-white p-3 rounded-lg border border-gray-100 shadow-sm flex justify-between items-center">
+                                            <div>
+                                                <p className="font-medium text-sm">{rec.namaKaryawan} <span className="text-xs text-gray-400">({rec.perusahaan})</span></p>
+                                                <p className="text-xs text-gray-500">{rec.lokasiIsolasi} • {rec.jenisPekerjaan}</p>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-xs font-mono font-bold text-slate-600 bg-slate-100 px-2 py-1 rounded-md border border-slate-200">
+                                                    {rec.nomorGembok}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {draft.step === 3 && (
+                    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                        <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm space-y-6">
+                            <div>
+                                <h3 className="font-bold text-lg text-gray-900 dark:text-white">Data Pengawas</h3>
+                                <p className="text-sm text-gray-500">Minimal 1 observer wajib diisi</p>
+                            </div>
+
+                            {/* Observer List */}
+                            {draft.observers.length > 0 && (
+                                <div className="grid gap-3">
+                                    {draft.observers.map((obs, idx) => (
+                                        <div key={idx} className="bg-green-50 dark:bg-green-900/10 p-4 rounded-xl border border-green-100 dark:border-green-900/30 flex items-center justify-between">
+                                            <div>
+                                                <p className="font-semibold text-gray-900 dark:text-white">{obs.nama}</p>
+                                                <p className="text-xs text-gray-500">{obs.perusahaan}</p>
+                                            </div>
+                                            <Check className="h-5 w-5 text-green-600" />
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+
+                            {/* Add Observer Form */}
+                            <div className="space-y-4 pt-4 border-t border-gray-100">
+                                <p className="font-semibold text-gray-900 dark:text-white">Tambah Pengawas Baru</p>
+                                <div className="space-y-3">
+                                    <div className="space-y-1">
+                                        <Label className="text-xs font-semibold uppercase text-gray-500">Nama Pengawas</Label>
+                                        <Input
+                                            value={currentObserver.nama}
+                                            onChange={(e) => setCurrentObserver(prev => ({ ...prev, nama: e.target.value }))}
+                                            className="bg-gray-50 border-gray-200"
+                                            placeholder="Nama Lengkap"
+                                        />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <Label className="text-xs font-semibold uppercase text-gray-500">NIK</Label>
+                                        <Input
+                                            value={currentObserver.nik}
+                                            onChange={(e) => setCurrentObserver(prev => ({ ...prev, nik: e.target.value }))}
+                                            className="bg-gray-50 border-gray-200"
+                                            placeholder="NIK"
+                                        />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <Label className="text-xs font-semibold uppercase text-gray-500">Perusahaan</Label>
+                                        <Input
+                                            value={currentObserver.perusahaan}
+                                            onChange={(e) => setCurrentObserver(prev => ({ ...prev, perusahaan: e.target.value }))}
+                                            className="bg-gray-50 border-gray-200"
+                                            placeholder="PT..."
+                                        />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <Label className="text-xs font-semibold uppercase text-gray-500">Tanda Tangan</Label>
+                                        <SignaturePad
+                                            onSave={(dataUrl) => setCurrentObserver(prev => ({ ...prev, tandaTangan: dataUrl }))}
+                                        />
+                                    </div>
+                                    <Button
+                                        onClick={() => handleAddObserver.mutate(currentObserver)}
+                                        disabled={!currentObserver.nama || !currentObserver.tandaTangan || handleAddObserver.isPending}
+                                        className="w-full mt-2"
+                                    >
+                                        <Plus className="w-4 h-4 mr-2" /> Tambahkan
+                                    </Button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+            </MobileSidakLayout>
         </>
     );
 }

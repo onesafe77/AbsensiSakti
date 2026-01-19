@@ -4,6 +4,7 @@ import { navigationGroups, NavItem } from "@/components/layout/sidebar";
 import { ChevronRight, Search, Bell, User as UserIcon, CheckCircle, AlertOctagon, ArrowRight, Bot } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import Dashboard from "@/pages/dashboard";
 
 export function WorkspaceHome() {
   const { hasAnyPermission, user } = useAuth();
@@ -197,44 +198,9 @@ export function WorkspaceHome() {
         <MobileHome />
       </div>
 
-      {/* Desktop View - Existing Grid Layout */}
-      <div className="hidden lg:block space-y-8 pb-10 px-6 pt-6">
-        <div className="space-y-2">
-          <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">
-            Selamat Datang di OneTalent Workspace
-          </h1>
-          <p className="text-gray-500 dark:text-gray-400 max-w-2xl">
-            Pilih menu layanan di bawah ini untuk memulai aktivitas Anda.
-          </p>
-        </div>
-
-        {navigationGroups.map((group) => {
-          const visibleItems = group.items.filter(hasPermission);
-          if (visibleItems.length === 0) return null;
-
-          return (
-            <div key={group.title} className="space-y-4">
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-700 pb-2">
-                {group.title}
-              </h2>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                {visibleItems.map((item) => {
-                  if (item.children) {
-                    const visibleChildren = item.children.filter(hasPermission);
-                    const flatChildren = flattenItems(visibleChildren);
-
-                    return flatChildren.map(child => (
-                      <MenuCard key={child.name} item={child} category={item.name} />
-                    ));
-                  }
-
-                  return <MenuCard key={item.name} item={item} category={group.title} />;
-                })}
-              </div>
-            </div>
-          );
-        })}
+      {/* Desktop View - Dashboard Layout */}
+      <div className="hidden lg:block min-h-screen">
+        <Dashboard />
       </div>
     </>
   );

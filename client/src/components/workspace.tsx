@@ -78,9 +78,15 @@ import NotFound from "@/pages/not-found";
 import { NotificationPrompt } from "@/components/NotificationPrompt";
 import { WorkspaceHome } from "@/components/WorkspaceHome";
 import PushNotificationSimper from "@/pages/push-notification-simper";
+import PushNotificationInduction from "@/pages/push-notification-induction";
+import BlastWhatsApp from "@/pages/blast-whatsapp";
 import ActivityCalendar from "@/pages/activity-calendar";
 import FmsDashboard from "@/pages/fms-dashboard";
+import McuPage from "@/pages/hse/mcu-page";
+import InductionAdmin from "@/pages/hse/induction-admin";
+import InductionQuiz from "@/pages/hse/induction-quiz";
 import { BottomNav } from "@/components/layout/bottom-nav";
+import { MysticWidget } from "@/components/mystic/MysticWidget";
 
 
 const workspaceRoutes = [
@@ -141,6 +147,7 @@ const workspaceRoutes = [
   { path: "/workspace/mobile-driver", component: MobileDriverView, title: "Driver Mobile View" },
   { path: "/workspace/employee-personal", component: EmployeePersonalData, title: "Data Pribadi Karyawan" },
   { path: "/workspace/push-notification/simper", component: PushNotificationSimper, title: "Push Notifikasi SIMPER" },
+  { path: "/workspace/push-notification-induction", component: PushNotificationInduction, title: "Push Notifikasi Induksi" },
   { path: "/workspace/activity-calendar", component: ActivityCalendar, title: "Activity Calendar (Mystic AI)" },
 
   // Mystic Routes
@@ -149,6 +156,8 @@ const workspaceRoutes = [
   { path: "/workspace/si-asef/projects", component: SiAsefProjectsPage, title: "Mystic Projects" },
   { path: "/workspace/si-asef/artifacts", component: SiAsefArtifactsPage, title: "Mystic Artifacts" },
   { path: "/workspace/hse/fms-dashboard", component: FmsDashboard, title: "FMS Violation Command Center" },
+  { path: "/workspace/hse/induction-admin", component: InductionAdmin, title: "Admin Induksi K3" },
+  { path: "/workspace/hse/induction-quiz", component: InductionQuiz, title: "Quiz Induksi K3" },
 ];
 
 export function Workspace() {
@@ -179,17 +188,8 @@ export function Workspace() {
     return "AttendanceQR Workspace";
   };
 
-  // Show loading screen when entering workspace
-  useEffect(() => {
-    // Reset loading state when component mounts (when navigating to workspace)
-    setIsLoading(true);
-
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-    }, 2000); // Reduced loading time untuk better UX
-
-    return () => clearTimeout(timer);
-  }, []);
+  // Loading state is now controlled by LoadingScreen's onComplete callback
+  // No external timer needed - LoadingScreen handles its own timing
 
   return (
     <div className="relative">
@@ -329,10 +329,15 @@ export function Workspace() {
 
               {/* Push Notification Routes */}
               <Route path="/workspace/push-notification/simper" component={PushNotificationSimper} />
+              <Route path="/workspace/push-notification-induction" component={PushNotificationInduction} />
+              <Route path="/workspace/blast-whatsapp" component={BlastWhatsApp} />
 
               <Route path="/workspace/activity-calendar" component={ActivityCalendar} />
 
               <Route path="/workspace/hse/fms-dashboard" component={FmsDashboard} />
+              <Route path="/workspace/hse/induction-admin" component={InductionAdmin} />
+              <Route path="/workspace/hse/induction-quiz" component={InductionQuiz} />
+              <Route path="/workspace/hse/mcu" component={McuPage} />
 
               <Route component={Dashboard} />
             </Switch>
@@ -340,6 +345,11 @@ export function Workspace() {
 
           <BottomNav />
         </div>
+      </div>
+
+      {/* Floating Mystic Assistant Widget (Desktop Only by default logic, but can be responsive) */}
+      <div className="hidden lg:block">
+        <MysticWidget />
       </div>
     </div>
   );

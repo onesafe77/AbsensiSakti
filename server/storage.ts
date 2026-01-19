@@ -194,7 +194,15 @@ import {
   fmsFatigueAlerts,
   type ActivityEvent,
   type InsertActivityEvent,
-  activityEvents
+  activityEvents,
+  inductionMaterials,
+  inductionQuestions,
+  inductionSchedules,
+  inductionAnswers,
+
+  mcuRecords,
+  type McuRecord,
+  type InsertMcuRecord,
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { drizzle } from "drizzle-orm/neon-http";
@@ -498,6 +506,38 @@ export interface IStorage {
     summary: any;
     validationStats: any[];
   }>;
+
+  // Induction Methods
+  getInductionMaterials(): Promise<InductionMaterial[]>;
+  getInductionMaterial(id: string): Promise<InductionMaterial | undefined>;
+  createInductionMaterial(material: InsertInductionMaterial): Promise<InductionMaterial>;
+  updateInductionMaterial(id: string, material: Partial<InsertInductionMaterial>): Promise<InductionMaterial>;
+  deleteInductionMaterial(id: string): Promise<void>;
+
+  getInductionQuestions(materialId?: string): Promise<InductionQuestion[]>;
+  createInductionQuestion(question: InsertInductionQuestion): Promise<InductionQuestion>;
+  updateInductionQuestion(id: string, question: Partial<InsertInductionQuestion>): Promise<InductionQuestion>;
+  deleteInductionQuestion(id: string): Promise<void>;
+
+  getInductionSchedules(date?: string): Promise<(InductionSchedule & { employee: Employee })[]>;
+  getInductionSchedule(id: string): Promise<(InductionSchedule & { employee: Employee; answers: InductionAnswer[] }) | undefined>;
+  getPendingInductionSchedule(employeeId: string): Promise<InductionSchedule | undefined>;
+  createInductionSchedule(schedule: InsertInductionSchedule): Promise<InductionSchedule>;
+  updateInductionSchedule(id: string, schedule: Partial<InsertInductionSchedule>): Promise<InductionSchedule>;
+
+  createInductionAnswer(answer: InsertInductionAnswer): Promise<InductionAnswer>;
+  getInductionAnswers(scheduleId: string): Promise<InductionAnswer[]>;
+  getInductionAnswers(scheduleId: string): Promise<InductionAnswer[]>;
+
+  // MCU Methods
+  getMcuRecords(): Promise<McuRecord[]>;
+  getMcuRecord(id: string): Promise<McuRecord | undefined>;
+  getMcuRecordsByEmployee(employeeId: string): Promise<McuRecord[]>;
+  createMcuRecord(record: InsertMcuRecord): Promise<McuRecord>;
+  updateMcuRecord(id: string, record: Partial<InsertMcuRecord>): Promise<McuRecord | undefined>;
+  deleteMcuRecord(id: string): Promise<boolean>;
+  getMcuStatistics(): Promise<{ total: number; fit: number; unfit: number; expiredSoon: number }>;
+  getDashboardStats(date?: string): Promise<{ totalEmployees: number; scheduledToday: number; presentToday: number; absentToday: number; onLeaveToday: number; pendingLeaveRequests: number }>;
 }
 
 export class MemStorage {
@@ -1541,6 +1581,15 @@ export class MemStorage {
   async getCompetencyMonitoringLogs(tnaEntryId: string): Promise<CompetencyMonitoringLog[]> {
     throw new Error("Competency Monitoring not implemented in MemStorage. Use DrizzleStorage.");
   }
+  // MCU Methods - Not implemented in MemStorage
+  async getMcuRecords(): Promise<McuRecord[]> { throw new Error("Not implemented in MemStorage"); }
+  async getMcuRecord(id: string): Promise<McuRecord | undefined> { throw new Error("Not implemented in MemStorage"); }
+  async getMcuRecordsByEmployee(employeeId: string): Promise<McuRecord[]> { throw new Error("Not implemented in MemStorage"); }
+  async createMcuRecord(record: InsertMcuRecord): Promise<McuRecord> { throw new Error("Not implemented in MemStorage"); }
+  async updateMcuRecord(id: string, record: Partial<InsertMcuRecord>): Promise<McuRecord | undefined> { throw new Error("Not implemented in MemStorage"); }
+  async deleteMcuRecord(id: string): Promise<boolean> { throw new Error("Not implemented in MemStorage"); }
+  async getMcuStatistics(): Promise<any> { throw new Error("Not implemented in MemStorage"); }
+  async getDashboardStats(date?: string): Promise<any> { throw new Error("Not implemented in MemStorage"); }
 }
 
 // DrizzleStorage implementation using PostgreSQL
@@ -7409,8 +7458,236 @@ export class DrizzleStorage implements IStorage {
       }))
     };
   }
+
+  // Induction Methods Implementation
+  async getInductionMaterials(): Promise<InductionMaterial[]> {
+    return await db.select().from(inductionMaterials).where(eq(inductionMaterials.isActive, true));
+  }
+
+  async getInductionMaterial(id: string): Promise<InductionMaterial | undefined> {
+    const [material] = await db.select().from(inductionMaterials).where(eq(inductionMaterials.id, id));
+    return material;
+  }
+
+  async createInductionMaterial(material: InsertInductionMaterial): Promise<InductionMaterial> {
+    const [newMaterial] = await db.insert(inductionMaterials).values(material).returning();
+    return newMaterial;
+  }
+
+  async updateInductionMaterial(id: string, material: Partial<InsertInductionMaterial>): Promise<InductionMaterial> {
+    const [updated] = await db
+      .update(inductionMaterials)
+      .set({ ...material, updatedAt: new Date() })
+      .where(eq(inductionMaterials.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteInductionMaterial(id: string): Promise<void> {
+    await db.delete(inductionMaterials).where(eq(inductionMaterials.id, id));
+  }
+
+  async getInductionQuestions(materialId?: string): Promise<InductionQuestion[]> {
+    if (materialId) {
+      return await db.select().from(inductionQuestions).where(and(eq(inductionQuestions.materialId, materialId), eq(inductionQuestions.isActive, true))).orderBy(asc(inductionQuestions.order));
+    }
+    return await db.select().from(inductionQuestions).where(eq(inductionQuestions.isActive, true)).orderBy(asc(inductionQuestions.order));
+  }
+
+  async createInductionQuestion(question: InsertInductionQuestion): Promise<InductionQuestion> {
+    const [newQuestion] = await db.insert(inductionQuestions).values(question).returning();
+    return newQuestion;
+  }
+
+  async updateInductionQuestion(id: string, question: Partial<InsertInductionQuestion>): Promise<InductionQuestion> {
+    const [updated] = await db
+      .update(inductionQuestions)
+      .set({ ...question, updatedAt: new Date() })
+      .where(eq(inductionQuestions.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteInductionQuestion(id: string): Promise<void> {
+    await db.delete(inductionQuestions).where(eq(inductionQuestions.id, id));
+  }
+
+  async getInductionSchedules(date?: string): Promise<(InductionSchedule & { employee: Employee })[]> {
+    const query = db
+      .select({
+        ...getTableColumns(inductionSchedules),
+        employee: employees,
+      })
+      .from(inductionSchedules)
+      .leftJoin(employees, eq(inductionSchedules.employeeId, employees.id));
+
+    if (date) {
+      query.where(eq(inductionSchedules.scheduledDate, date));
+    }
+
+    const results = await query;
+    return results.map(row => ({
+      ...row,
+      employee: row.employee!,
+    }));
+  }
+
+  async getInductionSchedule(id: string): Promise<(InductionSchedule & { employee: Employee; answers: InductionAnswer[] }) | undefined> {
+    const result = await db
+      .select({
+        ...getTableColumns(inductionSchedules),
+        employee: employees,
+      })
+      .from(inductionSchedules)
+      .leftJoin(employees, eq(inductionSchedules.employeeId, employees.id))
+      .where(eq(inductionSchedules.id, id))
+      .then(res => res[0]);
+
+    if (!result) return undefined;
+
+    const answers = await db.select().from(inductionAnswers).where(eq(inductionAnswers.scheduleId, id));
+
+    return {
+      ...result,
+      employee: result.employee!,
+      answers,
+    };
+  }
+
+  async getPendingInductionSchedule(employeeId: string): Promise<InductionSchedule | undefined> {
+    const [schedule] = await db
+      .select()
+      .from(inductionSchedules)
+      .where(and(eq(inductionSchedules.employeeId, employeeId), eq(inductionSchedules.status, "pending")))
+      .orderBy(desc(inductionSchedules.scheduledDate));
+    return schedule;
+  }
+
+  async createInductionSchedule(schedule: InsertInductionSchedule): Promise<InductionSchedule> {
+    const [newSchedule] = await db.insert(inductionSchedules).values(schedule).returning();
+    return newSchedule;
+  }
+
+  async updateInductionSchedule(id: string, schedule: Partial<InsertInductionSchedule>): Promise<InductionSchedule> {
+    const [updated] = await db
+      .update(inductionSchedules)
+      .set({ ...schedule, updatedAt: new Date() })
+      .where(eq(inductionSchedules.id, id))
+      .returning();
+    return updated;
+  }
+
+  async createInductionAnswer(answer: InsertInductionAnswer): Promise<InductionAnswer> {
+    const [newAnswer] = await db.insert(inductionAnswers).values(answer).returning();
+    return newAnswer;
+  }
+
+  async getInductionAnswers(scheduleId: string): Promise<InductionAnswer[]> {
+    return await this.db.select().from(inductionAnswers).where(eq(inductionAnswers.scheduleId, scheduleId));
+  }
+
+  // ============================================
+  // MCU METHODS
+  // ============================================
+  async getMcuRecords(): Promise<McuRecord[]> {
+    return await this.db.select().from(mcuRecords).orderBy(desc(mcuRecords.createdAt));
+  }
+
+  async getMcuRecord(id: string): Promise<McuRecord | undefined> {
+    const [result] = await this.db.select().from(mcuRecords).where(eq(mcuRecords.id, id));
+    return result;
+  }
+
+  async getMcuRecordsByEmployee(employeeId: string): Promise<McuRecord[]> {
+    return await this.db.select().from(mcuRecords).where(eq(mcuRecords.employeeId, employeeId)).orderBy(desc(mcuRecords.createdAt));
+  }
+
+  async createMcuRecord(record: InsertMcuRecord): Promise<McuRecord> {
+    const [result] = await this.db.insert(mcuRecords).values(record).returning();
+    return result;
+  }
+
+  async updateMcuRecord(id: string, updates: Partial<InsertMcuRecord>): Promise<McuRecord | undefined> {
+    const [result] = await this.db
+      .update(mcuRecords)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(mcuRecords.id, id))
+      .returning();
+    return result;
+  }
+
+  async deleteMcuRecord(id: string): Promise<boolean> {
+    const result = await this.db.delete(mcuRecords).where(eq(mcuRecords.id, id));
+    return result.rowCount > 0;
+  }
+
+  async getMcuStatistics(): Promise<{ total: number; fit: number; unfit: number; expiredSoon: number }> {
+    const allRecords = await this.getMcuRecords();
+    const total = allRecords.length;
+    const fit = allRecords.filter(r => r.hasilKesimpulan?.toUpperCase().includes("FIT") && !r.hasilKesimpulan?.toUpperCase().includes("UNFIT")).length;
+    const unfit = allRecords.filter(r => r.hasilKesimpulan?.toUpperCase().includes("UNFIT")).length;
+
+    // Simple expired check (e.g. within 30 days)
+    const now = new Date();
+    const thirtyDaysFromNow = new Date();
+    thirtyDaysFromNow.setDate(now.getDate() + 30);
+
+    const expiredSoon = allRecords.filter(r => {
+      if (!r.tanggalAkhir) return false;
+      const expDate = new Date(r.tanggalAkhir);
+      return expDate <= thirtyDaysFromNow && expDate >= now;
+    }).length;
+
+    return { total, fit, unfit, expiredSoon };
+  }
+
+  async getDashboardStats(date?: string): Promise<{ totalEmployees: number; scheduledToday: number; presentToday: number; absentToday: number; onLeaveToday: number; pendingLeaveRequests: number }> {
+    const targetDate = date || format(new Date(), 'yyyy-MM-dd');
+
+    const [empResult] = await this.db
+      .select({ count: sql<number>`count(*)` })
+      .from(employees)
+      .where(eq(employees.status, 'active'));
+
+    const [scheduledResult] = await this.db
+      .select({ count: sql<number>`count(*)` })
+      .from(rosterSchedules)
+      .where(eq(rosterSchedules.date, targetDate));
+
+    const [presentResult] = await this.db
+      .select({ count: sql<number>`count(*)` })
+      .from(attendanceRecords)
+      .where(and(eq(attendanceRecords.date, targetDate), or(eq(attendanceRecords.status, 'present'), eq(attendanceRecords.status, 'hadir'))));
+
+    const [leaveResult] = await this.db
+      .select({ count: sql<number>`count(*)` })
+      .from(rosterSchedules)
+      .where(and(eq(rosterSchedules.date, targetDate), ilike(rosterSchedules.shift, '%CUTI%')));
+
+    const [pendingResult] = await this.db
+      .select({ count: sql<number>`count(*)` })
+      .from(leaveRequests)
+      .where(eq(leaveRequests.status, 'pending'));
+
+    const totalEmployees = Number(empResult?.count || 0);
+    const scheduledToday = Number(scheduledResult?.count || 0);
+    const presentToday = Number(presentResult?.count || 0);
+    const onLeaveToday = Number(leaveResult?.count || 0);
+    const pendingLeaveRequests = Number(pendingResult?.count || 0);
+    const absentToday = Math.max(0, scheduledToday - presentToday - onLeaveToday);
+
+    return {
+      totalEmployees,
+      scheduledToday,
+      presentToday,
+      absentToday,
+      onLeaveToday,
+      pendingLeaveRequests
+    };
+  }
 }
 
-
-// Use DrizzleStorage for PostgreSQL database
 export const storage = new DrizzleStorage();
+
+
+

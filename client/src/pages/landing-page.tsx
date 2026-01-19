@@ -11,38 +11,18 @@ export default function LandingPage() {
     // 3. Immersive Spline Integration
     return (
         <div className="relative min-h-screen w-full bg-[#E5E7EB] overflow-hidden text-slate-900 font-sans selection:bg-blue-500/20 flex items-center justify-center">
+            {/* Hide Spline Logo Badge */}
+            <style>{`
+                a[href^="https://spline.design"] {
+                    display: none !important;
+                }
+            `}</style>
 
             {/* Immersive 3D Background */}
             <div className="absolute inset-0 z-0 opacity-100">
                 <Suspense fallback={<div className="w-full h-full bg-[#E5E7EB]" />}>
                     <Spline
-                        scene="https://prod.spline.design/Ygri76RXZXhmZSnF/scene.splinecode"
-                        onLoad={(spline) => {
-                            // Helper to log all object names to finding the branding
-                            console.log("🎨 SPLINE OBJECTS LOADED:");
-                            function logObjects(obj: any, depth = 0) {
-                                if (!obj) return;
-                                console.log(`${"  ".repeat(depth)}• Name: "${obj.name}", Type: ${obj.type}, Visible: ${obj.visible}`);
-                                if (obj.children) {
-                                    obj.children.forEach((child: any) => logObjects(child, depth + 1));
-                                }
-                            }
-                            // Traverse everything
-                            // @ts-ignore
-                            if (spline._scene) logObjects(spline._scene);
-
-                            // Try to hide common potential names based on observation
-                            const candidates = ['OneTalent', 'Text', 'Created By', 'Branding', 'Box', 'Rectangle', 'Group', 'Shape'];
-                            candidates.forEach(name => {
-                                const obj = spline.findObjectByName(name);
-                                if (obj) {
-                                    console.log(`❌ Hiding object: ${name}`);
-                                    obj.visible = false;
-                                }
-                            });
-
-                            spline.setZoom(1.2); // Zoom in slightly to cut off edges
-                        }}
+                        scene="https://prod.spline.design/DM9x2ADdMUM5XlDE/scene.splinecode"
                     />
                 </Suspense>
             </div>
@@ -54,24 +34,46 @@ export default function LandingPage() {
             <main className="relative z-10 w-full max-w-[1000px] flex flex-col items-center justify-center px-6">
 
                 {/* Interaction Section - Centered for a clean look */}
-                <div className="flex flex-col items-center gap-8 animate-in fade-in slide-in-from-bottom-10 duration-1000">
-                    <p className="text-xl md:text-2xl text-slate-500 font-medium max-w-[700px] text-center">
-                        Experience liftoff with the next-generation portal for safety and productivity management.
-                    </p>
+                {/* Glassmorphism Card Container */}
+                <div className="flex flex-col items-center gap-8 animate-in fade-in slide-in-from-bottom-10 duration-1000 p-12 rounded-[40px] bg-white/10 backdrop-blur-xl border border-white/20 shadow-2xl relative overflow-hidden group hover:bg-white/15 transition-all">
 
-                    <div className="flex flex-col sm:flex-row gap-6">
+                    {/* Glossy sheen effect */}
+                    <div className="absolute inset-0 bg-gradient-to-tr from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+
+                    <div className="text-center space-y-2">
+                        <h1 className="text-4xl md:text-6xl font-bold bg-clip-text text-transparent bg-gradient-to-b from-slate-900 to-slate-600 drop-shadow-sm">
+                            OneTalent
+                        </h1>
+                        <p className="text-lg md:text-xl text-slate-600 font-medium max-w-[600px] leading-relaxed">
+                            Experience liftoff with the next-generation portal for safety and productivity management.
+                        </p>
+                    </div>
+
+                    <div className="flex flex-col sm:flex-row gap-4 w-full justify-center">
                         <Link href="/login">
-                            <Button size="lg" className="rounded-full px-12 h-16 text-lg font-bold bg-slate-900 text-white hover:bg-black transition-all shadow-xl hover:shadow-2xl hover:-translate-y-1 w-full sm:w-auto min-w-[200px]">
+                            <Button size="lg" className="rounded-2xl px-8 h-14 text-base font-bold bg-slate-900/90 hover:bg-black text-white backdrop-blur-sm transition-all shadow-lg hover:shadow-slate-900/20 hover:-translate-y-0.5 w-full sm:w-auto min-w-[160px]">
                                 Masuk
-                                <ArrowRight className="ml-3 w-6 h-6" />
+                                <ArrowRight className="ml-2 w-5 h-5" />
                             </Button>
                         </Link>
 
-                        <Button variant="outline" size="lg" className="rounded-full px-12 h-16 text-lg font-semibold border-slate-300 bg-white/40 backdrop-blur-md hover:bg-white text-slate-700 transition-all w-full sm:w-auto min-w-[200px] hover:-translate-y-1 shadow-md">
+                        <Button variant="outline" size="lg" className="rounded-2xl px-8 h-14 text-base font-semibold border-white/30 bg-white/20 hover:bg-white/40 text-slate-800 backdrop-blur-md transition-all w-full sm:w-auto min-w-[160px] shadow-sm">
                             Explore use cases
                         </Button>
                     </div>
                 </div>
+
+                <style>{`
+                    /* Aggressively hide Spline badge */
+                    a[href^="https://spline.design"],
+                    a[href*="spline.design"],
+                    div[style*="z-index"][style*="position: absolute"] > a {
+                        display: none !important;
+                        opacity: 0 !important;
+                        visibility: hidden !important;
+                        pointer-events: none !important;
+                    }
+                `}</style>
             </main>
 
             {/* Footer */}

@@ -39,7 +39,7 @@ const CitationBubble: React.FC<CitationBubbleProps> = ({ number, source, onOpenP
         >
             <button
                 onClick={handleClick}
-                className="inline-flex items-center justify-center w-4 h-4 text-[9px] font-semibold text-emerald-700 bg-emerald-100 rounded hover:bg-emerald-200 transition-colors cursor-pointer align-super -ml-0.5 mr-0.5"
+                className="inline-flex items-center justify-center w-4 h-4 text-[9px] font-semibold text-red-700 bg-red-100 rounded hover:bg-red-200 transition-colors cursor-pointer align-super -ml-0.5 mr-0.5"
                 title={`Sumber: ${source.documentName}`}
             >
                 {number}
@@ -49,11 +49,11 @@ const CitationBubble: React.FC<CitationBubbleProps> = ({ number, source, onOpenP
                 <div className="absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-2 w-72 max-w-[90vw] animate-fade-in-up pointer-events-none">
                     <div className="bg-white rounded-lg shadow-lg border border-zinc-200 overflow-hidden">
                         <div className="bg-zinc-50 px-3 py-1.5 flex items-center gap-2 border-b border-zinc-100">
-                            <FileText className="w-3 h-3 text-emerald-600" />
+                            <FileText className="w-3 h-3 text-red-600" />
                             <span className="font-semibold text-xs text-zinc-800 truncate max-w-[180px]">
                                 {source.documentName}
                             </span>
-                            <span className="text-[10px] text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded ml-auto">
+                            <span className="text-[10px] text-red-600 bg-red-50 px-1.5 py-0.5 rounded ml-auto">
                                 Hal. {source.pageNumber}
                             </span>
                         </div>

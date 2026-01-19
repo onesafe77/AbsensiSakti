@@ -128,7 +128,176 @@ app.post("/api/employees/:id/os-certificate", uploadDirect.single('certificate')
 });
 
 // WhatsApp Send Reminder API
-import { sendWhatsAppMessage, generateSimperReminderMessage, sendAdminNotification } from './services/whatsapp-service';
+import { sendWhatsAppMessage, generateSimperReminderMessage, sendAdminNotification, blastWhatsApp } from './services/whatsapp-service';
+
+// ============================================
+// WHATSAPP BLAST ROUTES
+// ============================================
+
+// Blast WhatsApp - Text Only
+app.post("/api/whatsapp/blast/text", async (req, res) => {
+  console.log(`[WhatsApp Blast] POST /api/whatsapp/blast/text`);
+  try {
+    const { subject, message } = req.body;
+
+    if (!message) {
+      return res.status(400).json({ success: false, message: "Message is required" });
+    }
+
+    // Get all active employees with valid phone numbers
+    const allEmployees = await storage.getAllEmployees();
+    const validPhones = allEmployees
+      .filter(emp => emp.status === 'active' && emp.phone && emp.phone.trim() !== '')
+      .map(emp => emp.phone);
+
+    console.log(`[WhatsApp Blast] Found ${validPhones.length} valid phones out of ${allEmployees.length} employees`);
+
+    if (validPhones.length === 0) {
+      return res.status(400).json({ success: false, message: "No valid phone numbers found" });
+    }
+
+    const result = await blastWhatsApp({
+      phones: validPhones,
+      message,
+      type: 'text'
+    });
+
+    res.json({
+      success: true,
+      subject,
+      ...result
+    });
+  } catch (error) {
+    console.error("[WhatsApp Blast] Error:", error);
+    res.status(500).json({ success: false, message: String(error) });
+  }
+});
+
+// Blast WhatsApp - With Images (multiple)
+app.post("/api/whatsapp/blast/image", async (req, res) => {
+  console.log(`[WhatsApp Blast] POST /api/whatsapp/blast/image`);
+  try {
+    const { subject, message, imageUrls } = req.body;
+
+    if (!message) {
+      return res.status(400).json({ success: false, message: "Message is required" });
+    }
+
+    if (!imageUrls || !Array.isArray(imageUrls) || imageUrls.length === 0) {
+      return res.status(400).json({ success: false, message: "At least one image URL is required" });
+    }
+
+    // Get all active employees with valid phone numbers
+    const allEmployees = await storage.getAllEmployees();
+    const validPhones = allEmployees
+      .filter(emp => emp.status === 'active' && emp.phone && emp.phone.trim() !== '')
+      .map(emp => emp.phone);
+
+    console.log(`[WhatsApp Blast] Found ${validPhones.length} valid phones, sending ${imageUrls.length} images each`);
+
+    if (validPhones.length === 0) {
+      return res.status(400).json({ success: false, message: "No valid phone numbers found" });
+    }
+
+    const result = await blastWhatsApp({
+      phones: validPhones,
+      message,
+      type: 'image',
+      mediaUrls: imageUrls
+    });
+
+    res.json({
+      success: true,
+      subject,
+      imagesCount: imageUrls.length,
+      ...result
+    });
+  } catch (error) {
+    console.error("[WhatsApp Blast] Error:", error);
+    res.status(500).json({ success: false, message: String(error) });
+  }
+});
+
+// Blast WhatsApp - With Video
+app.post("/api/whatsapp/blast/video", async (req, res) => {
+  console.log(`[WhatsApp Blast] POST /api/whatsapp/blast/video`);
+  try {
+    const { subject, message, videoUrl } = req.body;
+
+    if (!message) {
+      return res.status(400).json({ success: false, message: "Message is required" });
+    }
+
+    if (!videoUrl) {
+      return res.status(400).json({ success: false, message: "Video URL is required" });
+    }
+
+    // Get all active employees with valid phone numbers
+    const allEmployees = await storage.getAllEmployees();
+    const validPhones = allEmployees
+      .filter(emp => emp.status === 'active' && emp.phone && emp.phone.trim() !== '')
+      .map(emp => emp.phone);
+
+    console.log(`[WhatsApp Blast] Found ${validPhones.length} valid phones for video blast`);
+
+    if (validPhones.length === 0) {
+      return res.status(400).json({ success: false, message: "No valid phone numbers found" });
+    }
+
+    const result = await blastWhatsApp({
+      phones: validPhones,
+      message,
+      type: 'video',
+      mediaUrls: [videoUrl]
+    });
+
+    res.json({
+      success: true,
+      subject,
+      ...result
+    });
+  } catch (error) {
+    console.error("[WhatsApp Blast] Error:", error);
+    res.status(500).json({ success: false, message: String(error) });
+  }
+});
+
+// Test Send - Single number for testing before blast
+app.post("/api/whatsapp/test-send", async (req, res) => {
+  console.log(`[WhatsApp Test] POST /api/whatsapp/test-send`);
+  try {
+    const { phone, message, type, imageUrl, videoUrl } = req.body;
+
+    if (!phone) {
+      return res.status(400).json({ success: false, message: "Phone number is required" });
+    }
+    if (!message) {
+      return res.status(400).json({ success: false, message: "Message is required" });
+    }
+
+    let result;
+    const { sendWhatsAppMessage, sendWhatsAppImage, sendWhatsAppVideo } = await import('./services/whatsapp-service');
+
+    if (type === 'image' && imageUrl) {
+      result = await sendWhatsAppImage({ phone, message, imageUrl });
+    } else if (type === 'video' && videoUrl) {
+      result = await sendWhatsAppVideo({ phone, message, videoUrl });
+    } else {
+      result = await sendWhatsAppMessage({ phone, message });
+    }
+
+    if (result.success) {
+      console.log(`[WhatsApp Test] Successfully sent to ${phone}`);
+      res.json({ success: true, message: "Test message sent successfully", response: result.response });
+    } else {
+      console.error(`[WhatsApp Test] Failed: ${result.error}`);
+      res.status(500).json({ success: false, message: result.error || "Send failed" });
+    }
+  } catch (error) {
+    console.error("[WhatsApp Test] Error:", error);
+    res.status(500).json({ success: false, message: String(error) });
+  }
+});
 
 app.post("/api/whatsapp/send-reminder", async (req, res) => {
   console.log(`[WhatsApp API] POST /api/whatsapp/send-reminder`);

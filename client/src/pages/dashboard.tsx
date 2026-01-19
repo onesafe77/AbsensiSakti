@@ -289,6 +289,9 @@ export default function Dashboard() {
       {/* =======================
           DESKTOP LAYOUT (hidden lg:block)
           ======================= */}
+      {/* =======================
+          DESKTOP LAYOUT (hidden lg:block)
+          ======================= */}
       <div className="hidden lg:block p-8 space-y-8 bg-gray-50 dark:bg-gray-900/50 min-h-screen">
         <div className="flex items-center justify-between">
           <div>

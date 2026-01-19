@@ -157,7 +157,7 @@ export default function SidakDigitalHistory() {
     };
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-teal-50 to-teal-100 dark:from-gray-900 dark:to-gray-800">
+        <div className="min-h-screen bg-gradient-to-br from-red-50 to-red-100 dark:from-gray-900 dark:to-gray-800">
             <div className="container max-w-2xl mx-auto p-3 md:p-4 space-y-4">
                 <div className="flex items-center gap-3 pt-2">
                     <Link href="/workspace/sidak">
@@ -167,7 +167,7 @@ export default function SidakDigitalHistory() {
                     </Link>
                     <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
-                            <Smartphone className="h-6 w-6 text-teal-600 flex-shrink-0" />
+                            <Smartphone className="h-6 w-6 text-red-600 flex-shrink-0" />
                             <h1 className="text-lg md:text-xl font-bold text-gray-900 dark:text-white truncate">
                                 Riwayat Sidak Digital
                             </h1>
@@ -180,7 +180,7 @@ export default function SidakDigitalHistory() {
 
                 {isLoading ? (
                     <div className="text-center py-12">
-                        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-teal-600 mx-auto"></div>
+                        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-red-600 mx-auto"></div>
                         <p className="text-gray-600 mt-3 text-sm">Memuat data...</p>
                     </div>
                 ) : !sessions || sessions.length === 0 ? (
@@ -189,7 +189,7 @@ export default function SidakDigitalHistory() {
                             <Smartphone className="h-12 w-12 text-gray-400 mx-auto mb-3" />
                             <p className="text-gray-600">Belum ada riwayat Sidak Digital</p>
                             <Link href="/workspace/sidak/digital/new">
-                                <Button className="mt-4 bg-teal-600 hover:bg-teal-700 text-white" size="sm">
+                                <Button className="mt-4 bg-red-600 hover:bg-red-700 text-white" size="sm">
                                     <ClipboardCheck className="h-4 w-4 mr-2" />
                                     Buat Sidak Baru
                                 </Button>
@@ -201,54 +201,65 @@ export default function SidakDigitalHistory() {
                         {sessions.map((session) => (
                             <Card
                                 key={session.id}
-                                className="overflow-hidden border border-teal-200 dark:border-teal-800 shadow-sm"
+                                className="overflow-hidden border-none shadow-lg rounded-xl bg-white dark:bg-gray-800 ring-1 ring-gray-100 dark:ring-gray-700"
                             >
-                                <CardContent className="p-4">
-                                    <div className="flex items-start justify-between gap-2 mb-3">
-                                        <h3 className="font-semibold text-teal-900 dark:text-teal-100">
-                                            {session.departemen} - {session.shift}
-                                        </h3>
-                                        <Badge variant="outline" className="bg-teal-50 text-teal-700 text-xs flex-shrink-0">
+                                <div className="h-1.5 w-full bg-gradient-to-r from-red-500 to-rose-500" />
+                                <CardContent className="p-5">
+                                    <div className="flex items-center justify-between gap-2 mb-4">
+                                        <div>
+                                            <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+                                                {session.departemen} - {session.shift}
+                                            </h3>
+                                            <div className="flex items-center gap-2 mt-1 text-xs text-gray-500 dark:text-gray-400">
+                                                <Calendar className="h-3.5 w-3.5" />
+                                                <span>{format(new Date(session.tanggal), 'dd MMM yyyy', { locale: id })}</span>
+                                                <span className="text-gray-300">•</span>
+                                                <Clock className="h-3.5 w-3.5" />
+                                                <span>{session.waktu}</span>
+                                            </div>
+                                        </div>
+                                        <Badge variant="secondary" className="bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-300 rounded-full px-3 py-0.5 text-xs font-semibold whitespace-nowrap border-0">
                                             {session.totalSampel} Pengawas
                                         </Badge>
                                     </div>
 
-                                    <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-600 mb-3">
-                                        <div className="flex items-center gap-1.5">
-                                            <Calendar className="h-3.5 w-3.5" />
-                                            <span>{format(new Date(session.tanggal), 'EEEE, dd MMMM yyyy', { locale: id })}</span>
-                                        </div>
-                                        <div className="flex items-center gap-1.5">
-                                            <Clock className="h-3.5 w-3.5" />
-                                            <span>{session.waktu}</span>
-                                        </div>
-                                    </div>
-
-                                    <div className="grid grid-cols-2 gap-2 text-xs mb-3">
+                                    <div className="bg-gray-50 dark:bg-gray-700/30 rounded-lg p-3 mb-4 grid grid-cols-2 gap-3">
                                         <div>
-                                            <div className="flex items-center gap-1 text-teal-600 mb-0.5">
-                                                <MapPin className="h-3 w-3" />
-                                                <span className="font-medium">Lokasi</span>
+                                            <div className="flex items-center gap-1.5 text-red-600 dark:text-red-400 mb-0.5">
+                                                <MapPin className="h-3.5 w-3.5" />
+                                                <span className="text-[10px] uppercase font-bold tracking-wider">Lokasi</span>
                                             </div>
-                                            <p className="text-gray-600 truncate">{session.lokasi}</p>
+                                            <p className="text-sm font-medium text-gray-700 dark:text-gray-200 truncate">{session.lokasi}</p>
                                         </div>
                                     </div>
 
                                     {session.activityPhotos && session.activityPhotos.length > 0 && (
-                                        <div className="mb-3">
-                                            <div className="flex items-center gap-1 text-xs text-gray-500 mb-1.5">
-                                                <Camera className="h-3 w-3" />
-                                                <span>{session.activityPhotos.length} Foto Kegiatan</span>
+                                        <div className="mb-4">
+                                            <div className="flex items-center justify-between mb-2">
+                                                <div className="flex items-center gap-1.5 text-xs font-medium text-gray-600 dark:text-gray-400">
+                                                    <Camera className="h-3.5 w-3.5" />
+                                                    <span>{session.activityPhotos.length} Foto Kegiatan</span>
+                                                </div>
                                             </div>
-                                            <div className="flex gap-1.5 overflow-x-auto pb-1">
-                                                {session.activityPhotos.slice(0, 4).map((photo, idx) => (
-                                                    <PhotoThumbnail
-                                                        key={idx}
-                                                        photo={photo}
-                                                        index={idx}
-                                                        onClick={() => handleOpenPhotoDialog(session)}
-                                                    />
+                                            <div className="flex gap-2 relative">
+                                                {session.activityPhotos.slice(0, 3).map((photo, idx) => (
+                                                    <div key={idx} className="relative aspect-square w-16 h-16 rounded-lg overflow-hidden border border-gray-100 dark:border-gray-700 shadow-sm">
+                                                        <PhotoThumbnail
+                                                            photo={photo}
+                                                            index={idx}
+                                                            onClick={() => handleOpenPhotoDialog(session)}
+                                                            className="w-full h-full object-cover"
+                                                        />
+                                                    </div>
                                                 ))}
+                                                {session.activityPhotos.length > 3 && (
+                                                    <div
+                                                        className="aspect-square w-16 h-16 rounded-lg border border-dashed border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 flex flex-col items-center justify-center cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                                                        onClick={() => handleOpenPhotoDialog(session)}
+                                                    >
+                                                        <span className="text-xs font-bold text-gray-500">+{session.activityPhotos.length - 3}</span>
+                                                    </div>
+                                                )}
                                             </div>
                                         </div>
                                     )}
@@ -256,25 +267,49 @@ export default function SidakDigitalHistory() {
                                     <DropdownMenu>
                                         <DropdownMenuTrigger asChild>
                                             <Button
-                                                className="w-full bg-teal-600 hover:bg-teal-700 text-white h-9"
+                                                className="w-full bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white shadow-md shadow-red-500/20 rounded-lg h-10 font-medium transition-all active:scale-[0.98]"
                                             >
                                                 <Download className="h-4 w-4 mr-2" />
                                                 Pilihan Aksi
-                                                <ChevronDown className="h-4 w-4 ml-auto" />
+                                                <ChevronDown className="h-4 w-4 ml-auto opacity-70" />
                                             </Button>
                                         </DropdownMenuTrigger>
-                                        <DropdownMenuContent align="end" className="w-56">
-                                            <DropdownMenuItem onClick={() => handleDownloadPDF(session.id)} disabled={downloadingId === session.id}>
-                                                <FileText className="h-4 w-4 mr-2" />
-                                                {downloadingId === session.id ? 'Mengunduh...' : 'Download PDF'}
+                                        <DropdownMenuContent align="end" className="w-[calc(100vw-3rem)] sm:w-64 rounded-xl p-1 shadow-xl border-gray-200 dark:border-gray-700">
+                                            <DropdownMenuItem onClick={() => handleDownloadPDF(session.id)} disabled={downloadingId === session.id} className="rounded-lg py-2.5 px-3 focus:bg-red-50 dark:focus:bg-red-900/20 cursor-pointer">
+                                                {downloadingId === session.id ? (
+                                                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-600 mr-2"></div>
+                                                ) : (
+                                                    <div className="h-8 w-8 rounded-full bg-red-100 text-red-600 flex items-center justify-center mr-3">
+                                                        <FileText className="h-4 w-4" />
+                                                    </div>
+                                                )}
+                                                <div className="flex flex-col">
+                                                    <span className="font-medium">Download PDF</span>
+                                                    <span className="text-xs text-muted-foreground">Laporan lengkap</span>
+                                                </div>
                                             </DropdownMenuItem>
-                                            <DropdownMenuItem onClick={() => handleDownloadJPG(session.id)} disabled={downloadingJpgId === session.id}>
-                                                <Image className="h-4 w-4 mr-2" />
-                                                {downloadingJpgId === session.id ? 'Mengunduh...' : 'Download JPG'}
+                                            <DropdownMenuItem onClick={() => handleDownloadJPG(session.id)} disabled={downloadingJpgId === session.id} className="rounded-lg py-2.5 px-3 focus:bg-red-50 dark:focus:bg-red-900/20 cursor-pointer">
+                                                {downloadingJpgId === session.id ? (
+                                                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-600 mr-2"></div>
+                                                ) : (
+                                                    <div className="h-8 w-8 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center mr-3">
+                                                        <Image className="h-4 w-4" />
+                                                    </div>
+                                                )}
+                                                <div className="flex flex-col">
+                                                    <span className="font-medium">Download JPG</span>
+                                                    <span className="text-xs text-muted-foreground">Format gambar</span>
+                                                </div>
                                             </DropdownMenuItem>
-                                            <DropdownMenuItem onClick={() => handleOpenPhotoDialog(session)}>
-                                                <Camera className="h-4 w-4 mr-2" />
-                                                Upload Foto Kegiatan
+                                            <div className="h-px bg-gray-100 dark:bg-gray-800 my-1" />
+                                            <DropdownMenuItem onClick={() => handleOpenPhotoDialog(session)} className="rounded-lg py-2.5 px-3 focus:bg-red-50 dark:focus:bg-red-900/20 cursor-pointer">
+                                                <div className="h-8 w-8 rounded-full bg-gray-100 text-gray-600 flex items-center justify-center mr-3">
+                                                    <Camera className="h-4 w-4" />
+                                                </div>
+                                                <div className="flex flex-col">
+                                                    <span className="font-medium">Kelola Foto</span>
+                                                    <span className="text-xs text-muted-foreground">Upload/Hapus</span>
+                                                </div>
                                             </DropdownMenuItem>
                                         </DropdownMenuContent>
                                     </DropdownMenu>
@@ -289,7 +324,7 @@ export default function SidakDigitalHistory() {
                 <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-2">
-                            <Camera className="h-5 w-5 text-teal-600" />
+                            <Camera className="h-5 w-5 text-red-600" />
                             Foto Kegiatan SIDAK
                         </DialogTitle>
                     </DialogHeader>
@@ -313,7 +348,7 @@ export default function SidakDigitalHistory() {
                                 <Button
                                     onClick={() => fileInputRef.current?.click()}
                                     disabled={uploadingPhotos || (selectedSession.activityPhotos?.length || 0) >= 6}
-                                    className="w-full bg-teal-600 hover:bg-teal-700 text-white"
+                                    className="w-full bg-red-600 hover:bg-red-700"
                                 >
                                     <Upload className="h-4 w-4 mr-2" />
                                     {uploadingPhotos ? 'Mengupload...' : 'Upload Foto (Max 6)'}
@@ -329,7 +364,7 @@ export default function SidakDigitalHistory() {
                                             index={idx}
                                             onDelete={() => handleDeletePhoto(idx)}
                                             isDeleting={deletePhotoMutation.isPending}
-                                            accentColor="teal"
+                                            accentColor="red"
                                         />
                                     ))}
                                 </div>

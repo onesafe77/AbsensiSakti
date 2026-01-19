@@ -183,9 +183,9 @@ export default function SiAsefChatPage() {
                         setCurrentSessionId(null);
                         setMessages([]);
                     }}
-                    className="w-full justify-start gap-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl h-10 px-4 mb-6 shadow-sm font-medium transition-all"
+                    className="w-full justify-start gap-3 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white rounded-xl h-10 px-4 mb-6 shadow-md shadow-red-500/20 font-medium transition-all group"
                 >
-                    <Plus className="w-4 h-4 text-white" />
+                    <Plus className="w-4 h-4 text-white group-hover:rotate-90 transition-transform duration-300" />
                     Mulai Chat Baru
                 </Button>
 
@@ -297,94 +297,112 @@ export default function SiAsefChatPage() {
             </div>
 
             <div className="flex-1 flex flex-col min-w-0 bg-white">
-                {/* Header */}
-                <header className="flex items-center justify-between px-4 py-3 border-b border-zinc-100 bg-white z-10 shrink-0">
+                {/* Header - Glassmorphic (Web Optimized) */}
+                <header className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between px-6 py-4 bg-white/50 dark:bg-black/20 backdrop-blur-sm border-b border-transparent">
                     <div className="flex items-center gap-3">
                         <Button
                             variant="ghost"
                             size="icon"
                             onClick={() => setLocation('/workspace/dashboard')}
-                            className="text-zinc-500 hover:text-zinc-900"
-                            title="Kembali ke Dashboard"
+                            className="text-zinc-600 hover:text-red-600 hover:bg-red-50 rounded-full transition-colors"
                         >
                             <ArrowLeft className="w-5 h-5" />
                         </Button>
 
+                        <div className="flex flex-col">
+                            <h1 className="font-bold text-lg text-zinc-900 leading-tight">Mystic</h1>
+                            <p className="text-[10px] uppercase tracking-wider text-red-600 font-bold">Safety Assistant</p>
+                        </div>
+                    </div>
+
+                    <div className="flex items-center gap-1">
                         <Button
                             variant="ghost"
                             size="icon"
                             onClick={() => setSidebarOpen(!sidebarOpen)}
-                            className="hidden md:flex text-zinc-500"
+                            className="hidden md:flex text-zinc-500 hover:bg-zinc-100 rounded-full"
                         >
                             {sidebarOpen ? <PanelLeftClose className="w-5 h-5" /> : <PanelLeftOpen className="w-5 h-5" />}
                         </Button>
 
                         <Sheet>
                             <SheetTrigger asChild>
-                                <Button variant="ghost" size="icon" className="md:hidden text-zinc-500">
+                                <Button variant="ghost" size="icon" className="md:hidden text-zinc-500 hover:bg-zinc-100 rounded-full">
                                     <Menu className="w-5 h-5" />
                                 </Button>
                             </SheetTrigger>
-                            <SheetContent side="left" className="p-0 w-72">
+                            <SheetContent side="left" className="p-0 w-80">
                                 <SidebarContent />
                             </SheetContent>
                         </Sheet>
-
-                        <div>
-                            <h1 className="font-bold text-zinc-900">Mystic</h1>
-                            <p className="text-xs text-zinc-500">Asisten K3 & Regulasi</p>
-                        </div>
                     </div>
                 </header>
 
-                {/* Messages */}
-                <div className="flex-1 overflow-hidden relative">
-                    <div ref={scrollRef} className="h-full overflow-y-auto p-4 scroll-smooth">
+                {/* Messages Area - Premium Minimalist Background */}
+                <div className="flex-1 overflow-hidden relative bg-zinc-50/50">
+                    {/* Ambient Background Effects */}
+                    <div className="absolute top-[-20%] left-[-10%] w-[500px] h-[500px] bg-red-200/20 rounded-full blur-[120px] pointer-events-none" />
+                    <div className="absolute bottom-[-10%] right-[-5%] w-[400px] h-[400px] bg-rose-200/20 rounded-full blur-[100px] pointer-events-none" />
+
+                    <div ref={scrollRef} className="h-full overflow-y-auto pt-24 pb-4 px-4 scroll-smooth relative z-10">
                         {messages.length === 0 ? (
-                            <div className="max-w-5xl mx-auto mt-8 px-6">
+                            <div className="max-w-3xl mx-auto mt-4 md:mt-12 px-2 md:px-0">
                                 {/* Greeting Section */}
-                                <div className="mb-8">
-                                    <h2 className="text-3xl font-serif text-zinc-900 mb-1">
-                                        Halo, <span className="uppercase">{user?.name || 'USER'}</span>.
+                                <div className="text-center mb-10 animate-fade-in-up">
+                                    <div className="inline-flex items-center justify-center p-3 mb-4 rounded-2xl bg-gradient-to-tr from-red-600 to-rose-500 shadow-lg shadow-red-500/30 text-white">
+                                        <ShieldCheck className="w-8 h-8" />
+                                    </div>
+                                    <h2 className="text-2xl md:text-4xl font-bold text-zinc-900 mb-2 tracking-tight">
+                                        Halo, <span className="bg-clip-text text-transparent bg-gradient-to-r from-red-600 to-rose-500">{user?.name?.split(' ')[0] || 'User'}</span>
                                     </h2>
-                                    <p className="text-emerald-600 font-medium tracking-wide text-sm mb-1">SAFETY FIRST</p>
-                                    <p className="text-zinc-500">
-                                        Saya siap membantu Anda menelusuri <span className="font-semibold text-zinc-900">Regulasi K3 & Dokumen Internal Perusahaan</span>.
+                                    <p className="text-zinc-500 text-sm md:text-base max-w-md mx-auto leading-relaxed">
+                                        Saya siap membantu Anda menelusuri Regulasi K3 & Dokumen Internal Perusahaan dengan cepat.
                                     </p>
                                 </div>
 
-                                <div className="grid grid-cols-1 gap-6 mb-8 max-w-4xl mx-auto">
-                                    {/* Spotlight Card */}
-                                    <div className={`col-span-1 ${currentSpotlight.color} rounded-3xl p-8 text-white relative overflow-hidden group transition-colors duration-1000 ease-in-out`}>
-                                        <div className="absolute top-0 right-0 p-8 opacity-10 transform group-hover:scale-110 transition-transform duration-700">
-                                            <SpotlightIcon className="w-48 h-48" />
+                                {/* Spotlight Card - Mobile Optimized */}
+                                <div className="relative group overflow-hidden rounded-[2rem] bg-zinc-900 border border-zinc-800 shadow-2xl transition-all hover:shadow-red-900/20">
+                                    {/* Abstract Background */}
+                                    <div className="absolute inset-0 bg-gradient-to-br from-zinc-900 to-black z-0"></div>
+                                    <div className="absolute top-0 right-0 w-64 h-64 bg-red-600/20 rounded-full blur-[100px] -mr-16 -mt-16 z-0"></div>
+
+                                    <div className="relative z-10 p-6 md:p-10 flex flex-col md:flex-row items-start md:items-center gap-6">
+                                        <div className="flex-1">
+                                            <div className="flex items-center gap-2 mb-4">
+                                                <span className="px-3 py-1 rounded-full bg-red-500/10 border border-red-500/20 text-red-400 text-[10px] font-bold tracking-widest uppercase">
+                                                    {currentSpotlight.badge}
+                                                </span>
+                                            </div>
+
+                                            <blockquote className="text-lg md:text-2xl font-serif text-white/90 leading-relaxed mb-6">
+                                                "{currentSpotlight.quote}"
+                                            </blockquote>
+
+                                            <div className="flex flex-wrap items-center gap-4 text-xs md:text-sm font-medium text-zinc-400 mb-6 font-mono">
+                                                <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/5 border border-white/10">
+                                                    <BookOpen className="w-3.5 h-3.5" />
+                                                    {currentSpotlight.source}
+                                                </div>
+                                                <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/5 border border-white/10">
+                                                    <Gavel className="w-3.5 h-3.5" />
+                                                    {currentSpotlight.pasal}
+                                                </div>
+                                            </div>
                                         </div>
+                                    </div>
 
-                                        <div className="relative z-10">
-                                            <div className={`inline-flex items-center gap-2 ${currentSpotlight.accent} bg-white/10 px-3 py-1 rounded-full text-xs font-bold tracking-wider mb-6 backdrop-blur-sm`}>
-                                                <span className="w-2 h-2 rounded-full bg-white animate-pulse"></span>
-                                                {currentSpotlight.badge}
-                                            </div>
-
-                                            <div className="h-40 flex flex-col justify-start">
-                                                <blockquote className="text-2xl font-serif leading-relaxed mb-6 max-w-xl animate-fade-in transition-opacity duration-500" key={spotlightIndex}>
-                                                    "{currentSpotlight.quote}"
-                                                </blockquote>
-                                            </div>
-
-                                            <div className="flex items-center gap-3 text-white/60 text-sm font-mono mb-8">
-                                                <span className="px-2 py-1 bg-white/10 rounded backdrop-blur-md">{currentSpotlight.source}</span>
-                                                <span>{currentSpotlight.pasal}</span>
-                                            </div>
-
-                                            <button
-                                                onClick={() => handleSendMessage(currentSpotlight.query)}
-                                                className="bg-white text-slate-900 px-6 py-3 rounded-xl font-bold text-sm hover:bg-slate-100 transition-colors inline-flex items-center gap-2"
-                                            >
-                                                Pelajari Selengkapnya
-                                                <ChevronRight className="w-4 h-4" />
-                                            </button>
+                                    {/* Action Bar */}
+                                    <div className="bg-white/5 backdrop-blur-sm border-t border-white/10 p-4 md:px-10 flex items-center justify-between">
+                                        <div className="text-xs text-zinc-500 hidden md:block">
+                                            Rekomendasi otomatis hari ini
                                         </div>
+                                        <button
+                                            onClick={() => handleSendMessage(currentSpotlight.query)}
+                                            className="w-full md:w-auto bg-white text-zinc-900 px-6 py-2.5 rounded-xl text-sm font-bold hover:bg-zinc-100 transition-all flex items-center justify-center gap-2 shadow-lg shadow-black/20"
+                                        >
+                                            Pelajari Sekarang
+                                            <ChevronRight className="w-4 h-4" />
+                                        </button>
                                     </div>
                                 </div>
                             </div>
@@ -400,10 +418,10 @@ export default function SiAsefChatPage() {
                                 ))}
                                 {isLoading && (
                                     <div className="flex justify-start px-4 py-4">
-                                        <div className="bg-zinc-100 rounded-2xl rounded-tl-none px-4 py-3 flex items-center gap-2">
-                                            <div className="w-2 h-2 bg-emerald-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                                            <div className="w-2 h-2 bg-emerald-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                                            <div className="w-2 h-2 bg-emerald-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                                        <div className="bg-white/80 backdrop-blur border border-zinc-100 rounded-2xl rounded-tl-none px-5 py-4 shadow-sm flex items-center gap-2">
+                                            <div className="w-2 h-2 bg-red-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                                            <div className="w-2 h-2 bg-red-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                                            <div className="w-2 h-2 bg-red-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
                                         </div>
                                     </div>
                                 )}
@@ -412,9 +430,11 @@ export default function SiAsefChatPage() {
                     </div>
                 </div>
 
-                {/* Input */}
-                <div className="p-4 bg-white border-t border-zinc-100">
-                    <InputArea onSendMessage={handleSendMessage} isLoading={isLoading} />
+                {/* Input Area - Floating Modern */}
+                <div className="p-4 bg-transparent absolute bottom-0 left-0 right-0 z-20 pointer-events-none">
+                    <div className="pointer-events-auto max-w-3xl mx-auto">
+                        <InputArea onSendMessage={handleSendMessage} isLoading={isLoading} />
+                    </div>
                 </div>
 
                 {/* Source Panel */}

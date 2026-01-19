@@ -106,6 +106,23 @@ export default function Roster() {
     },
   });
 
+  // Fetch induction schedules for enrichment
+  const { data: inductionSchedules = [] } = useQuery<any[]>({
+    queryKey: ["/api/induction/schedules", selectedDate],
+    queryFn: async () => {
+      const response = await fetch(`/api/induction/schedules?date=${selectedDate}`);
+      if (!response.ok) return [];
+      return response.json();
+    },
+    staleTime: 60000, // Cache for 1 minute
+  });
+
+  // Create a map for quick induction status lookup
+  const inductionStatusMap = new Map<string, string>();
+  inductionSchedules.forEach((schedule: any) => {
+    inductionStatusMap.set(schedule.employeeId, schedule.status);
+  });
+
   // Monthly roster query untuk kalender bulanan
   const { data: monthlyRoster = [], isLoading: isLoadingMonthly } = useQuery<any[]>({
     queryKey: ["/api/roster/monthly", selectedYear, selectedMonth],
@@ -711,7 +728,8 @@ export default function Roster() {
     attendance: {
       status: roster.hasAttended ? 'present' : 'absent',
       time: roster.attendanceTime
-    }
+    },
+    inductionStatus: inductionStatusMap.get(roster.employeeId) || null // Add induction status
   }));
 
   // Calculate statistics based on filtered data (by date and shift)
@@ -1574,6 +1592,7 @@ export default function Roster() {
                     <th className="text-left py-2 sm:py-3 px-2 sm:px-4 font-medium text-xs sm:text-sm text-gray-900 dark:text-white">Fit To Work</th>
                     <th className="text-left py-2 sm:py-3 px-2 sm:px-4 font-medium text-xs sm:text-sm text-gray-900 dark:text-white">Status</th>
                     <th className="text-left py-2 sm:py-3 px-2 sm:px-4 font-medium text-xs sm:text-sm text-gray-900 dark:text-white">Jam Absensi</th>
+                    <th className="text-left py-2 sm:py-3 px-2 sm:px-4 font-medium text-xs sm:text-sm text-gray-900 dark:text-white">Induksi</th>
                     <th className="text-left py-2 sm:py-3 px-2 sm:px-4 font-medium text-xs sm:text-sm text-gray-900 dark:text-white">Aksi</th>
                   </tr>
                 </thead>
@@ -1745,6 +1764,28 @@ export default function Roster() {
                         </td>
                         <td className="py-3 px-4 text-sm text-gray-900 dark:text-white">
                           {roster.attendanceTime || '-'}
+                        </td>
+                        <td className="py-3 px-4">
+                          {/* Induction Status Badge */}
+                          {roster.shift === 'CUTI' ? (
+                            <Badge variant="outline" className="bg-purple-50 text-purple-700 dark:bg-purple-900 dark:text-purple-300 text-xs">
+                              Cuti
+                            </Badge>
+                          ) : roster.inductionStatus === 'completed' ? (
+                            <Badge className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300 text-xs">
+                              ✓ Sudah
+                            </Badge>
+                          ) : roster.inductionStatus === 'pending' ? (
+                            <Badge className="bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300 text-xs">
+                              ⏳ Perlu
+                            </Badge>
+                          ) : roster.inductionStatus === 'failed' ? (
+                            <Badge variant="destructive" className="text-xs">
+                              ✗ Gagal
+                            </Badge>
+                          ) : (
+                            <span className="text-gray-400 text-xs">-</span>
+                          )}
                         </td>
                         <td className="py-3 px-4">
                           <div className="flex space-x-2">
