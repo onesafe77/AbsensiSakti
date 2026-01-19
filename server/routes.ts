@@ -878,14 +878,31 @@ Format sebagai bullet points singkat per insight.`;
 
   // Logout endpoint
   app.post("/api/auth/logout", (req, res) => {
-    req.session.destroy((err) => {
-      if (err) {
-        console.error("Logout error:", err);
-        return res.status(500).json({ message: "Logout gagal" });
+    try {
+      // First clear the user from session
+      const session = req.session as any;
+      if (session) {
+        session.user = null;
       }
+
+      // Then destroy the session
+      req.session.destroy((err) => {
+        // Clear cookie regardless of destroy result
+        res.clearCookie('connect.sid');
+
+        if (err) {
+          console.error("Session destroy error (non-blocking):", err);
+          // Still return success since we cleared the user
+        }
+
+        res.json({ message: "Logout berhasil" });
+      });
+    } catch (error: any) {
+      console.error("Logout error:", error);
+      // Fallback: still try to clear cookie and return success
       res.clearCookie('connect.sid');
       res.json({ message: "Logout berhasil" });
-    });
+    }
   });
 
   // Get current session
@@ -9656,72 +9673,8 @@ Format sebagai bullet points singkat per insight.`;
     }
   });
 
-  // ============================================================================
-  // SIDAK ROSTER ROUTES
-  // ============================================================================
-
-  app.post("/api/sidak-roster", async (req, res) => {
-    try {
-      const session = insertSidakRosterSessionSchema.parse(req.body);
-      const result = await storage.createSidakRosterSession(session);
-      res.status(201).json(result);
-    } catch (error: any) {
-      console.error("Error creating Sidak Roster session:", error);
-      res.status(400).json({ message: error.message || "Gagal membuat sesi" });
-    }
-  });
-
-  app.get("/api/sidak-roster/sessions", async (req, res) => {
-    try {
-      const sessions = await storage.getAllSidakRosterSessions();
-      res.json(sessions);
-    } catch (error: any) {
-      console.error("Error fetching Sidak Roster sessions:", error);
-      res.status(500).json({ message: error.message || "Gagal mengambil data sesi" });
-    }
-  });
-
-  app.get("/api/sidak-roster/:id", async (req, res) => {
-    try {
-      const sessionId = req.params.id;
-      const session = await storage.getSidakRosterSession(sessionId);
-      if (!session) {
-        return res.status(404).json({ message: "Session not found" });
-      }
-      const records = await storage.getSidakRosterRecords(sessionId);
-      const observers = await storage.getSidakRosterObservers(sessionId);
-      res.json({ session, records, observers });
-    } catch (error: any) {
-      console.error("Error fetching Sidak Roster detail:", error);
-      res.status(500).json({ message: error.message || "Gagal mengambil detail" });
-    }
-  });
-
-  app.post("/api/sidak-roster/:id/records", async (req, res) => {
-    try {
-      const sessionId = req.params.id;
-      const existingRecords = await storage.getSidakRosterRecords(sessionId);
-      const ordinal = existingRecords.length + 1;
-      const recordData = { sessionId, ordinal, ...req.body };
-      const record = await storage.createSidakRosterRecord(recordData);
-      res.status(201).json(record);
-    } catch (error: any) {
-      console.error("Error adding Sidak Roster record:", error);
-      res.status(500).json({ message: error.message || "Gagal menambahkan record" });
-    }
-  });
-
-  app.post("/api/sidak-roster/:id/observers", async (req, res) => {
-    try {
-      const sessionId = req.params.id;
-      const observerData = { sessionId, ...req.body };
-      const observer = await storage.createSidakRosterObserver(observerData);
-      res.status(201).json(observer);
-    } catch (error: any) {
-      console.error("Error adding Sidak Roster observer:", error);
-      res.status(500).json({ message: error.message || "Gagal menambahkan observer" });
-    }
-  });
+  // NOTE: Sidak Roster routes are already defined earlier in the file (around line 7270-7517)
+  // Duplicate routes removed to prevent conflicts
 
   // ============================================================================
   // SIDAK JARAK ROUTES

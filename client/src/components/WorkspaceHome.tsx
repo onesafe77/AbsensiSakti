@@ -1,13 +1,118 @@
 import { Link } from "wouter";
 import { useAuth } from "@/lib/auth-context";
 import { navigationGroups, NavItem } from "@/components/layout/sidebar";
-import { ChevronRight, Search, Bell, User as UserIcon, CheckCircle, AlertOctagon, ArrowRight, Bot } from "lucide-react";
+import { ChevronRight, Search, Bell, User as UserIcon, CheckCircle, AlertOctagon, ArrowRight, Bot, Loader2, RefreshCw } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import Dashboard from "@/pages/dashboard";
+import { useState, useEffect, useCallback } from "react";
+
+interface SafetyInsight {
+  title: string;
+  message: string;
+  condition: string;
+  lastUpdated: Date;
+}
 
 export function WorkspaceHome() {
   const { hasAnyPermission, user } = useAuth();
+  const [safetyInsight, setSafetyInsight] = useState<SafetyInsight | null>(null);
+  const [isLoadingInsight, setIsLoadingInsight] = useState(true);
+
+  // Fetch Safety Insight from Mystic AI
+  const fetchSafetyInsight = useCallback(async () => {
+    setIsLoadingInsight(true);
+
+    // Create a timeout controller (10 seconds max)
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+    try {
+      const prompt = "Berikan satu safety insight hari ini untuk karyawan tambang. Fokus pada kondisi cuaca, kondisi jalan, atau tips keselamatan harian. Format: berikan judul singkat (maksimal 5 kata), pesan utama (1-2 kalimat), dan kondisi saat ini (contoh: 'Kondisi Jalan: Kering'). Respon harus singkat dan to the point.";
+
+      const res = await fetch('/api/si-asef/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ message: prompt }),
+        signal: controller.signal
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!res.ok) {
+        console.error('API returned non-OK status:', res.status);
+        throw new Error(`Failed to fetch insight: ${res.status}`);
+      }
+
+      const data = await res.json();
+      const aiMessage = data.message || "";
+
+      if (!aiMessage) {
+        throw new Error('Empty response from API');
+      }
+
+      // Parse the AI response - look for patterns
+      const lines = aiMessage.split('\n').filter((line: string) => line.trim());
+      let title = "Safety Insight Hari Ini";
+      let message = aiMessage;
+      let condition = "Kondisi: Normal";
+
+      // Try to extract structured data from AI response
+      for (const line of lines) {
+        const lowerLine = line.toLowerCase();
+        if (lowerLine.includes('judul:') || lowerLine.includes('title:')) {
+          title = line.split(':').slice(1).join(':').trim().replace(/[*#]/g, '');
+        } else if (lowerLine.includes('kondisi:') || lowerLine.includes('condition:') || lowerLine.includes('status:')) {
+          condition = line.replace(/[*#]/g, '').trim();
+        } else if (lowerLine.includes('pesan:') || lowerLine.includes('message:') || lowerLine.includes('tips:')) {
+          message = line.split(':').slice(1).join(':').trim().replace(/[*#]/g, '');
+        }
+      }
+
+      // If no structured format found, use the first meaningful lines
+      if (message === aiMessage && lines.length > 0) {
+        // First line as potential title if short, rest as message
+        if (lines[0].length < 50) {
+          title = lines[0].replace(/[*#]/g, '').trim();
+          message = lines.slice(1, 3).join(' ').replace(/[*#]/g, '').trim() || lines[0];
+        } else {
+          message = lines.slice(0, 2).join(' ').replace(/[*#]/g, '').trim();
+        }
+        // Look for condition keywords at the end
+        const conditionLine = lines.find((l: string) => l.toLowerCase().includes('kondisi') || l.toLowerCase().includes('jalan') || l.toLowerCase().includes('cuaca'));
+        if (conditionLine) {
+          condition = conditionLine.replace(/[*#]/g, '').trim();
+        }
+      }
+
+      setSafetyInsight({
+        title: title.substring(0, 50),
+        message: message.substring(0, 200),
+        condition: condition.substring(0, 50),
+        lastUpdated: new Date()
+      });
+    } catch (error) {
+      clearTimeout(timeoutId);
+      console.error("Failed to fetch safety insight:", error);
+      // Fallback to default - always set a value
+      setSafetyInsight({
+        title: "Safety Insight Hari Ini",
+        message: "Selalu utamakan keselamatan. Periksa kondisi unit dan APD sebelum bekerja.",
+        condition: "Kondisi: Periksa area kerja",
+        lastUpdated: new Date()
+      });
+    } finally {
+      setIsLoadingInsight(false);
+    }
+  }, []);
+
+  // Fetch on mount and every 30 minutes
+  useEffect(() => {
+    fetchSafetyInsight();
+    const interval = setInterval(fetchSafetyInsight, 30 * 60 * 1000); // 30 minutes
+    return () => clearInterval(interval);
+  }, [fetchSafetyInsight]);
 
   const hasPermission = (item: NavItem) => {
     if (!item.requiredPermissions || item.requiredPermissions.length === 0) {
@@ -86,26 +191,56 @@ export function WorkspaceHome() {
               <span className="px-3 py-1 rounded-lg bg-indigo-500/20 text-indigo-200 text-[10px] font-bold uppercase tracking-wider border border-indigo-500/30 flex items-center gap-1">
                 <Bot className="w-3 h-3" /> Mystic AI
               </span>
-              <span className="text-xs text-gray-400">Updated Daily</span>
-            </div>
-
-            <h3 className="text-xl font-bold mb-2 leading-tight">Safety Insight Hari Ini</h3>
-            <p className="text-gray-400 text-xs mb-4 max-w-[90%]">
-              "Cuaca hujan ekstrem diprediksi sore ini. Pastikan jarak aman unit 50 meter dan gunakan 4WD."
-            </p>
-
-            {/* Dynamic Insight Visual */}
-            <div className="w-full bg-gray-800/50 p-3 rounded-xl mb-4 border border-white/5">
-              <div className="flex items-center gap-3">
-                <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
-                <span className="text-xs font-medium text-gray-300">Kondisi Jalan: Licin (Basah)</span>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-gray-400">
+                  {safetyInsight?.lastUpdated
+                    ? `Updated ${new Date(safetyInsight.lastUpdated).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}`
+                    : 'Loading...'}
+                </span>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  onClick={fetchSafetyInsight}
+                  disabled={isLoadingInsight}
+                  className="h-6 w-6 text-gray-400 hover:text-white hover:bg-white/10 rounded-full"
+                >
+                  <RefreshCw className={`w-3 h-3 ${isLoadingInsight ? 'animate-spin' : ''}`} />
+                </Button>
               </div>
             </div>
 
+            {isLoadingInsight && !safetyInsight ? (
+              <div className="flex flex-col items-center justify-center py-8">
+                <Loader2 className="w-8 h-8 animate-spin text-indigo-400 mb-2" />
+                <span className="text-xs text-gray-400">Generating safety insight...</span>
+              </div>
+            ) : (
+              <>
+                <h3 className="text-xl font-bold mb-2 leading-tight">
+                  {safetyInsight?.title || 'Safety Insight Hari Ini'}
+                </h3>
+                <p className="text-gray-400 text-xs mb-4 max-w-[90%]">
+                  "{safetyInsight?.message || 'Selalu utamakan keselamatan kerja.'}"
+                </p>
+
+                {/* Dynamic Insight Visual */}
+                <div className="w-full bg-gray-800/50 p-3 rounded-xl mb-4 border border-white/5">
+                  <div className="flex items-center gap-3">
+                    <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
+                    <span className="text-xs font-medium text-gray-300">
+                      {safetyInsight?.condition || 'Kondisi: Normal'}
+                    </span>
+                  </div>
+                </div>
+              </>
+            )}
+
             <div className="flex gap-3">
-              <Button size="sm" className="bg-indigo-600 text-white hover:bg-indigo-700 rounded-xl px-5 font-semibold text-xs h-10 border-0">
-                Tanya Mystic
-              </Button>
+              <Link href="/workspace/si-asef">
+                <Button size="sm" className="bg-indigo-600 text-white hover:bg-indigo-700 rounded-xl px-5 font-semibold text-xs h-10 border-0">
+                  Tanya Mystic
+                </Button>
+              </Link>
               <Button size="sm" variant="outline" className="border-gray-700 text-white hover:bg-gray-800 hover:text-white rounded-xl px-4 text-xs h-10 bg-transparent">
                 Detail
               </Button>
