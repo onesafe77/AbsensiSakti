@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
-import { ClipboardCheck, Check, X, ArrowLeft, ArrowRight, Save, Trash2, Plus, Users, Car, Search } from "lucide-react";
+import { ClipboardCheck, Check, X, ArrowLeft, ArrowRight, Save, Trash2, Plus, Users, Car } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,16 +10,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { SignaturePad } from "@/components/sidak/signature-pad";
 import { DraftRecoveryDialog } from "@/components/sidak/draft-recovery-dialog";
 import { useSidakDraft } from "@/hooks/use-sidak-draft";
 import { MobileSidakLayout } from "@/components/sidak/mobile-sidak-layout";
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
-import type { Employee } from "@shared/schema";
 
 interface AntrianRecord {
     ordinal?: number;
