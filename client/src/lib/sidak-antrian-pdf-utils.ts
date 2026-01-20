@@ -6,11 +6,6 @@ import type {
     SidakAntrianObserver
 } from '@shared/schema';
 
-// ============================================
-// SIDAK ANTRIAN PDF GENERATOR
-// Form: Antrian Unit
-// ============================================
-
 interface SidakAntrianData {
     session: SidakAntrianSession;
     records: SidakAntrianRecord[];
@@ -19,13 +14,12 @@ interface SidakAntrianData {
 
 export async function generateSidakAntrianPdf(data: SidakAntrianData): Promise<jsPDF> {
     const pdf = new jsPDF('landscape', 'mm', 'a4');
-    const pageWidth = pdf.internal.pageSize.width; // 297mm
-    const pageHeight = pdf.internal.pageSize.height; // 210mm
+    const pageWidth = pdf.internal.pageSize.width;
+    const pageHeight = pdf.internal.pageSize.height;
     const margin = 10;
-    const availableWidth = pageWidth - (margin * 2); // 277mm
+    const availableWidth = pageWidth - (margin * 2);
     let yPosition = margin;
 
-    // ==================== HEADER WITH LOGO ====================
     try {
         const logoImg = await new Promise<HTMLImageElement>((resolve, reject) => {
             const img = new Image();
@@ -33,52 +27,49 @@ export async function generateSidakAntrianPdf(data: SidakAntrianData): Promise<j
             img.onerror = reject;
             img.src = '/assets/logo.png';
         });
-
         pdf.addImage(logoImg, 'PNG', margin, margin, 45, 10);
-    } catch (error) {
+    } catch {
         pdf.setFont('helvetica', 'bold');
         pdf.setFontSize(10);
         pdf.setTextColor(0, 0, 0);
-        pdf.text('PT. Goden Energi Cemerlang Lesrari', margin, yPosition + 6);
+        pdf.text('PT BORNEO INDOBARA', margin, yPosition + 6);
     }
 
-    // Document Code (Top Right)
     pdf.setFont('helvetica', 'normal');
     pdf.setFontSize(9);
     pdf.setTextColor(0, 0, 0);
     pdf.text('BIB - HSE - PPO - F - xxx - xx', pageWidth - margin, yPosition + 6, { align: 'right' });
 
-    yPosition += 12;
+    yPosition += 14;
 
-    // ==================== TITLE SECTION ====================
     const titleYStart = yPosition;
-    pdf.setFillColor(220, 220, 220); // Light gray background
+    pdf.setFillColor(220, 220, 220);
     pdf.rect(margin, titleYStart, availableWidth, 12, 'F');
+    pdf.setDrawColor(0, 0, 0);
+    pdf.setLineWidth(0.1);
+    pdf.rect(margin, titleYStart, availableWidth, 12, 'S');
 
     pdf.setFont('helvetica', 'bold');
     pdf.setFontSize(14);
     pdf.setTextColor(0, 0, 0);
     pdf.text('OBSERVASI ANTRIAN', pageWidth / 2, titleYStart + 5.5, { align: 'center' });
 
-    // Subtitle
     pdf.setFont('helvetica', 'italic');
     pdf.setFontSize(9);
     pdf.text('Untuk mengetahui kepatuhan driver saat kondisi antrian', pageWidth / 2, titleYStart + 10, { align: 'center' });
 
     yPosition += 14;
 
-    // ==================== INFO SECTION ====================
-    // Symmetrical 50/50 split
     const infoTableData = [
         [
             'Tanggal Pelaksanaan',
-            data.session.tanggalPelaksanaan || '',
+            data.session.tanggal || '',
             'Perusahaan',
             data.session.perusahaan || ''
         ],
         [
             'Jam Pelaksanaan',
-            data.session.jamPelaksanaan || '',
+            data.session.waktu || '',
             'Departemen',
             data.session.departemen || ''
         ],
@@ -114,34 +105,33 @@ export async function generateSidakAntrianPdf(data: SidakAntrianData): Promise<j
 
     yPosition = (pdf as any).lastAutoTable.finalY + 2;
 
-    // ==================== MAIN TABLE ====================
     const tableHeaders = [
         [
-            { content: 'NO', rowspan: 2, styles: { valign: 'middle' as 'middle', halign: 'center' as 'center' } },
-            { content: 'Nama-NIK\n(contoh : Gede - C-024955)', rowspan: 2, styles: { valign: 'middle' as 'middle', halign: 'center' as 'center' } },
-            { content: 'No lambung\n(contoh : RBT 4023)', rowspan: 2, styles: { valign: 'middle' as 'middle', halign: 'center' as 'center' } },
-            { content: 'Apakah driver sudah\nmengaktifkan\nhandbrake?', colspan: 2, styles: { halign: 'center' as 'center', valign: 'middle' as 'middle' } },
-            { content: 'Apakah jarak\nantar unit\naman?', colspan: 2, styles: { halign: 'center' as 'center', valign: 'middle' as 'middle' } },
-            { content: 'Keterangan', rowspan: 2, styles: { valign: 'middle' as 'middle', halign: 'center' as 'center' } }
+            { content: 'NO', rowSpan: 2, styles: { valign: 'middle' as const, halign: 'center' as const } },
+            { content: 'Nama-NIK\n(contoh : Gede - C-024955)', rowSpan: 2, styles: { valign: 'middle' as const, halign: 'center' as const } },
+            { content: 'No lambung\n(contoh : RBT 4023)', rowSpan: 2, styles: { valign: 'middle' as const, halign: 'center' as const } },
+            { content: 'Apakah driver\nsudah mengaktif\nkan handbrake?', colSpan: 2, styles: { halign: 'center' as const, valign: 'middle' as const } },
+            { content: 'Apakah\njarak antar unit\naman?', colSpan: 2, styles: { halign: 'center' as const, valign: 'middle' as const } },
+            { content: 'Keterangan', rowSpan: 2, styles: { valign: 'middle' as const, halign: 'center' as const } }
         ],
         [
-            { content: 'Ya', styles: { halign: 'center' as 'center', valign: 'middle' as 'middle' } },
-            { content: 'Tidak', styles: { halign: 'center' as 'center', valign: 'middle' as 'middle' } },
-            { content: 'Ya', styles: { halign: 'center' as 'center', valign: 'middle' as 'middle' } },
-            { content: 'Tidak', styles: { halign: 'center' as 'center', valign: 'middle' as 'middle' } }
+            { content: 'Ya', styles: { halign: 'center' as const, valign: 'middle' as const } },
+            { content: 'Tidak', styles: { halign: 'center' as const, valign: 'middle' as const } },
+            { content: 'Ya', styles: { halign: 'center' as const, valign: 'middle' as const } },
+            { content: 'Tidak', styles: { halign: 'center' as const, valign: 'middle' as const } }
         ]
     ];
 
-    const tableData = [];
+    const tableData: (string | { content: string; styles?: any })[][] = [];
     data.records.forEach((record, index) => {
         tableData.push([
             (index + 1).toString(),
             record.namaNik || '',
             record.noLambung || '',
-            record.handbrakeAktif ? 'V' : '',    // Ya
-            !record.handbrakeAktif ? 'V' : '',   // Tidak
-            record.jarakUnitAman ? 'V' : '',     // Ya
-            !record.jarakUnitAman ? 'V' : '',    // Tidak
+            record.handbrakeAktif ? 'V' : '',
+            !record.handbrakeAktif ? 'V' : '',
+            record.jarakUnitAman ? 'V' : '',
+            !record.jarakUnitAman ? 'V' : '',
             record.keterangan || ''
         ]);
     });
@@ -154,7 +144,6 @@ export async function generateSidakAntrianPdf(data: SidakAntrianData): Promise<j
         ]);
     }
 
-    // MAIN TABLE: Fixed logic (User preferred this)
     autoTable(pdf, {
         startY: yPosition,
         head: tableHeaders,
@@ -182,21 +171,20 @@ export async function generateSidakAntrianPdf(data: SidakAntrianData): Promise<j
             cellPadding: 1,
         },
         columnStyles: {
-            0: { cellWidth: 10, halign: 'center' as 'center' },
+            0: { cellWidth: 10, halign: 'center' as const },
             1: { cellWidth: 60 },
-            2: { cellWidth: 40, halign: 'center' as 'center' },
-            3: { cellWidth: 15, halign: 'center' as 'center' },
-            4: { cellWidth: 15, halign: 'center' as 'center' },
-            5: { cellWidth: 15, halign: 'center' as 'center' },
-            6: { cellWidth: 15, halign: 'center' as 'center' },
-            7: { cellWidth: 107 }, // Fixed width specifically for Main Table
+            2: { cellWidth: 40, halign: 'center' as const },
+            3: { cellWidth: 15, halign: 'center' as const },
+            4: { cellWidth: 15, halign: 'center' as const },
+            5: { cellWidth: 15, halign: 'center' as const },
+            6: { cellWidth: 15, halign: 'center' as const },
+            7: { cellWidth: 107 },
         },
         margin: { left: margin, right: margin },
     });
 
     yPosition = (pdf as any).lastAutoTable.finalY + 3;
 
-    // ==================== OBSERVER SECTION ====================
     pdf.setFillColor(220, 220, 220);
     pdf.rect(margin, yPosition, availableWidth, 6, 'F');
     pdf.setDrawColor(0, 0, 0);
@@ -211,21 +199,21 @@ export async function generateSidakAntrianPdf(data: SidakAntrianData): Promise<j
 
     const observerTableData = [
         [
-            { content: '1', styles: { halign: 'center' as 'center' } },
+            { content: '1', styles: { halign: 'center' as const } },
             data.observers[0]?.nama || '',
             data.observers[0]?.jabatan || '',
             '',
-            { content: '3', styles: { halign: 'center' as 'center' } },
+            { content: '3', styles: { halign: 'center' as const } },
             data.observers[2]?.nama || '',
             data.observers[2]?.jabatan || '',
             ''
         ],
         [
-            { content: '2', styles: { halign: 'center' as 'center' } },
+            { content: '2', styles: { halign: 'center' as const } },
             data.observers[1]?.nama || '',
             data.observers[1]?.jabatan || '',
             '',
-            { content: '4', styles: { halign: 'center' as 'center' } },
+            { content: '4', styles: { halign: 'center' as const } },
             data.observers[3]?.nama || '',
             data.observers[3]?.jabatan || '',
             ''
@@ -235,9 +223,9 @@ export async function generateSidakAntrianPdf(data: SidakAntrianData): Promise<j
     autoTable(pdf, {
         startY: yPosition,
         head: [[
-            { content: 'NO', styles: { halign: 'center' as 'center' } },
+            { content: 'NO', styles: { halign: 'center' as const } },
             'NAMA', 'JABATAN', 'TANDA TANGAN',
-            { content: 'NO', styles: { halign: 'center' as 'center' } },
+            { content: 'NO', styles: { halign: 'center' as const } },
             'NAMA', 'JABATAN', 'TANDA TANGAN'
         ]],
         body: observerTableData,
@@ -263,15 +251,12 @@ export async function generateSidakAntrianPdf(data: SidakAntrianData): Promise<j
             lineColor: [0, 0, 0],
         },
         columnStyles: {
-            // OBSERVER: Force AUTO only for NAMA to handle filling the remaining space
-            // Block 1
             0: { cellWidth: 10 },
-            1: { cellWidth: 'auto' }, // NAMA: Auto expand
+            1: { cellWidth: 'auto' },
             2: { cellWidth: 40 },
             3: { cellWidth: 30 },
-            // Block 2
             4: { cellWidth: 10 },
-            5: { cellWidth: 'auto' }, // NAMA: Auto expand
+            5: { cellWidth: 'auto' },
             6: { cellWidth: 40 },
             7: { cellWidth: 30 },
         },
@@ -295,8 +280,8 @@ export async function generateSidakAntrianPdf(data: SidakAntrianData): Promise<j
                             undefined,
                             'FAST'
                         );
-                    } catch (error) {
-                        // ignore
+                    } catch {
+                        // ignore signature errors
                     }
                 }
             }
@@ -304,7 +289,6 @@ export async function generateSidakAntrianPdf(data: SidakAntrianData): Promise<j
         margin: { left: margin, right: margin },
     });
 
-    // Add page footer
     pdf.setFont('helvetica', 'normal');
     pdf.setFontSize(8);
     pdf.text('Januari 2020/R0', margin, pageHeight - 5);
@@ -313,9 +297,6 @@ export async function generateSidakAntrianPdf(data: SidakAntrianData): Promise<j
     return pdf;
 }
 
-// ============================================
-// JPG EXPORT
-// ============================================
 export async function downloadSidakAntrianAsJpg(data: SidakAntrianData, filename: string): Promise<void> {
     if (typeof window === 'undefined' || typeof document === 'undefined') {
         throw new Error('JPG download can only be executed in browser environment');
