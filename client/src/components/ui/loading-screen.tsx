@@ -12,39 +12,18 @@ export function LoadingScreen({ isLoading, onComplete, className }: LoadingScree
   const [displayText, setDisplayText] = useState("");
   const fullText = "OneTalent";
 
-  // Typing animation effect - loops continuously
+  // Typing animation effect - one time only (no loop)
   useEffect(() => {
     if (!isLoading) return;
 
     let charIndex = 0;
-    let isDeleting = false;
     let timeoutId: NodeJS.Timeout;
 
     const typeChar = () => {
-      if (!isDeleting) {
-        // Typing forward
-        if (charIndex < fullText.length) {
-          setDisplayText(fullText.substring(0, charIndex + 1));
-          charIndex++;
-          timeoutId = setTimeout(typeChar, 150); // Slow typing speed
-        } else {
-          // Pause at full text before deleting
-          timeoutId = setTimeout(() => {
-            isDeleting = true;
-            typeChar();
-          }, 1000);
-        }
-      } else {
-        // Deleting backward
-        if (charIndex > 0) {
-          charIndex--;
-          setDisplayText(fullText.substring(0, charIndex));
-          timeoutId = setTimeout(typeChar, 80); // Faster delete
-        } else {
-          // Pause before typing again
-          isDeleting = false;
-          timeoutId = setTimeout(typeChar, 500);
-        }
+      if (charIndex < fullText.length) {
+        setDisplayText(fullText.substring(0, charIndex + 1));
+        charIndex++;
+        timeoutId = setTimeout(typeChar, 50); // Fast typing speed
       }
     };
 
@@ -64,8 +43,8 @@ export function LoadingScreen({ isLoading, onComplete, className }: LoadingScree
       setTimeout(() => {
         setFadeOut(false);
         onComplete?.();
-      }, 300);
-    }, 1500);
+      }, 200);
+    }, 500);
 
     return () => clearTimeout(timeoutId);
   }, [isLoading, onComplete]);
