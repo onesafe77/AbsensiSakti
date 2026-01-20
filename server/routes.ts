@@ -47,9 +47,6 @@ import {
   insertSidakKecepatanSessionSchema,
   insertSidakKecepatanRecordSchema,
   insertSidakKecepatanObserverSchema,
-  insertSidakApdSessionSchema,
-  insertSidakApdRecordSchema,
-  insertSidakApdObserverSchema,
   insertSidakJarakSessionSchema,
   insertSidakJarakRecordSchema,
   insertSidakJarakObserverSchema,
@@ -623,7 +620,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const seatbelt = await storage.getAllSidakSeatbeltSessions();
       const rambu = await storage.getAllSidakRambuSessions();
       const antrian = await storage.getAllSidakAntrianSessions();
-      const apd = await storage.getAllSidakApdSessions();
       const jarak = await storage.getAllSidakJarakSessions();
       const kecepatan = await storage.getAllSidakKecepatanSessions();
       const loto = await storage.getAllSidakLotoSessions();
@@ -636,7 +632,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         seatbelt: seatbelt.filter(s => s.createdBy === nik).length,
         rambu: rambu.filter(s => s.createdBy === nik).length,
         antrian: antrian.filter(s => s.createdBy === nik).length,
-        apd: apd.filter(s => s.createdBy === nik).length,
         jarak: jarak.filter(s => s.createdBy === nik).length,
         kecepatan: kecepatan.filter(s => s.createdBy === nik).length,
         loto: ((loto || []) as any[]).filter(s => s.createdBy === nik).length,
@@ -5984,7 +5979,7 @@ Format sebagai bullet points singkat per insight.`;
 
       const [
         fatigue, roster, seatbelt, rambu,
-        antrian, apd, jarak, kecepatan,
+        antrian, jarak, kecepatan,
         pencahayaan, loto, digital, workshop
       ] = await Promise.all([
         fetch('Fatigue', storage.getAllSidakFatigueSessions()),
@@ -5992,7 +5987,6 @@ Format sebagai bullet points singkat per insight.`;
         fetch('Seatbelt', storage.getAllSidakSeatbeltSessions()),
         fetch('Rambu', storage.getAllSidakRambuSessions()),
         fetch('Antrian', storage.getAllSidakAntrianSessions()),
-        fetch('APD', storage.getAllSidakApdSessions()),
         fetch('Jarak', storage.getAllSidakJarakSessions()),
         fetch('Kecepatan', storage.getAllSidakKecepatanSessions()),
         fetch('Pencahayaan', storage.getAllSidakPencahayaanSessions()),
@@ -6031,7 +6025,6 @@ Format sebagai bullet points singkat per insight.`;
         ...seatbelt.map((s: any) => mapSession(s, 'Seatbelt')),
         ...rambu.map((s: any) => mapSession(s, 'Rambu')),
         ...antrian.map((s: any) => mapSession(s, 'Antrian')),
-        ...apd.map((s: any) => mapSession(s, 'APD')),
         ...jarak.map((s: any) => mapSession(s, 'Jarak')),
         ...kecepatan.map((s: any) => mapSession(s, 'Kecepatan')),
         ...pencahayaan.map((s: any) => mapSession(s, 'Pencahayaan')),
@@ -6049,7 +6042,6 @@ Format sebagai bullet points singkat per insight.`;
         totalSeatbelt: seatbelt.length,
         totalRambu: rambu.length,
         totalAntrian: antrian.length,
-        totalApd: apd.length,
         totalJarak: jarak.length,
         totalKecepatan: kecepatan.length,
         totalPencahayaan: pencahayaan.length,
@@ -6067,7 +6059,7 @@ Format sebagai bullet points singkat per insight.`;
           if (!supervisorMap.has(name)) {
             supervisorMap.set(name, {
               name,
-              fatigue: 0, roster: 0, seatbelt: 0, rambu: 0, antrian: 0, apd: 0,
+              fatigue: 0, roster: 0, seatbelt: 0, rambu: 0, antrian: 0,
               jarak: 0, kecepatan: 0, pencahayaan: 0, loto: 0, digital: 0, workshop: 0,
               total: 0
             });
@@ -6198,27 +6190,6 @@ Format sebagai bullet points singkat per insight.`;
           session: {
             ...session,
             type: 'Antrian',
-            tanggal: session.tanggal,
-            waktu: session.waktu,
-            departemen: session.departemen,
-            supervisorName: session.createdBy || '-',
-            photos: session.activityPhotos
-          },
-          records,
-          observers
-        });
-      }
-
-      if (type === 'APD') {
-        const session = await storage.getSidakApdSession(sessionId as string);
-        if (!session) return res.status(404).json({ message: "Session not found" });
-        const records = await storage.getSidakApdRecords(sessionId as string);
-        const observers = await storage.getSidakApdObservers(sessionId as string);
-
-        return res.json({
-          session: {
-            ...session,
-            type: 'APD',
             tanggal: session.tanggal,
             waktu: session.waktu,
             departemen: session.departemen,
@@ -6686,65 +6657,6 @@ Format sebagai bullet points singkat per insight.`;
     }
   });
 
-  // ============================================
-  // SIDAK APD ROUTES
-  // ============================================
-
-  app.get("/api/sidak-apd", async (req, res) => {
-    try {
-      const sessions = await storage.getAllSidakApdSessions();
-      res.json(sessions);
-    } catch (error) {
-      res.status(500).json({ message: "Gagal mengambil riwayat" });
-    }
-  });
-
-  app.get("/api/sidak-apd/:id", async (req, res) => {
-    try {
-      const session = await storage.getSidakApdSession(req.params.id);
-      if (!session) return res.status(404).json({ message: "Sesi tidak ditemukan" });
-      const records = await storage.getSidakApdRecords(req.params.id);
-      const observers = await storage.getSidakApdObservers(req.params.id);
-      res.json({ ...session, records, observers });
-    } catch (error) {
-      res.status(500).json({ message: "Gagal mengambil detail" });
-    }
-  });
-
-  app.post("/api/sidak-apd", async (req, res) => {
-    try {
-      const validatedData = insertSidakApdSessionSchema.parse(req.body);
-      const sessionUser = (req.session as any).user;
-      const createdBy = sessionUser?.nik || null;
-      const session = await storage.createSidakApdSession({ ...validatedData, createdBy });
-      res.status(201).json(session);
-    } catch (error: any) {
-      if (error.name === 'ZodError') return res.status(400).json({ message: "Data tidak valid", errors: error.errors });
-      res.status(500).json({ message: "Gagal membuat sesi" });
-    }
-  });
-
-  app.post("/api/sidak-apd/:id/records", async (req, res) => {
-    try {
-      const validatedData = insertSidakApdRecordSchema.parse({ ...req.body, sessionId: req.params.id });
-      const record = await storage.createSidakApdRecord(validatedData);
-      res.status(201).json(record);
-    } catch (error: any) {
-      if (error.name === 'ZodError') return res.status(400).json({ message: "Data tidak valid", errors: error.errors });
-      res.status(500).json({ message: "Gagal menambahkan record" });
-    }
-  });
-
-  app.post("/api/sidak-apd/:id/observers", async (req, res) => {
-    try {
-      const validatedData = insertSidakApdObserverSchema.parse({ ...req.body, sessionId: req.params.id });
-      const observer = await storage.createSidakApdObserver(validatedData);
-      res.status(201).json(observer);
-    } catch (error: any) {
-      if (error.name === 'ZodError') return res.status(400).json({ message: "Data tidak valid", errors: error.errors });
-      res.status(500).json({ message: "Gagal menambahkan observer" });
-    }
-  });
 
   // ============================================
   // SIDAK JARAK ROUTES
@@ -8959,11 +8871,6 @@ Format sebagai bullet points singkat per insight.`;
   });
 
   // ============================================================================
-  // ============================================================================
-  // SIDAK APD (Alat Pelindung Diri) ROUTES
-  // ============================================================================
-
-  // ============================================================================
   // Sidak Antrian (Queue Inspection) ROUTES
   // ============================================================================
 
@@ -9116,121 +9023,6 @@ Format sebagai bullet points singkat per insight.`;
       res.status(500).json({ message: error.message || "Gagal menambahkan observer" });
     }
   });
-
-  // Create new Sidak APD session
-  app.post("/api/sidak-apd", async (req, res) => {
-    try {
-      const session = insertSidakApdSessionSchema.parse(req.body);
-      const result = await storage.createSidakApdSession(session);
-      res.status(201).json(result);
-    } catch (error: any) {
-      console.error("Error creating Sidak APD session:", error);
-      res.status(400).json({ message: error.message || "Gagal membuat sesi" });
-    }
-  });
-
-  // Get all Sidak APD sessions
-  app.get("/api/sidak-apd/sessions", async (req, res) => {
-    try {
-      const sessions = await storage.getAllSidakApdSessions();
-      res.json(sessions);
-    } catch (error: any) {
-      console.error("Error fetching Sidak APD sessions:", error);
-      res.status(500).json({ message: error.message || "Gagal mengambil data sesi" });
-    }
-  });
-
-  // Generate Sidak APD PDF
-  app.get("/api/sidak-apd/:id/pdf", async (req, res) => {
-    try {
-      const sessionId = req.params.id;
-      const session = await storage.getSidakApdSession(sessionId);
-
-      if (!session) {
-        return res.status(404).json({ message: "Session not found" });
-      }
-
-      const records = await storage.getSidakApdRecords(sessionId);
-      const observers = await storage.getSidakApdObservers(sessionId);
-
-      const pdfBuffer = await storage.generateSidakApdPDF({
-        session,
-        records,
-        observers
-      });
-
-      res.setHeader('Content-Type', 'application/pdf');
-      res.setHeader('Content-Disposition', `attachment; filename=Sidak_APD_${session.tanggalPelaksanaan}.pdf`);
-      res.send(pdfBuffer);
-    } catch (error: any) {
-      console.error("Error generating Sidak APD PDF:", error);
-      res.status(500).json({ message: error.message || "Gagal generate PDF" });
-    }
-  });
-
-  // Get Sidak APD session detail
-  app.get("/api/sidak-apd/:id", async (req, res) => {
-    try {
-      const sessionId = req.params.id;
-      const session = await storage.getSidakApdSession(sessionId);
-
-      if (!session) {
-        return res.status(404).json({ message: "Session not found" });
-      }
-
-      const records = await storage.getSidakApdRecords(sessionId);
-      const observers = await storage.getSidakApdObservers(sessionId);
-
-      res.json({ session, records, observers });
-    } catch (error: any) {
-      console.error("Error fetching Sidak APD detail:", error);
-      res.status(500).json({ message: error.message || "Gagal mengambil detail" });
-    }
-  });
-
-  // Add record to Sidak APD session
-  app.post("/api/sidak-apd/:id/records", async (req, res) => {
-    try {
-      const sessionId = req.params.id;
-
-      // Manually construct record data or let zod handle if feasible, 
-      // but sessionId injection is needed.
-      const recordData = {
-        ...req.body,
-        sessionId
-      };
-
-      // Validate with schema first? Or let storage handle?
-      // Better validate here.
-      // Note: insertSidakApdRecordSchema requires sessionId.
-      const parsed = insertSidakApdRecordSchema.parse(recordData);
-
-      const record = await storage.createSidakApdRecord(parsed);
-      res.status(201).json(record);
-    } catch (error: any) {
-      console.error("Error adding Sidak APD record:", error);
-      res.status(500).json({ message: error.message || "Gagal menambahkan record" });
-    }
-  });
-
-  // Add observer to Sidak APD session
-  app.post("/api/sidak-apd/:id/observers", async (req, res) => {
-    try {
-      const sessionId = req.params.id;
-      const observerData = {
-        ...req.body,
-        sessionId
-      };
-
-      const parsed = insertSidakApdObserverSchema.parse(observerData);
-      const observer = await storage.createSidakApdObserver(parsed);
-      res.status(201).json(observer);
-    } catch (error: any) {
-      console.error("Error adding Sidak APD observer:", error);
-      res.status(500).json({ message: error.message || "Gagal menambahkan observer" });
-    }
-  });
-
 
   // ============================================================================
   // SIDAK JARAK AMAN (Safe Distance Observation) ROUTES
@@ -9900,7 +9692,6 @@ Format sebagai bullet points singkat per insight.`;
   });
 
   const antrianUpload = createPhotoUpload('antrian');
-  const apdUpload = createPhotoUpload('apd');
   const jarakUpload = createPhotoUpload('jarak');
   const kecepatanUpload = createPhotoUpload('kecepatan');
   const pencahayaanUpload = createPhotoUpload('pencahayaan');
@@ -9945,42 +9736,6 @@ Format sebagai bullet points singkat per insight.`;
       res.json({ photos: updatedSession?.activityPhotos || [] });
     } catch (error: any) {
       res.status(500).json({ message: "Failed to delete photo", error: error.message });
-    }
-  });
-
-  // Upload photos - APD
-  app.post("/api/sidak-apd/:id/upload-photos", apdUpload.array('photos', 6), async (req, res) => {
-    try {
-      const files = req.files as Express.Multer.File[];
-      if (!files || files.length === 0) return res.status(400).json({ error: "No photos provided" });
-      const session = await storage.getSidakApdSession(req.params.id);
-      if (!session) {
-        files.forEach(file => { if (fs.existsSync(file.path)) fs.unlinkSync(file.path); });
-        return res.status(404).json({ error: "Session not found" });
-      }
-      const photoPaths = files.map(file => `/uploads/sidak-apd/${path.basename(file.path)}`);
-      const allPhotos = [...(session.activityPhotos || []), ...photoPaths].slice(0, 6);
-      const updatedSession = await storage.updateSidakApdSession(req.params.id, { activityPhotos: allPhotos });
-      res.json({ message: "Photos uploaded", photos: allPhotos, session: updatedSession });
-    } catch (error: any) {
-      res.status(500).json({ error: "Failed to upload", details: error.message });
-    }
-  });
-
-  app.delete("/api/sidak-apd/:id/photos/:index", async (req, res) => {
-    try {
-      const session = await storage.getSidakApdSession(req.params.id);
-      if (!session) return res.status(404).json({ message: "Not found" });
-      const photos = session.activityPhotos || [];
-      const index = parseInt(req.params.index);
-      if (index < 0 || index >= photos.length) return res.status(400).json({ message: "Invalid index" });
-      const filePath = path.join(process.cwd(), photos[index].replace(/^\//, ''));
-      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
-      const updatedPhotos = photos.filter((_, i) => i !== index);
-      await storage.updateSidakApdSession(req.params.id, { activityPhotos: updatedPhotos });
-      res.json({ photos: updatedPhotos });
-    } catch (error: any) {
-      res.status(500).json({ message: "Failed", error: error.message });
     }
   });
 
@@ -10288,27 +10043,6 @@ Format sebagai bullet points singkat per insight.`;
       res.send(pdfBuffer);
     } catch (error: any) {
       console.error("Error generating Antrian PDF:", error);
-      res.status(500).json({ error: "Failed to generate PDF", details: error.message });
-    }
-  });
-
-  // Download PDF - Sidak APD
-  app.get("/api/sidak-apd/:sessionId/pdf", async (req, res) => {
-    try {
-      const session = await storage.getSidakApdSession(req.params.sessionId);
-      if (!session) {
-        return res.status(404).json({ error: "Session not found" });
-      }
-      const records = await storage.getSidakApdRecords(req.params.sessionId);
-      const observers = await storage.getSidakApdObservers(req.params.sessionId);
-
-      const buffer = await storage.generateSidakApdPDF({ session, records, observers });
-
-      res.setHeader('Content-Type', 'application/pdf');
-      res.setHeader('Content-Disposition', `attachment; filename="Sidak_APD_${session.tanggalPelaksanaan}.pdf"`);
-      res.send(buffer);
-    } catch (error: any) {
-      console.error("Error generating APD PDF:", error);
       res.status(500).json({ error: "Failed to generate PDF", details: error.message });
     }
   });

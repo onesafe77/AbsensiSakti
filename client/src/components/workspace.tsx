@@ -36,8 +36,6 @@ import SidakRambuForm from "@/pages/sidak-rambu-form";
 import SidakRambuHistory from "@/pages/sidak-rambu-history";
 import SidakAntrianForm from "@/pages/sidak-antrian-form";
 import SidakAntrianHistory from "@/pages/sidak-antrian-history";
-import SidakApdForm from "@/pages/sidak-apd-form";
-import SidakApdHistory from "@/pages/sidak-apd-history";
 import SidakJarakForm from "@/pages/sidak-jarak-form";
 import SidakJarakHistory from "@/pages/sidak-jarak-history";
 import SidakKecepatanForm from "@/pages/sidak-kecepatan-form";
@@ -114,8 +112,6 @@ const workspaceRoutes = [
   { path: "/workspace/sidak/rambu/history", component: SidakRambuHistory, title: "Riwayat Sidak Rambu" },
   { path: "/workspace/sidak/antrian/new", component: SidakAntrianForm, title: "Form Sidak Antrian" },
   { path: "/workspace/sidak/antrian/history", component: SidakAntrianHistory, title: "Riwayat Sidak Antrian" },
-  { path: "/workspace/sidak/apd/new", component: SidakApdForm, title: "Form Sidak APD" },
-  { path: "/workspace/sidak/apd/history", component: SidakApdHistory, title: "Riwayat Sidak APD" },
   { path: "/workspace/sidak/jarak/new", component: SidakJarakForm, title: "Form Sidak Jarak Aman" },
   { path: "/workspace/sidak/jarak/history", component: SidakJarakHistory, title: "Riwayat Sidak Jarak Aman" },
   { path: "/workspace/sidak/kecepatan/new", component: SidakKecepatanForm, title: "Form Sidak Kecepatan" },
@@ -261,8 +257,6 @@ export function Workspace() {
               <Route path="/workspace/sidak/rambu/history" component={SidakRambuHistory} />
               <Route path="/workspace/sidak/antrian/new" component={SidakAntrianForm} />
               <Route path="/workspace/sidak/antrian/history" component={SidakAntrianHistory} />
-              <Route path="/workspace/sidak/apd/new" component={SidakApdForm} />
-              <Route path="/workspace/sidak/apd/history" component={SidakApdHistory} />
               <Route path="/workspace/sidak/jarak/new" component={SidakJarakForm} />
               <Route path="/workspace/sidak/jarak/history" component={SidakJarakHistory} />
               <Route path="/workspace/sidak/kecepatan/new" component={SidakKecepatanForm} />
