@@ -40,7 +40,7 @@ export default function SidakAntrianHistory() {
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const { data: sessions, isLoading } = useQuery<SessionWithDetails[]>({
-        queryKey: ['/api/sidak-antrian/sessions'],
+        queryKey: ['/api/sidak-antrian'],
     });
 
     const uploadPhotosMutation = useMutation({
@@ -77,7 +77,7 @@ export default function SidakAntrianHistory() {
             }
         },
         onSuccess: (data) => {
-            queryClient.invalidateQueries({ queryKey: ['/api/sidak-antrian/sessions'] });
+            queryClient.invalidateQueries({ queryKey: ['/api/sidak-antrian'] });
             setSelectedSession(prev => prev ? { ...prev, activityPhotos: data.photos } : null);
             toast({ title: "Foto berhasil diupload", description: `${data.photos.length} foto kegiatan tersimpan` });
         },
@@ -100,7 +100,7 @@ export default function SidakAntrianHistory() {
             return response.json();
         },
         onSuccess: (data) => {
-            queryClient.invalidateQueries({ queryKey: ['/api/sidak-antrian/sessions'] });
+            queryClient.invalidateQueries({ queryKey: ['/api/sidak-antrian'] });
             setSelectedSession(prev => prev ? { ...prev, activityPhotos: data.photos } : null);
             toast({ title: "Foto berhasil dihapus" });
         },
