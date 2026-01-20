@@ -347,34 +347,42 @@ export default function SidakAntrianHistory() {
                                             </Button>
                                         </DropdownMenuTrigger>
                                         <DropdownMenuContent align="end" className="w-[calc(100vw-3rem)] sm:w-64 rounded-xl p-1 shadow-xl border-gray-200 dark:border-gray-700">
-                                            <DropdownMenuItem onClick={() => handleDownloadPDF(session.id)} disabled={downloadingId === session.id} className="rounded-lg py-2.5 px-3 focus:bg-red-50 dark:focus:bg-red-900/20 cursor-pointer">
-                                                <div className="h-8 w-8 rounded-full bg-red-100 text-red-600 flex items-center justify-center mr-3">
-                                                    <FileText className="h-4 w-4" />
-                                                </div>
-                                                <div className="flex flex-col">
-                                                    <span className="font-medium">Download PDF</span>
-                                                    <span className="text-xs text-muted-foreground">Laporan lengkap</span>
-                                                </div>
-                                            </DropdownMenuItem>
-                                            <DropdownMenuItem onClick={() => handleDownloadJPG(session.id)} disabled={downloadingJpgId === session.id} className="rounded-lg py-2.5 px-3 focus:bg-red-50 dark:focus:bg-red-900/20 cursor-pointer">
-                                                <div className="h-8 w-8 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center mr-3">
-                                                    <Image className="h-4 w-4" />
-                                                </div>
-                                                <div className="flex flex-col">
-                                                    <span className="font-medium">Download JPG</span>
-                                                    <span className="text-xs text-muted-foreground">Format gambar</span>
-                                                </div>
-                                            </DropdownMenuItem>
-                                            <div className="h-px bg-gray-100 dark:bg-gray-800 my-1" />
                                             <DropdownMenuItem onClick={() => handleOpenPhotoDialog(session)} className="rounded-lg py-2.5 px-3 focus:bg-red-50 dark:focus:bg-red-900/20 cursor-pointer">
                                                 <div className="h-8 w-8 rounded-full bg-gray-100 text-gray-600 flex items-center justify-center mr-3">
                                                     <Camera className="h-4 w-4" />
                                                 </div>
                                                 <div className="flex flex-col">
                                                     <span className="font-medium">Kelola Foto</span>
-                                                    <span className="text-xs text-muted-foreground">Upload/Hapus</span>
+                                                    <span className="text-xs text-muted-foreground">Upload/Hapus foto kegiatan</span>
                                                 </div>
                                             </DropdownMenuItem>
+                                            <div className="h-px bg-gray-100 dark:bg-gray-800 my-1" />
+                                            {(!session.activityPhotos || session.activityPhotos.length === 0) ? (
+                                                <div className="rounded-lg py-2.5 px-3 text-center">
+                                                    <span className="text-xs text-amber-600 dark:text-amber-400">Upload foto kegiatan terlebih dahulu untuk mengunduh form</span>
+                                                </div>
+                                            ) : (
+                                                <>
+                                                    <DropdownMenuItem onClick={() => handleDownloadPDF(session.id)} disabled={downloadingId === session.id} className="rounded-lg py-2.5 px-3 focus:bg-red-50 dark:focus:bg-red-900/20 cursor-pointer">
+                                                        <div className="h-8 w-8 rounded-full bg-red-100 text-red-600 flex items-center justify-center mr-3">
+                                                            <FileText className="h-4 w-4" />
+                                                        </div>
+                                                        <div className="flex flex-col">
+                                                            <span className="font-medium">Download PDF</span>
+                                                            <span className="text-xs text-muted-foreground">Laporan lengkap</span>
+                                                        </div>
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuItem onClick={() => handleDownloadJPG(session.id)} disabled={downloadingJpgId === session.id} className="rounded-lg py-2.5 px-3 focus:bg-red-50 dark:focus:bg-red-900/20 cursor-pointer">
+                                                        <div className="h-8 w-8 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center mr-3">
+                                                            <Image className="h-4 w-4" />
+                                                        </div>
+                                                        <div className="flex flex-col">
+                                                            <span className="font-medium">Download JPG</span>
+                                                            <span className="text-xs text-muted-foreground">Format gambar</span>
+                                                        </div>
+                                                    </DropdownMenuItem>
+                                                </>
+                                            )}
                                         </DropdownMenuContent>
                                     </DropdownMenu>
                                 </CardContent>
