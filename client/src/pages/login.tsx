@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, Component, ReactNode } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/lib/auth-context";
 import { useForm } from "react-hook-form";
@@ -11,7 +11,23 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2, Eye, EyeOff, Hexagon, ArrowLeft } from "lucide-react";
 import { ParticleBackground } from "@/components/ui/particle-background";
 import Spline from '@splinetool/react-spline';
-import { Suspense } from "react";
+import { Suspense, lazy } from "react";
+
+class SplineErrorBoundary extends Component<{ children: ReactNode, fallback: ReactNode }, { hasError: boolean }> {
+  constructor(props: { children: ReactNode, fallback: ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+  render() {
+    if (this.state.hasError) {
+      return this.props.fallback;
+    }
+    return this.props.children;
+  }
+}
 
 const loginFormSchema = z.object({
   nik: z.string().min(1, "NIK wajib diisi"),
@@ -94,11 +110,13 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen w-full flex items-center justify-center p-4 relative bg-slate-50 overflow-hidden font-sans selection:bg-red-100">
 
-      {/* Spline Background */}
+      {/* Spline Background with WebGL fallback */}
       <div className="absolute inset-0 z-0">
-        <Suspense fallback={<div className="w-full h-full bg-slate-50" />}>
-          <Spline scene="https://prod.spline.design/DM9x2ADdMUM5XlDE/scene.splinecode" />
-        </Suspense>
+        <SplineErrorBoundary fallback={<ParticleBackground />}>
+          <Suspense fallback={<div className="w-full h-full bg-slate-50" />}>
+            <Spline scene="https://prod.spline.design/DM9x2ADdMUM5XlDE/scene.splinecode" />
+          </Suspense>
+        </SplineErrorBoundary>
       </div>
 
       {/* Hide Spline Logo Badge (Aggressive) */}
