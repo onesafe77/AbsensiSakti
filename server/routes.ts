@@ -6685,14 +6685,16 @@ Format sebagai bullet points singkat per insight.`;
 
   app.post("/api/sidak-jarak", async (req, res) => {
     try {
-      const validatedData = insertSidakJarakSessionSchema.parse(req.body);
       const sessionUser = (req.session as any).user;
-      const createdBy = sessionUser?.nik || null;
-      const session = await storage.createSidakJarakSession({ ...validatedData, createdBy });
+      const createdBy = sessionUser?.nik || "SYSTEM";
+      const sessionData = { ...req.body, createdBy };
+      const validatedData = insertSidakJarakSessionSchema.parse(sessionData);
+      const session = await storage.createSidakJarakSession(validatedData);
       res.status(201).json(session);
     } catch (error: any) {
+      console.error("Error creating Sidak Jarak session:", error);
       if (error.name === 'ZodError') return res.status(400).json({ message: "Data tidak valid", errors: error.errors });
-      res.status(500).json({ message: "Gagal membuat sesi" });
+      res.status(500).json({ message: error.message || "Gagal membuat sesi" });
     }
   });
 
