@@ -45,69 +45,44 @@ export default function SidakAntrianHistory() {
 
     const uploadPhotosMutation = useMutation({
         mutationFn: async ({ sessionId, files }: { sessionId: string; files: File[] }) => {
-            let finalPhotos: string[] = [];
-
-            for (const file of files) {
-                // Step 1: Request presigned URL
-                const urlResponse = await fetch(`/api/sidak-antrian/${sessionId}/request-upload-url`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        name: file.name,
-                        contentType: file.type || 'application/octet-stream'
-                    })
-                });
-
-                if (!urlResponse.ok) {
-                    const error = await urlResponse.json();
-                    throw new Error(error.error || 'Failed to get upload URL');
+            setUploadingPhotos(true);
+            try {
+                let finalPhotos: string[] = [];
+                for (const file of files) {
+                    const urlResponse = await fetch(`/api/sidak-antrian/${sessionId}/request-upload-url`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ name: file.name, contentType: file.type || 'application/octet-stream' })
+                    });
+                    if (!urlResponse.ok) throw new Error((await urlResponse.json()).error || 'Gagal mendapatkan URL upload');
+                    const { uploadURL, objectPath } = await urlResponse.json();
+                    
+                    const uploadResponse = await fetch(uploadURL, {
+                        method: 'PUT', body: file,
+                        headers: { 'Content-Type': file.type || 'application/octet-stream' }
+                    });
+                    if (!uploadResponse.ok) throw new Error('Gagal mengupload file ke storage');
+                    
+                    const confirmResponse = await fetch(`/api/sidak-antrian/${sessionId}/confirm-upload`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ objectPath })
+                    });
+                    if (!confirmResponse.ok) throw new Error((await confirmResponse.json()).error || 'Gagal konfirmasi upload');
+                    finalPhotos = (await confirmResponse.json()).photos;
                 }
-
-                const { uploadURL, objectPath } = await urlResponse.json();
-
-                // Step 2: Upload directly to object storage
-                const uploadResponse = await fetch(uploadURL, {
-                    method: 'PUT',
-                    body: file,
-                    headers: { 'Content-Type': file.type || 'application/octet-stream' }
-                });
-
-                if (!uploadResponse.ok) {
-                    throw new Error('Failed to upload file to storage');
-                }
-
-                // Step 3: Confirm upload and add to session
-                const confirmResponse = await fetch(`/api/sidak-antrian/${sessionId}/confirm-upload`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ objectPath })
-                });
-
-                if (!confirmResponse.ok) {
-                    const error = await confirmResponse.json();
-                    throw new Error(error.error || 'Failed to confirm upload');
-                }
-
-                const result = await confirmResponse.json();
-                finalPhotos = result.photos;
+                return { photos: finalPhotos };
+            } finally {
+                setUploadingPhotos(false);
             }
-
-            return { photos: finalPhotos };
         },
         onSuccess: (data) => {
             queryClient.invalidateQueries({ queryKey: ['/api/sidak-antrian/sessions'] });
             setSelectedSession(prev => prev ? { ...prev, activityPhotos: data.photos } : null);
-            toast({
-                title: "Foto berhasil diupload",
-                description: `${data.photos.length} foto kegiatan tersimpan`,
-            });
+            toast({ title: "Foto berhasil diupload", description: `${data.photos.length} foto kegiatan tersimpan` });
         },
         onError: (error: any) => {
-            toast({
-                title: "Gagal upload foto",
-                description: error.message,
-                variant: "destructive",
-            });
+            toast({ title: "Gagal upload foto", description: error.message, variant: "destructive" });
         },
     });
 
