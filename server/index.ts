@@ -444,7 +444,7 @@ app.put("/api/employees/:id", async (req, res) => {
   // this serves both the API and the client.
   // It is the only port that is not firewalled.
   console.log('DEBUG: process.env.PORT is:', process.env.PORT);
-  const port = parseInt(process.env.PORT || '5004', 10);
+  const port = parseInt(process.env.PORT || '5000', 10);
   server.listen({
     port,
     host: "0.0.0.0",
