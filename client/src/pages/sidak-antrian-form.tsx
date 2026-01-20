@@ -144,6 +144,7 @@ export default function SidakAntrianForm() {
             if (!draft.sessionId) throw new Error("No active session");
             const res = await apiRequest(`/api/sidak-antrian/${draft.sessionId}/records`, "POST", {
                 ...record,
+                ordinal: draft.records.length + 1,
                 sessionId: draft.sessionId
             });
             return res;
@@ -166,6 +167,7 @@ export default function SidakAntrianForm() {
             if (!draft.sessionId) throw new Error("No active session");
             const res = await apiRequest(`/api/sidak-antrian/${draft.sessionId}/observers`, "POST", {
                 ...observer,
+                ordinal: draft.observers.length + 1,
                 sessionId: draft.sessionId
             });
             return res;
