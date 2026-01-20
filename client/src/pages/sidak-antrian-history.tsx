@@ -1,5 +1,5 @@
 
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { ClipboardCheck, Download, Calendar, Clock, MapPin, ArrowLeft, ChevronDown, Camera, Upload, Trash2, User, FileText, Image } from "lucide-react";
 import { PhotoThumbnail, PhotoGalleryItem } from "@/components/ui/image-with-fallback";
@@ -19,7 +19,6 @@ import {
     DialogTitle,
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { queryClient } from "@/lib/queryClient";
 import type { SidakAntrianSession, SidakAntrianRecord, SidakAntrianObserver } from "@shared/schema";
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
@@ -32,6 +31,7 @@ interface SessionWithDetails extends SidakAntrianSession {
 
 export default function SidakAntrianHistory() {
     const { toast } = useToast();
+    const queryClient = useQueryClient();
     const [downloadingId, setDownloadingId] = useState<string | null>(null);
     const [downloadingJpgId, setDownloadingJpgId] = useState<string | null>(null);
     const [photoDialogOpen, setPhotoDialogOpen] = useState(false);
@@ -45,24 +45,54 @@ export default function SidakAntrianHistory() {
 
     const uploadPhotosMutation = useMutation({
         mutationFn: async ({ sessionId, files }: { sessionId: string; files: File[] }) => {
-            const formData = new FormData();
-            files.forEach((file) => {
-                formData.append('photos', file);
-            });
+            let finalPhotos: string[] = [];
 
-            // Note: Endpoint might need adjustment if generic upload not supported yet
-            const response = await fetch(`/api/sidak-antrian/${sessionId}/upload-photos`, {
-                method: 'POST',
-                body: formData,
-            });
+            for (const file of files) {
+                // Step 1: Request presigned URL
+                const urlResponse = await fetch(`/api/sidak-antrian/${sessionId}/request-upload-url`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        name: file.name,
+                        contentType: file.type || 'application/octet-stream'
+                    })
+                });
 
-            if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.error || 'Failed to upload photos');
+                if (!urlResponse.ok) {
+                    const error = await urlResponse.json();
+                    throw new Error(error.error || 'Failed to get upload URL');
+                }
+
+                const { uploadURL, objectPath } = await urlResponse.json();
+
+                // Step 2: Upload directly to object storage
+                const uploadResponse = await fetch(uploadURL, {
+                    method: 'PUT',
+                    body: file,
+                    headers: { 'Content-Type': file.type || 'application/octet-stream' }
+                });
+
+                if (!uploadResponse.ok) {
+                    throw new Error('Failed to upload file to storage');
+                }
+
+                // Step 3: Confirm upload and add to session
+                const confirmResponse = await fetch(`/api/sidak-antrian/${sessionId}/confirm-upload`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ objectPath })
+                });
+
+                if (!confirmResponse.ok) {
+                    const error = await confirmResponse.json();
+                    throw new Error(error.error || 'Failed to confirm upload');
+                }
+
+                const result = await confirmResponse.json();
+                finalPhotos = result.photos;
             }
 
-            const result = await response.json();
-            return { photos: result.photos };
+            return { photos: finalPhotos };
         },
         onSuccess: (data) => {
             queryClient.invalidateQueries({ queryKey: ['/api/sidak-antrian/sessions'] });
@@ -75,7 +105,7 @@ export default function SidakAntrianHistory() {
         onError: (error: any) => {
             toast({
                 title: "Gagal upload foto",
-                description: error.message || "Pastikan backend support upload foto untuk modul ini",
+                description: error.message,
                 variant: "destructive",
             });
         },

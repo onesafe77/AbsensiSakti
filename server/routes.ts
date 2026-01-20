@@ -7114,6 +7114,126 @@ Format sebagai bullet points singkat per insight.`;
     }
   });
 
+  // ============================================
+  // PRESIGNED URL ROUTES FOR OTHER SIDAK MODULES
+  // ============================================
+
+  // Generic presigned URL handler for SIDAK modules
+  const sidakPresignedUrlModules = [
+    { name: 'antrian', getSession: storage.getSidakAntrianSession.bind(storage), updateSession: storage.updateSidakAntrianSession.bind(storage) },
+    { name: 'jarak', getSession: storage.getSidakJarakSession.bind(storage), updateSession: storage.updateSidakJarakSession.bind(storage) },
+    { name: 'kecepatan', getSession: storage.getSidakKecepatanSession.bind(storage), updateSession: storage.updateSidakKecepatanSession.bind(storage) },
+    { name: 'pencahayaan', getSession: storage.getSidakPencahayaanSession.bind(storage), updateSession: storage.updateSidakPencahayaanSession.bind(storage) },
+    { name: 'loto', getSession: storage.getSidakLotoSession.bind(storage), updateSession: storage.updateSidakLotoSession.bind(storage) },
+    { name: 'digital', getSession: storage.getSidakDigitalSession.bind(storage), updateSession: storage.updateSidakDigitalSession.bind(storage) },
+    { name: 'workshop', getSession: storage.getSidakWorkshopSession.bind(storage), updateSession: storage.updateSidakWorkshopSession.bind(storage) },
+    { name: 'seatbelt', getSession: storage.getSidakSeatbeltSession.bind(storage), updateSession: storage.updateSidakSeatbeltSession.bind(storage) },
+    { name: 'rambu', getSession: storage.getSidakRambuSession.bind(storage), updateSession: storage.updateSidakRambuSession.bind(storage) },
+  ];
+
+  sidakPresignedUrlModules.forEach(({ name, getSession, updateSession }) => {
+    // Request presigned URL for photo upload
+    app.post(`/api/sidak-${name}/:id/request-upload-url`, async (req, res) => {
+      try {
+        const { id } = req.params;
+        const { name: fileName, contentType } = req.body;
+
+        const session = await getSession(id);
+        if (!session) {
+          return res.status(404).json({ error: `SIDAK ${name} session not found` });
+        }
+
+        const uploadURL = await objectStorageServiceInstance.getObjectEntityUploadURL();
+        const objectPath = objectStorageServiceInstance.normalizeObjectEntityPath(uploadURL);
+
+        res.json({
+          uploadURL,
+          objectPath,
+          metadata: { name: fileName, contentType }
+        });
+      } catch (error) {
+        console.error(`Error generating upload URL for ${name}:`, error);
+        res.status(500).json({ error: "Failed to generate upload URL" });
+      }
+    });
+
+    // Confirm photo upload and add to session
+    app.post(`/api/sidak-${name}/:id/confirm-upload`, async (req, res) => {
+      try {
+        const { id } = req.params;
+        const { objectPath } = req.body;
+
+        if (!objectPath) {
+          return res.status(400).json({ error: "objectPath is required" });
+        }
+
+        const session = await getSession(id);
+        if (!session) {
+          return res.status(404).json({ error: `SIDAK ${name} session not found` });
+        }
+
+        try {
+          await objectStorageServiceInstance.trySetObjectEntityAclPolicy(objectPath, {
+            owner: "system",
+            visibility: "public"
+          });
+        } catch (aclError) {
+          console.warn("Could not set ACL policy:", aclError);
+        }
+
+        const existingPhotos = session.activityPhotos || [];
+        if (existingPhotos.length >= 6) {
+          return res.status(400).json({ error: "Maximum 6 photos allowed" });
+        }
+
+        const allPhotos = [...existingPhotos, objectPath];
+        const updatedSession = await updateSession(id, { activityPhotos: allPhotos });
+
+        res.json({
+          message: "Photo uploaded successfully",
+          photos: allPhotos,
+          session: updatedSession
+        });
+      } catch (error) {
+        console.error(`Error confirming photo upload for ${name}:`, error);
+        res.status(500).json({ error: "Failed to confirm photo upload" });
+      }
+    });
+
+    // Delete photo from object storage
+    app.delete(`/api/sidak-${name}/:id/photos/:index`, async (req, res) => {
+      try {
+        const session = await getSession(req.params.id);
+        if (!session) return res.status(404).json({ error: "Session not found" });
+
+        const photos = session.activityPhotos || [];
+        const index = parseInt(req.params.index);
+        if (index < 0 || index >= photos.length) {
+          return res.status(400).json({ error: "Invalid photo index" });
+        }
+
+        const photoPath = photos[index];
+        
+        // Try to delete from object storage if it's an object storage path
+        if (photoPath.startsWith('/objects/')) {
+          try {
+            await objectStorageServiceInstance.deleteObject(photoPath);
+          } catch (deleteError) {
+            console.warn(`Could not delete object ${photoPath}:`, deleteError);
+          }
+        }
+
+        const updatedPhotos = photos.filter((_, i) => i !== index);
+        const updatedSession = await updateSession(req.params.id, { activityPhotos: updatedPhotos });
+
+        res.json({ photos: updatedSession?.activityPhotos || [] });
+      } catch (error: any) {
+        console.error(`Error deleting photo for ${name}:`, error);
+        res.status(500).json({ error: "Failed to delete photo" });
+      }
+    });
+  });
+
   // Serve objects from object storage
   app.get("/objects/*", async (req, res) => {
     try {
