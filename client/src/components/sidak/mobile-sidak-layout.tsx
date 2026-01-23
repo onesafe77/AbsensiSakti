@@ -56,16 +56,16 @@ export function MobileSidakLayout({
                 </div>
             </div>
 
-            {/* Scrollable Content */}
-            <div className="flex-1 overflow-y-auto pb-24">
+            {/* Scrollable Content - extra padding for bottom action + mobile navbar */}
+            <div className="flex-1 overflow-y-auto pb-44">
                 <div className="p-4 space-y-6">
                     {children}
                 </div>
             </div>
 
-            {/* Sticky Bottom Action */}
+            {/* Sticky Bottom Action - positioned above mobile navbar */}
             {bottomAction && (
-                <div className="fixed bottom-0 left-0 right-0 p-4 bg-white dark:bg-gray-900 border-t border-gray-100 dark:border-gray-800 shadow-lg z-20">
+                <div className="fixed bottom-20 left-0 right-0 p-4 bg-white dark:bg-gray-900 border-t border-gray-100 dark:border-gray-800 shadow-lg z-20">
                     <div className="max-w-md mx-auto">
                         {bottomAction}
                     </div>
