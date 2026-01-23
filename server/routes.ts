@@ -5433,7 +5433,7 @@ Format sebagai bullet points singkat per insight.`;
       const records = await storage.getSidakKecepatanRecords(session.id);
       const observers = await storage.getSidakKecepatanObservers(session.id);
 
-      res.json({ ...session, records, observers });
+      res.json({ session, records, observers });
     } catch (error) {
       res.status(500).json({ message: "Gagal mengambil detail sesi" });
     }
@@ -6652,7 +6652,7 @@ Format sebagai bullet points singkat per insight.`;
       if (!session) return res.status(404).json({ message: "Sesi tidak ditemukan" });
       const records = await storage.getSidakAntrianRecords(req.params.id);
       const observers = await storage.getSidakAntrianObservers(req.params.id);
-      res.json({ ...session, records, observers });
+      res.json({ session, records, observers });
     } catch (error) {
       res.status(500).json({ message: "Gagal mengambil detail" });
     }
@@ -6756,7 +6756,7 @@ Format sebagai bullet points singkat per insight.`;
       if (!session) return res.status(404).json({ message: "Sesi tidak ditemukan" });
       const records = await storage.getSidakJarakRecords(req.params.id);
       const observers = await storage.getSidakJarakObservers(req.params.id);
-      res.json({ ...session, records, observers });
+      res.json({ session, records, observers });
     } catch (error) {
       res.status(500).json({ message: "Gagal mengambil detail" });
     }
@@ -6835,7 +6835,7 @@ Format sebagai bullet points singkat per insight.`;
       if (!session) return res.status(404).json({ message: "Sesi tidak ditemukan" });
       const records = await storage.getSidakKecepatanRecords(req.params.id);
       const observers = await storage.getSidakKecepatanObservers(req.params.id);
-      res.json({ ...session, records, observers });
+      res.json({ session, records, observers });
     } catch (error) {
       res.status(500).json({ message: "Gagal mengambil detail" });
     }
@@ -7699,7 +7699,7 @@ Format sebagai bullet points singkat per insight.`;
       if (!session) return res.status(404).json({ message: "Sesi tidak ditemukan" });
       const records = await storage.getSidakKecepatanRecords(id);
       const observers = await storage.getSidakKecepatanObservers(id);
-      res.json({ ...session, records, observers });
+      res.json({ session, records, observers });
     } catch (error) {
       res.status(500).json({ message: "Gagal mengambil detail sesi" });
     }
