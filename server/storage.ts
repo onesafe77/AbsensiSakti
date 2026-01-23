@@ -7165,13 +7165,23 @@ export class DrizzleStorage implements IStorage {
   async batchInsertFmsViolations(violations: InsertFmsViolation[]): Promise<{ count: number }> {
     if (violations.length === 0) return { count: 0 };
 
+    // Deduplicate: Keep last occurrence of each unique key (date+time+vehicle+type)
+    // This prevents "ON CONFLICT DO UPDATE command cannot affect row a second time" error
+    const uniqueMap = new Map<string, InsertFmsViolation>();
+    for (const v of violations) {
+      const key = `${v.violationDate}|${v.violationTime}|${v.vehicleNo}|${v.violationType}`;
+      uniqueMap.set(key, v); // Last occurrence wins
+    }
+    const uniqueViolations = Array.from(uniqueMap.values());
+    console.log(`[FMS Upload] Deduplicated: ${violations.length} -> ${uniqueViolations.length} unique records`);
+
     // Batch insert with ON CONFLICT DO UPDATE (Smart Upsert)
     // We split into chunks to avoid query param limits
     const CHUNK_SIZE = 1000;
     let totalInserted = 0;
 
-    for (let i = 0; i < violations.length; i += CHUNK_SIZE) {
-      const chunk = violations.slice(i, i + CHUNK_SIZE);
+    for (let i = 0; i < uniqueViolations.length; i += CHUNK_SIZE) {
+      const chunk = uniqueViolations.slice(i, i + CHUNK_SIZE);
 
       // Upsert: If (date, time, vehicle, type) matches, UPDATE the Mutable Fields
       // This allows re-uploading validated data
