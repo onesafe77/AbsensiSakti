@@ -537,9 +537,22 @@ export default function DashboardOverspeed() {
                     <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight">
                         Overspeed Dashboard
                     </h1>
-                    <p className="text-gray-500 text-sm">
-                        Total {rawData.length} data (GEC Only) fetched from Spreadsheet
-                    </p>
+                    <div className="flex items-center gap-2 mt-1">
+                        <p className="text-gray-500 text-sm">
+                            Total {rawData.length} data (GEC Only) fetched from {dataSource === "sheets" ? "Google Sheets" : "Spreadsheet"}
+                        </p>
+                        {sheetConfig ? (
+                            <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">
+                                <Link2 className="w-3 h-3 mr-1" /> Terhubung: {sheetConfig.sheetName}
+                            </Badge>
+                        ) : (
+                            <Link href="/workspace/settings/google-sheets">
+                                <Badge variant="outline" className="text-xs bg-yellow-50 text-yellow-700 border-yellow-200 cursor-pointer hover:bg-yellow-100">
+                                    <Settings className="w-3 h-3 mr-1" /> Hubungkan Spreadsheet
+                                </Badge>
+                            </Link>
+                        )}
+                    </div>
                 </div>
 
                 <div className="flex items-center gap-2 w-full md:w-auto">
