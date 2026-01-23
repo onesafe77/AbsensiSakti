@@ -52,6 +52,7 @@ import EvaluasiDriver from "@/pages/evaluasi-driver";
 import DashboardOverspeed from "@/pages/dashboard-overspeed";
 import DashboardJarak from "@/pages/dashboard-jarak";
 import DashboardStatistics from "@/pages/dashboard-statistics";
+import GoogleSheetsConfig from "@/pages/google-sheets-config";
 
 import FmsFatigueValidationDashboard from "@/pages/hse/fatigue/dashboard-validation";
 
@@ -305,6 +306,7 @@ export function Workspace() {
               <Route path="/workspace/hse/jarak" component={DashboardJarak} />
               <Route path="/workspace/hse/fatigue-validation" component={FmsFatigueValidationDashboard} />
               <Route path="/workspace/hse/statistics" component={DashboardStatistics} />
+              <Route path="/workspace/settings/google-sheets" component={GoogleSheetsConfig} />
 
               {/* TNA Routes */}
               <Route path="/workspace/hse/tna/trainings" component={TrainingMaster} />
