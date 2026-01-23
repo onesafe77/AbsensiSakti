@@ -52,7 +52,7 @@ export function MobileSidakLayout({
 
                 {/* Progress Bar */}
                 <div className="mt-3">
-                    <Progress value={progress} className="h-1.5 w-full bg-gray-100 dark:bg-gray-800" indicatorClassName="bg-blue-600" />
+                    <Progress value={progress} className="h-1.5 w-full bg-gray-100 dark:bg-gray-800 [&>div]:bg-red-600" />
                 </div>
             </div>
 
