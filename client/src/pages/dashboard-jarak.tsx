@@ -38,18 +38,40 @@ import {
     Filter,
     TrendingUp,
     CheckCircle,
-
     Download,
     Sparkles,
+    Link2,
+    Settings,
 } from "lucide-react";
 import html2canvas from "html2canvas";
 import { saveAs } from "file-saver";
 import { Badge } from "@/components/ui/badge";
+import { Link } from "wouter";
 
 // --- Configuration ---
 const CSV_URL =
     "https://docs.google.com/spreadsheets/d/e/2PACX-1vTX9zYvZSIKyKXx-DfhyXZCdTMuqhPY_kXu_WxMWEZ-MHPR779_x_0NklR1VjDGN1e7aoloMaDf5jk9/pub?gid=512403277&single=true&output=csv";
 const COMPANY_FILTER_DEFAULT = "GEC";
+const DASHBOARD_ID = "jarak-aman";
+
+interface SheetConfig {
+  id: string;
+  name: string;
+  spreadsheetId: string;
+  sheetName: string;
+  spreadsheetTitle?: string;
+}
+
+function getSheetConfig(): SheetConfig | null {
+  try {
+    const saved = localStorage.getItem("google-sheets-configs");
+    if (!saved) return null;
+    const configs: SheetConfig[] = JSON.parse(saved);
+    return configs.find(c => c.id === DASHBOARD_ID) || null;
+  } catch {
+    return null;
+  }
+}
 
 // --- Types ---
 interface OverspeedData {
@@ -109,6 +131,8 @@ export default function DashboardJarak() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+    const [sheetConfig, setSheetConfig] = useState<SheetConfig | null>(null);
+    const [dataSource, setDataSource] = useState<"sheets" | "csv">("csv");
 
     // Filters
     const [filterYear, setFilterYear] = useState<string>(new Date().getFullYear().toString());
@@ -119,34 +143,126 @@ export default function DashboardJarak() {
     const [availableYears, setAvailableYears] = useState<number[]>([]);
     const [availableUnits, setAvailableUnits] = useState<string[]>([]);
 
-    // --- Fetch Data ---
-    const fetchData = () => {
+    useEffect(() => {
+        const config = getSheetConfig();
+        setSheetConfig(config);
+    }, []);
+
+    const processRows = (rows: string[][], headers: string[]) => {
+        const headersTrimmed = headers.map(h => h ? h.trim() : "");
+        const iNo = headersTrimmed.indexOf("No");
+        const iSumber = headersTrimmed.indexOf("Sumber") > -1 ? headersTrimmed.indexOf("Sumber") : headersTrimmed.indexOf("Type");
+        const iEksekutor = headersTrimmed.indexOf("Nama Eksekutor");
+        let iKaryawan = headersTrimmed.indexOf("Nama Karyawan");
+        if (iKaryawan === -1) iKaryawan = headersTrimmed.indexOf("Slamet prihatin");
+        const iNIK = headersTrimmed.indexOf("NIK");
+        if (iKaryawan === -1 && iNIK > -1) iKaryawan = iNIK + 1;
+        const iDate = headersTrimmed.indexOf("Date");
+        const iTime = headersTrimmed.indexOf("Time");
+        const iVehicle = headersTrimmed.indexOf("Vehicle No");
+        const iCompany = headersTrimmed.indexOf("Company");
+        const iViolation = headersTrimmed.indexOf("Violation");
+        const iLocation = headersTrimmed.indexOf("Location (KM)") > -1 ? headersTrimmed.indexOf("Location (KM)") : headersTrimmed.indexOf("Location SiCantik");
+        const iDurasi = headersTrimmed.indexOf("Durasi Close");
+        const iPemenuhan = headersTrimmed.indexOf("Tanggal Pemenuhan");
+        const iWeek = headersTrimmed.indexOf("Week");
+        const iMonth = headersTrimmed.indexOf("Month");
+        const iTicketStatus = headersTrimmed.indexOf("Status");
+        let iValidationStatus = headersTrimmed.indexOf("Status Pelanggaran");
+        if (iValidationStatus === -1) iValidationStatus = headersTrimmed.indexOf("Verifikasi");
+
+        return rows
+            .filter(r => r[iCompany]?.trim().toUpperCase() === COMPANY_FILTER_DEFAULT)
+            .map(r => {
+                const d = parseDate(r[iDate]);
+                let rawName = r[iKaryawan];
+                if (!rawName || rawName === "#N/A" || rawName.trim() === "-") {
+                    rawName = r[iNIK] ? `${r[iNIK]} (NIK)` : "Unknown";
+                }
+                return {
+                    No: r[iNo],
+                    Sumber: r[iSumber],
+                    "Nama Eksekutor": r[iEksekutor],
+                    "Nama Karyawan": rawName,
+                    Date: r[iDate],
+                    Time: r[iTime],
+                    "Vehicle No": r[iVehicle],
+                    Company: r[iCompany],
+                    Violation: r[iViolation],
+                    "Location (KM)": r[iLocation],
+                    "Date Opr": "",
+                    Jalur: "",
+                    Week: r[iWeek],
+                    Month: r[iMonth],
+                    Jalur2: "",
+                    Coordinat: "",
+                    TicketStatus: r[iTicketStatus],
+                    ValidationStatus: r[iValidationStatus],
+                    "Durasi Close": r[iDurasi],
+                    "Tanggal Pemenuhan": r[iPemenuhan],
+                    _dateObj: d,
+                    _year: d.getFullYear(),
+                    _monthIndex: d.getMonth(),
+                } as OverspeedData;
+            });
+    };
+
+    // --- Fetch Data from Google Sheets API ---
+    const fetchFromGoogleSheets = async () => {
+        if (!sheetConfig) return;
+        setLoading(true);
+        setError(null);
+        try {
+            const res = await fetch(`/api/google-sheets/data/${sheetConfig.spreadsheetId}/${encodeURIComponent(sheetConfig.sheetName)}`);
+            if (!res.ok) throw new Error("Gagal mengambil data dari Google Sheets");
+            const data = await res.json();
+            
+            if (data.rows && data.rows.length > 0) {
+                const headers = data.columns.map((c: any) => c.name);
+                const rows = data.rows.map((row: any) => headers.map((h: string) => row[h] || ""));
+                const processedData = processRows(rows, headers);
+                
+                const years = Array.from(new Set(processedData.map(d => d._year).filter(Boolean))) as number[];
+                const units = Array.from(new Set(processedData.map(d => d["Vehicle No"]).filter(Boolean))) as string[];
+                
+                setRawData(processedData);
+                setFilteredData(processedData);
+                setAvailableYears(years.sort((a, b) => b - a));
+                setAvailableUnits(units.sort());
+                setDataSource("sheets");
+            }
+            setLastUpdated(new Date());
+        } catch (err: any) {
+            setError(err.message || "Gagal mengambil data");
+            fetchFromCSV();
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // --- Fetch Data from CSV (Fallback) ---
+    const fetchFromCSV = () => {
         setLoading(true);
         setError(null);
 
         Papa.parse(CSV_URL, {
             download: true,
-            header: false, // OFF: Manual parsing for robust duplicate header handling
+            header: false,
             complete: (results) => {
                 if (results.data && results.data.length > 0) {
                     const rows = results.data as string[][];
                     const headers = rows[0];
-                    // Normalize headers: trim whitespace
                     const headersTrimmed = headers.map(h => h ? h.trim() : "");
 
-                    // Find Indices
                     const iNo = headersTrimmed.indexOf("No");
-                    const iSumber = headersTrimmed.indexOf("Sumber") > -1 ? headersTrimmed.indexOf("Sumber") : headersTrimmed.indexOf("Type"); // "Type" in Jarak
+                    const iSumber = headersTrimmed.indexOf("Sumber") > -1 ? headersTrimmed.indexOf("Sumber") : headersTrimmed.indexOf("Type");
                     const iEksekutor = headersTrimmed.indexOf("Nama Eksekutor");
-
-                    // Name Header Fix: The sheet has "Slamet prihatin" as the name header sometimes
                     let iKaryawan = headersTrimmed.indexOf("Nama Karyawan");
                     if (iKaryawan === -1) iKaryawan = headersTrimmed.indexOf("Slamet prihatin");
                     if (iKaryawan === -1) {
                         const iNIK = headersTrimmed.indexOf("NIK");
                         if (iNIK > -1) iKaryawan = iNIK + 1;
                     }
-
                     const iDate = headersTrimmed.indexOf("Date");
                     const iTime = headersTrimmed.indexOf("Time");
                     const iVehicle = headersTrimmed.indexOf("Vehicle No");
@@ -157,27 +273,19 @@ export default function DashboardJarak() {
                     const iPemenuhan = headersTrimmed.indexOf("Tanggal Pemenuhan");
                     const iWeek = headersTrimmed.indexOf("Week");
                     const iMonth = headersTrimmed.indexOf("Month");
-
-                    const iNIK = headersTrimmed.indexOf("NIK"); // Needed for fallback
-
-                    // Status Columns
+                    const iNIK = headersTrimmed.indexOf("NIK");
                     const iTicketStatus = headersTrimmed.indexOf("Status");
-
-                    // 2. Validation Status (Looking for "Status Pelanggaran" or second "Status")
                     let iValidationStatus = headersTrimmed.indexOf("Status Pelanggaran");
-                    if (iValidationStatus === -1) iValidationStatus = headersTrimmed.indexOf("Verifikasi"); // "Verifikasi" in Jarak
+                    if (iValidationStatus === -1) iValidationStatus = headersTrimmed.indexOf("Verifikasi");
 
                     const processedData = rows.slice(1)
                         .filter(r => r[iCompany]?.trim().toUpperCase() === COMPANY_FILTER_DEFAULT)
                         .map(r => {
                             const d = parseDate(r[iDate]);
-
-                            // Safe Name Retrieval
                             let rawName = r[iKaryawan];
                             if (!rawName || rawName === "#N/A" || rawName.trim() === "-") {
                                 rawName = r[iNIK] ? `${r[iNIK]} (NIK)` : "Unknown";
                             }
-
                             return {
                                 No: r[iNo],
                                 Sumber: r[iSumber],
@@ -229,11 +337,19 @@ export default function DashboardJarak() {
         });
     };
 
+    const fetchData = () => {
+        if (sheetConfig) {
+            fetchFromGoogleSheets();
+        } else {
+            fetchFromCSV();
+        }
+    };
+
     useEffect(() => {
         fetchData();
         const interval = setInterval(fetchData, 300000); // 5 mins
         return () => clearInterval(interval);
-    }, []);
+    }, [sheetConfig]);
 
     // --- Apply Filters ---
     const applyFilters = () => {
