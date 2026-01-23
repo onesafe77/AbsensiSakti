@@ -5398,6 +5398,32 @@ Format sebagai bullet points singkat per insight.`;
     }
   });
 
+  // NOTE: /sessions route MUST be before /:id to avoid matching "sessions" as ID
+  app.get("/api/sidak-kecepatan/sessions", async (req, res) => {
+    try {
+      let sessions = await storage.getAllSidakKecepatanSessions();
+      const sessionUser = (req.session as any).user;
+      if (sessionUser && sessionUser.role !== 'ADMIN') {
+        sessions = sessions.filter(s => s.createdBy === sessionUser.nik);
+      }
+
+      const sessionsWithDetails = await Promise.all(
+        sessions.map(async (session) => {
+          const [records, observers] = await Promise.all([
+            storage.getSidakKecepatanRecords(session.id),
+            storage.getSidakKecepatanObservers(session.id)
+          ]);
+          return { ...session, totalSampel: records.length, observers };
+        })
+      );
+
+      res.json(sessionsWithDetails);
+    } catch (error) {
+      console.error("Error fetching Sidak Kecepatan sessions:", error);
+      res.status(500).json({ message: "Gagal mengambil data sesi Sidak Kecepatan" });
+    }
+  });
+
   // Get single session details
   app.get("/api/sidak-kecepatan/:id", async (req, res) => {
     try {
@@ -5554,6 +5580,17 @@ Format sebagai bullet points singkat per insight.`;
     }
   });
 
+  // NOTE: /sessions route MUST be before /:id to avoid matching "sessions" as ID
+  app.get("/api/sidak-pencahayaan/sessions", async (req, res) => {
+    try {
+      const sessions = await storage.getAllSidakPencahayaanSessions();
+      res.json(sessions);
+    } catch (error) {
+      console.error("Error fetching Sidak Pencahayaan sessions:", error);
+      res.status(500).json({ message: "Gagal mengambil data" });
+    }
+  });
+
   // Get single session
   app.get("/api/sidak-pencahayaan/:id", async (req, res) => {
     try {
@@ -5683,6 +5720,17 @@ Format sebagai bullet points singkat per insight.`;
 
   // Get all sessions
   app.get("/api/sidak-loto", async (req, res) => {
+    try {
+      const sessions = await storage.getAllSidakLotoSessions();
+      res.json(sessions);
+    } catch (error) {
+      console.error("Error fetching Sidak LOTO sessions:", error);
+      res.status(500).json({ message: "Gagal mengambil data" });
+    }
+  });
+
+  // NOTE: /sessions route MUST be before /:id to avoid matching "sessions" as ID
+  app.get("/api/sidak-loto/sessions", async (req, res) => {
     try {
       const sessions = await storage.getAllSidakLotoSessions();
       res.json(sessions);
@@ -5823,6 +5871,16 @@ Format sebagai bullet points singkat per insight.`;
     }
   });
 
+  // NOTE: /sessions route MUST be before /:id to avoid matching "sessions" as ID
+  app.get("/api/sidak-digital/sessions", async (req, res) => {
+    try {
+      const sessions = await storage.getAllSidakDigitalSessions();
+      res.json(sessions);
+    } catch (error) {
+      res.status(500).json({ message: "Gagal mengambil data" });
+    }
+  });
+
   app.get("/api/sidak-digital/:id", async (req, res) => {
     try {
       const session = await storage.getSidakDigitalSession(req.params.id);
@@ -5877,6 +5935,16 @@ Format sebagai bullet points singkat per insight.`;
   // ============================================
 
   app.get("/api/sidak-workshop", async (req, res) => {
+    try {
+      const sessions = await storage.getAllSidakWorkshopSessions();
+      res.json(sessions);
+    } catch (error) {
+      res.status(500).json({ message: "Gagal mengambil data" });
+    }
+  });
+
+  // NOTE: /sessions route MUST be before /:id to avoid matching "sessions" as ID
+  app.get("/api/sidak-workshop/sessions", async (req, res) => {
     try {
       const sessions = await storage.getAllSidakWorkshopSessions();
       res.json(sessions);
@@ -6664,6 +6732,16 @@ Format sebagai bullet points singkat per insight.`;
   // ============================================
 
   app.get("/api/sidak-jarak", async (req, res) => {
+    try {
+      const sessions = await storage.getAllSidakJarakSessions();
+      res.json(sessions);
+    } catch (error) {
+      res.status(500).json({ message: "Gagal mengambil riwayat" });
+    }
+  });
+
+  // NOTE: /sessions route MUST be before /:id to avoid matching "sessions" as ID
+  app.get("/api/sidak-jarak/sessions", async (req, res) => {
     try {
       const sessions = await storage.getAllSidakJarakSessions();
       res.json(sessions);
