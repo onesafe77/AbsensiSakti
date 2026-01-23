@@ -2,3 +2,17 @@
 Stack: TypeError: XLSX.readFile is not a function
     at <anonymous> (C:\OneTalent\server\routes.ts:12032:29)
 
+[2026-01-21T02:23:55.931Z] FMS Upload Error: ON CONFLICT DO UPDATE command cannot affect row a second time
+Stack: error: ON CONFLICT DO UPDATE command cannot affect row a second time
+    at file:///home/runner/workspace/node_modules/@neondatabase/serverless/index.mjs:1345:74
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async DrizzleStorage.batchInsertFmsViolations (/home/runner/workspace/server/storage.ts:7178:7)
+    at async <anonymous> (/home/runner/workspace/server/routes.ts:11992:22)
+
+[2026-01-23T01:34:39.764Z] FMS Upload Error: ON CONFLICT DO UPDATE command cannot affect row a second time
+Stack: error: ON CONFLICT DO UPDATE command cannot affect row a second time
+    at file:///home/runner/workspace/node_modules/@neondatabase/serverless/index.mjs:1345:74
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async DrizzleStorage.batchInsertFmsViolations (/home/runner/workspace/server/storage.ts:7178:7)
+    at async <anonymous> (/home/runner/workspace/server/routes.ts:11992:22)
+
