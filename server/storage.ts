@@ -7216,6 +7216,7 @@ export class DrizzleStorage implements IStorage {
       violationType?: string;
       shift?: string;
       validationStatus?: string;
+      week?: string; // Week filter (comma-separated: "1,2,3")
     }
   ): Promise<{
     byShift: any[];
@@ -7279,6 +7280,16 @@ export class DrizzleStorage implements IStorage {
       }
       if (statusConditions.length > 0) {
         conditions.push(or(...statusConditions));
+      }
+    }
+
+    // Week filter (multi-select: comma-separated week numbers)
+    if (options?.week && options.week !== 'all') {
+      const weeks = options.week.split(',').map(w => parseInt(w.trim())).filter(w => !isNaN(w));
+      if (weeks.length === 1) {
+        conditions.push(eq(fmsViolations.week, weeks[0]));
+      } else if (weeks.length > 1) {
+        conditions.push(inArray(fmsViolations.week, weeks));
       }
     }
 

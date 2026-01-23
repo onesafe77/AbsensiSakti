@@ -11894,7 +11894,7 @@ Format sebagai bullet points singkat per insight.`;
   // 1. Get Analytics Dashboard Data
   app.get("/api/fms/analytics", async (req, res) => {
     try {
-      const { startDate, endDate, startTime, endTime, violationType, shift, validationStatus } = req.query;
+      const { startDate, endDate, startTime, endTime, violationType, shift, validationStatus, week } = req.query;
 
       const stats = await storage.getFmsAnalytics(
         typeof startDate === 'string' ? startDate : undefined,
@@ -11905,6 +11905,7 @@ Format sebagai bullet points singkat per insight.`;
           violationType: typeof violationType === 'string' ? violationType : undefined,
           shift: typeof shift === 'string' ? shift : undefined,
           validationStatus: typeof validationStatus === 'string' ? validationStatus : undefined,
+          week: typeof week === 'string' ? week : undefined,
         }
       );
 

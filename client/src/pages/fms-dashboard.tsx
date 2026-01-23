@@ -53,7 +53,8 @@ export default function FmsDashboard() {
     const [filters, setFilters] = useState({
         violationTypes: [] as string[],   // Multi-select
         shifts: [] as string[],           // Multi-select
-        validationStatuses: [] as string[] // Multi-select
+        validationStatuses: [] as string[], // Multi-select
+        weeks: [] as number[]             // Multi-select for weeks (1-5)
     });
     const [isUploadOpen, setIsUploadOpen] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -72,6 +73,7 @@ export default function FmsDashboard() {
         if (filters.violationTypes.length > 0) params.append("violationType", filters.violationTypes.join(","));
         if (filters.shifts.length > 0) params.append("shift", filters.shifts.join(","));
         if (filters.validationStatuses.length > 0) params.append("validationStatus", filters.validationStatuses.join(","));
+        if (filters.weeks.length > 0) params.append("week", filters.weeks.join(","));
         return params.toString();
     };
 
@@ -311,12 +313,45 @@ export default function FmsDashboard() {
                     </details>
                 </div>
 
+                {/* Week Multi-Select */}
+                <div className="relative">
+                    <details className="group">
+                        <summary className="flex items-center gap-2 px-3 py-2 border rounded-lg cursor-pointer text-sm bg-white hover:bg-slate-50 min-w-[120px]">
+                            <span className="truncate">
+                                {filters.weeks.length === 0
+                                    ? "Semua Week"
+                                    : `Week ${filters.weeks.sort((a, b) => a - b).join(", ")}`}
+                            </span>
+                            <span className="ml-auto">▼</span>
+                        </summary>
+                        <div className="absolute z-10 mt-1 w-36 bg-white border rounded-lg shadow-lg p-2">
+                            {[1, 2, 3, 4, 5].map((week) => (
+                                <label key={week} className="flex items-center gap-2 px-2 py-1 hover:bg-slate-100 rounded cursor-pointer text-sm">
+                                    <input
+                                        type="checkbox"
+                                        checked={filters.weeks.includes(week)}
+                                        onChange={(e) => {
+                                            if (e.target.checked) {
+                                                setFilters(prev => ({ ...prev, weeks: [...prev.weeks, week] }));
+                                            } else {
+                                                setFilters(prev => ({ ...prev, weeks: prev.weeks.filter(w => w !== week) }));
+                                            }
+                                        }}
+                                        className="rounded"
+                                    />
+                                    Week {week}
+                                </label>
+                            ))}
+                        </div>
+                    </details>
+                </div>
+
                 {/* Reset Button */}
                 <Button
                     variant="outline"
                     size="sm"
                     onClick={() => {
-                        setFilters({ violationTypes: [], shifts: [], validationStatuses: [] });
+                        setFilters({ violationTypes: [], shifts: [], validationStatuses: [], weeks: [] });
                     }}
                 >
                     Reset
