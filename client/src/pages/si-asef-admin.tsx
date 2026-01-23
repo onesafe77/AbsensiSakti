@@ -1,5 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { UploadCloud, FileText, Trash2, Search, CheckCircle2, Database, AlertCircle, FolderOpen, ChevronDown, ChevronRight, FileType, HardDrive, Loader2, Link, FileSpreadsheet } from 'lucide-react';
+import { UploadCloud, FileText, Trash2, Search, CheckCircle2, Database, AlertCircle, FolderOpen, ChevronDown, ChevronRight, FileType, HardDrive, Loader2, Link, FileSpreadsheet, Settings, Link2 } from 'lucide-react';
+import { Link as RouterLink } from "wouter";
+import { Badge } from "@/components/ui/badge";
 import { UploadedDocument } from '../components/si-asef/types';
 
 const FOLDERS = [
@@ -243,11 +245,18 @@ export default function SiAsefAdminPage() {
                             <p className="text-zinc-500 text-sm">Kelola dokumen regulasi internal perusahaan untuk Mystic.</p>
                         </div>
                     </div>
-                    <div className="flex items-center gap-3 bg-white px-4 py-2 rounded-xl border border-zinc-200 shadow-sm">
-                        <Database className="w-5 h-5 text-emerald-600" />
-                        <div>
-                            <p className="text-xs text-zinc-400 font-bold uppercase">Total Dokumen</p>
-                            <p className="text-lg font-bold text-zinc-900 leading-none">{documents.length}</p>
+                    <div className="flex items-center gap-3">
+                        <RouterLink href="/workspace/settings/google-sheets">
+                            <Badge variant="outline" className="text-xs bg-yellow-50 text-yellow-700 border-yellow-200 cursor-pointer hover:bg-yellow-100 px-3 py-1.5">
+                                <Settings className="w-3 h-3 mr-1" /> Hubungkan Spreadsheet
+                            </Badge>
+                        </RouterLink>
+                        <div className="flex items-center gap-3 bg-white px-4 py-2 rounded-xl border border-zinc-200 shadow-sm">
+                            <Database className="w-5 h-5 text-emerald-600" />
+                            <div>
+                                <p className="text-xs text-zinc-400 font-bold uppercase">Total Dokumen</p>
+                                <p className="text-lg font-bold text-zinc-900 leading-none">{documents.length}</p>
+                            </div>
                         </div>
                     </div>
                 </div>
