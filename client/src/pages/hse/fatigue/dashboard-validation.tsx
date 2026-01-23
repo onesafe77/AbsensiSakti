@@ -24,10 +24,12 @@ import {
     Cell,
     Legend
 } from "recharts";
-import { Loader2, AlertTriangle, CheckCircle, Clock, Link as LinkIcon, HardHat } from "lucide-react";
+import { Loader2, AlertTriangle, CheckCircle, Clock, Link as LinkIcon, HardHat, Settings, Link2 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
+import { Badge } from "@/components/ui/badge";
+import { Link } from "wouter";
 
 // --- Types ---
 interface KPI {
@@ -149,7 +151,12 @@ export default function FatigueValidationDashboard() {
                         <p className="text-sm opacity-80">PT Goden Energi Cemelang Lestari</p>
                     </div>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex gap-2 items-center">
+                    <Link href="/workspace/settings/google-sheets">
+                        <Badge variant="outline" className="text-xs bg-white/80 text-gray-700 border-gray-300 cursor-pointer hover:bg-white px-3 py-1.5">
+                            <Settings className="w-3 h-3 mr-1" /> Hubungkan Spreadsheet
+                        </Badge>
+                    </Link>
                     <Button
                         variant="outline"
                         className="bg-green-600 hover:bg-green-700 text-white border-none gap-2 hover:text-white"
