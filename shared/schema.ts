@@ -1356,7 +1356,7 @@ export type InsertSidakApdObserver = z.infer<typeof insertSidakApdObserverSchema
 export const sidakJarakSessions = pgTable("sidak_jarak_sessions", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   tanggal: varchar("tanggal").notNull(),
-  waktu: varchar("waktu").notNull(), // Renamed from jam
+  jam: varchar("jam").notNull(), // Database column name is 'jam'
   shift: varchar("shift").notNull(),
   lokasi: text("lokasi").notNull(),
   totalSampel: integer("total_sampel").notNull().default(0),
@@ -1364,6 +1364,7 @@ export const sidakJarakSessions = pgTable("sidak_jarak_sessions", {
   activityPhotos: text("activity_photos").array(),
   createdBy: varchar("created_by"),
   createdAt: timestamp("created_at").defaultNow(),
+  waktu: varchar("waktu"), // Legacy column, now optional
 }, (table) => [
   index("IDX_jarak_sessions_created_by").on(table.createdBy),
 ]);

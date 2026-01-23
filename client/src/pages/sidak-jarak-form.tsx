@@ -40,7 +40,7 @@ interface JarakDraftData {
     sessionId: string | null;
     headerData: {
         tanggal: string;
-        waktu: string;
+        jam: string;
         shift: string;
         lokasi: string;
     };
@@ -53,7 +53,7 @@ const initialDraftData: JarakDraftData = {
     sessionId: null,
     headerData: {
         tanggal: new Date().toISOString().split('T')[0],
-        waktu: "",
+        jam: "",
         shift: "Shift 1",
         lokasi: ""
     },
@@ -103,12 +103,12 @@ export default function SidakJarakForm() {
 
     // Initial time set
     useEffect(() => {
-        if (!draft.headerData.waktu && draft.step === 1) {
+        if (!draft.headerData.jam && draft.step === 1) {
             const now = new Date();
             const timeString = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
             setDraft(prev => ({
                 ...prev,
-                headerData: { ...prev.headerData, waktu: timeString }
+                headerData: { ...prev.headerData, jam: timeString }
             }));
         }
     }, []);
@@ -295,8 +295,8 @@ export default function SidakJarakForm() {
                                     <Input
                                         type="time"
                                         className="h-12 bg-gray-50 border-gray-200"
-                                        value={draft.headerData.waktu}
-                                        onChange={(e) => setDraft(prev => ({ ...prev, headerData: { ...prev.headerData, waktu: e.target.value } }))}
+                                        value={draft.headerData.jam}
+                                        onChange={(e) => setDraft(prev => ({ ...prev, headerData: { ...prev.headerData, jam: e.target.value } }))}
                                     />
                                 </div>
                             </div>
