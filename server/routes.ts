@@ -14,6 +14,7 @@ import { exec } from "child_process";
 const upload = multer({ dest: 'uploads/' });
 
 import { storage } from "./storage";
+import { fetchSheetData, listSpreadsheetSheets, getSpreadsheetMetadata, generateVisualizationSuggestions } from "./google-sheets-service";
 import { ObjectStorageService, ObjectNotFoundError } from "./replit_integrations/object_storage";
 import { setupAuth } from "./replitAuth";
 import {
@@ -12353,6 +12354,73 @@ Format sebagai bullet points singkat per insight.`;
       res.sendStatus(204);
     } catch (e: any) {
       res.status(500).json({ error: e.message });
+    }
+  });
+
+  // ============================================================================
+  // GOOGLE SHEETS API ROUTES
+  // ============================================================================
+
+  app.get("/api/google-sheets/metadata/:spreadsheetId", async (req, res) => {
+    try {
+      const { spreadsheetId } = req.params;
+      const metadata = await getSpreadsheetMetadata(spreadsheetId);
+      res.json(metadata);
+    } catch (error: any) {
+      console.error("Error fetching spreadsheet metadata:", error);
+      res.status(500).json({ error: error.message || "Failed to fetch metadata" });
+    }
+  });
+
+  app.get("/api/google-sheets/sheets/:spreadsheetId", async (req, res) => {
+    try {
+      const { spreadsheetId } = req.params;
+      const sheets = await listSpreadsheetSheets(spreadsheetId);
+      res.json({ sheets });
+    } catch (error: any) {
+      console.error("Error listing sheets:", error);
+      res.status(500).json({ error: error.message || "Failed to list sheets" });
+    }
+  });
+
+  app.get("/api/google-sheets/data/:spreadsheetId/:sheetName", async (req, res) => {
+    try {
+      const { spreadsheetId, sheetName } = req.params;
+      const { range } = req.query;
+      const data = await fetchSheetData(spreadsheetId, decodeURIComponent(sheetName), range as string | undefined);
+      
+      const visualizationSuggestions = generateVisualizationSuggestions(data.columns);
+      
+      res.json({
+        ...data,
+        visualizationSuggestions
+      });
+    } catch (error: any) {
+      console.error("Error fetching sheet data:", error);
+      res.status(500).json({ error: error.message || "Failed to fetch data" });
+    }
+  });
+
+  app.post("/api/google-sheets/analyze", async (req, res) => {
+    try {
+      const { spreadsheetId, sheetName, range } = req.body;
+      
+      if (!spreadsheetId || !sheetName) {
+        return res.status(400).json({ error: "spreadsheetId and sheetName are required" });
+      }
+      
+      const data = await fetchSheetData(spreadsheetId, sheetName, range);
+      const visualizations = generateVisualizationSuggestions(data.columns);
+      
+      res.json({
+        columns: data.columns,
+        rowCount: data.totalRows,
+        visualizations,
+        preview: data.rows.slice(0, 10)
+      });
+    } catch (error: any) {
+      console.error("Error analyzing sheet:", error);
+      res.status(500).json({ error: error.message || "Failed to analyze sheet" });
     }
   });
 
