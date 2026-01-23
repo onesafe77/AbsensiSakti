@@ -145,7 +145,8 @@ export default function SidakWorkshopForm() {
             if (!draft.sessionId) throw new Error("No active session");
             const res = await apiRequest(`/api/sidak-workshop/${draft.sessionId}/records`, "POST", {
                 ...record,
-                sessionId: draft.sessionId
+                sessionId: draft.sessionId,
+                ordinal: draft.records.length + 1
             });
             return res;
         },

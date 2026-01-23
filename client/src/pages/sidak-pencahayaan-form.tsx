@@ -151,7 +151,8 @@ export default function SidakPencahayaanForm() {
             const res = await apiRequest(`/api/sidak-pencahayaan/${draft.sessionId}/records`, "POST", {
                 ...record,
                 intensitasLux: parseInt(record.intensitasLux) || 0,
-                sessionId: draft.sessionId
+                sessionId: draft.sessionId,
+                ordinal: draft.records.length + 1
             });
             return res;
         },

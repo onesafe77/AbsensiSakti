@@ -161,6 +161,7 @@ export default function SidakKecepatanForm() {
             const res = await apiRequest(`/api/sidak-kecepatan/${draft.sessionId}/records`, "POST", {
                 ...record,
                 sessionId: draft.sessionId,
+                ordinal: draft.records.length + 1,
                 kecepatanKph: record.kecepatanKph.toString(),
                 kecepatanMph: record.kecepatanMph ? record.kecepatanMph.toString() : null,
             });
