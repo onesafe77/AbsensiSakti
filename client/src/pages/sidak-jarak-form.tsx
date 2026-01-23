@@ -172,7 +172,8 @@ export default function SidakJarakForm() {
             if (!draft.sessionId) throw new Error("No active session");
             const res = await apiRequest(`/api/sidak-jarak/${draft.sessionId}/observers`, "POST", {
                 ...observer,
-                sessionId: draft.sessionId
+                sessionId: draft.sessionId,
+                ordinal: draft.observers.length + 1
             });
             return res;
         },
