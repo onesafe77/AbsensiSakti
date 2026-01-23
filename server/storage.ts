@@ -4708,9 +4708,14 @@ export class DrizzleStorage implements IStorage {
   }
 
   async createSidakJarakSession(session: InsertSidakJarakSession): Promise<SidakJarakSession> {
+    // Ensure waktu is set to same value as jam for backwards compatibility
+    const sessionData = {
+      ...session,
+      waktu: session.jam || (session as any).waktu || ""
+    };
     const [result] = await this.db
       .insert(sidakJarakSessions)
-      .values(session)
+      .values(sessionData)
       .returning();
     return result;
   }
