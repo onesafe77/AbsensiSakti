@@ -32,58 +32,94 @@ export async function generateSidakKecepatanPdf(data: SidakKecepatanData): Promi
 
     pdf.setFont('helvetica', 'normal');
     pdf.setFontSize(9);
-    pdf.text('BIB - HSE - PPO - F - xxx - xx', pageWidth - margin, yPosition + 6, { align: 'right' });
+    pdf.text('BIB – HSE – PPO – F – 072 – 18', pageWidth - margin, yPosition + 6, { align: 'right' });
+
+    yPosition += 15;
+
+    // Gray background for title section
+    pdf.setFillColor(200, 200, 200);
+    pdf.rect(margin, yPosition, availableWidth, 12, 'F');
+
+    pdf.setFont('helvetica', 'bold');
+    pdf.setFontSize(16);
+    pdf.text('OBSERVASI KECEPATAN BERKENDARA', pageWidth / 2, yPosition + 5, { align: 'center' });
 
     yPosition += 12;
-
-    pdf.setFillColor(220, 220, 220);
-    pdf.rect(margin, yPosition, availableWidth, 12, 'F');
-    pdf.setFont('helvetica', 'bold');
-    pdf.setFontSize(14);
-    pdf.text('OBSERVASI KEPATUHAN KECEPATAN', pageWidth / 2, yPosition + 5.5, { align: 'center' });
     pdf.setFont('helvetica', 'italic');
-    pdf.setFontSize(9);
-    pdf.text('Untuk memantau kepatuhan batas kecepatan unit', pageWidth / 2, yPosition + 10, { align: 'center' });
+    pdf.setFontSize(8);
+    pdf.text('Formulir ini digunakan sebagai catatan hasil monitoring kecepatan berkendara para pengemudi yang dilaksanakan di PT Borneo Indobara', pageWidth / 2, yPosition + 3, { align: 'center' });
 
-    yPosition += 14;
+    yPosition += 5;
 
+    const colWidth1 = 35; // Label width
+    const colWidth2 = 55; // Value width
     const infoData = [
-        ['Tanggal', data.session.tanggal || '', 'Lokasi', data.session.lokasi || ''],
-        ['Waktu', data.session.waktu || '', 'Batas Kecepatan', `${data.session.batasKecepatanKph || 40} km/h`],
-        ['Shift', data.session.shift || '', 'Total Sampel', (data.session.totalSampel || data.records.length).toString()]
+        [
+            'Tanggal/ Shift',
+            `${data.session.tanggal || ''} / ${data.session.shift || ''}`,
+            'Lokasi',
+            data.session.lokasi || '',
+            'Sub lokasi',
+            data.session.subLokasi || ''
+        ],
+        [
+            'Waktu',
+            data.session.waktu || '',
+            'Total Sampel',
+            (data.session.totalSampel || data.records.length).toString(),
+            'Batas Kecepatan (KPH)',
+            `${data.session.batasKecepatanKph || 40}`
+        ]
     ];
 
     autoTable(pdf, {
         startY: yPosition,
         body: infoData,
-        theme: 'plain',
+        theme: 'grid',
         tableWidth: availableWidth,
-        styles: { fontSize: 8, cellPadding: 1.5, lineWidth: 0.1, lineColor: [0, 0, 0] },
+        styles: { fontSize: 8, cellPadding: 2, lineWidth: 0.2, lineColor: [0, 0, 0], halign: 'left' },
         columnStyles: {
-            0: { cellWidth: 40, fillColor: [240, 240, 240] },
-            1: { cellWidth: availableWidth / 2 - 40 },
-            2: { cellWidth: 40, fillColor: [240, 240, 240] },
-            3: { cellWidth: availableWidth / 2 - 40 },
+            0: { cellWidth: colWidth1, fillColor: [240, 240, 240], fontStyle: 'bold' },
+            1: { cellWidth: colWidth2 },
+            2: { cellWidth: colWidth1, fillColor: [240, 240, 240], fontStyle: 'bold' },
+            3: { cellWidth: colWidth2 },
+            4: { cellWidth: colWidth1, fillColor: [240, 240, 240], fontStyle: 'bold' },
+            5: { cellWidth: colWidth2 },
         },
         margin: { left: margin, right: margin },
     });
 
     yPosition = (pdf as any).lastAutoTable.finalY + 2;
 
-    const tableHeaders = [['No', 'Nama - NIK', 'No Lambung', 'Tipe Unit', 'Kecepatan (km/h)', 'Patuh?', 'Keterangan']];
-    const batas = data.session.batasKecepatanKph || 40;
+    const tableHeaders = [
+        [
+            { content: 'No', rowSpan: 2 },
+            { content: 'No Kendaraan', rowSpan: 2 },
+            { content: 'Tipe Unit', rowSpan: 2 },
+            { content: 'Arah Kendaraan', colSpan: 2 },
+            { content: 'Kecepatan Aktual (MPH)', rowSpan: 2 },
+            { content: 'Kecepatan Aktual (KPH)', rowSpan: 2 },
+            { content: 'Keterangan', rowSpan: 2 }
+        ],
+        [
+            'Muatan',
+            'Kosongan'
+        ]
+    ];
+
     const tableData = data.records.map((record, idx) => [
         (idx + 1).toString(),
-        record.namaNik || '',
-        record.noLambung || '',
+        record.noKendaraan || '',
         record.tipeUnit || '',
-        record.kecepatanTerukur?.toString() || '',
-        (record.kecepatanTerukur || 0) <= batas ? 'V' : 'X',
+        record.arahMuatan ? '✓' : '',
+        record.arahKosongan ? '✓' : '',
+        record.kecepatanMph || '',
+        record.kecepatanKph || '',
         record.keterangan || ''
     ]);
 
-    while (tableData.length < 10) {
-        tableData.push([(tableData.length + 1).toString(), '', '', '', '', '', '']);
+    while (tableData.length < 15) {
+        tableData.push([(tableData.length + 1).toString(), '', '', '', '', '', '', '']);
     }
 
     autoTable(pdf, {
@@ -92,51 +128,73 @@ export async function generateSidakKecepatanPdf(data: SidakKecepatanData): Promi
         body: tableData,
         theme: 'grid',
         tableWidth: availableWidth,
-        styles: { fontSize: 8, cellPadding: 1, halign: 'center', valign: 'middle', lineWidth: 0.15, minCellHeight: 7 },
-        headStyles: { fillColor: [220, 220, 220], textColor: [0, 0, 0], fontStyle: 'bold' },
+        styles: { fontSize: 7.5, cellPadding: 1.5, halign: 'center', valign: 'middle', lineWidth: 0.2, minCellHeight: 6 },
+        headStyles: { fillColor: [220, 220, 220], textColor: [0, 0, 0], fontStyle: 'bold', halign: 'center', valign: 'middle' },
         columnStyles: {
-            0: { cellWidth: 10 },
-            1: { cellWidth: 70, halign: 'left' },
-            2: { cellWidth: 30 },
-            3: { cellWidth: 35 },
-            4: { cellWidth: 30 },
-            5: { cellWidth: 20 },
-            6: { cellWidth: 'auto', halign: 'left' },
+            0: { cellWidth: 12 },
+            1: { cellWidth: 38, halign: 'left' },
+            2: { cellWidth: 35 },
+            3: { cellWidth: 20 },
+            4: { cellWidth: 20 },
+            5: { cellWidth: 32 },
+            6: { cellWidth: 32 },
+            7: { cellWidth: 'auto', halign: 'left' },
         },
         margin: { left: margin, right: margin },
+        didDrawCell: (cellData) => {
+            // Draw checkmarks for Muatan (column 3) and Kosongan (column 4)
+            if ((cellData.column.index === 3 || cellData.column.index === 4) && cellData.section === 'body') {
+                const cellText = cellData.cell.text[0];
+                if (cellText === '✓') {
+                    // Clear the text
+                    cellData.cell.text = [];
+
+                    // Draw checkmark manually
+                    const centerX = cellData.cell.x + cellData.cell.width / 2;
+                    const centerY = cellData.cell.y + cellData.cell.height / 2;
+                    const size = 1.8;
+
+                    pdf.setDrawColor(0, 0, 0);
+                    pdf.setLineWidth(0.4);
+
+                    // Draw checkmark shape
+                    pdf.line(centerX - size, centerY, centerX - size / 3, centerY + size);
+                    pdf.line(centerX - size / 3, centerY + size, centerX + size, centerY - size);
+                }
+            }
+        },
     });
 
     yPosition = (pdf as any).lastAutoTable.finalY + 3;
 
-    const getObs = (i: number) => data.observers[i] || null;
+    const getObs = (i: number) => data.observers[i] || { nama: '', nik: '', perusahaan: '', tandaTangan: '' };
     const obsData = [
-        ['1', getObs(0)?.nama || '', '', '3', getObs(2)?.nama || '', ''],
-        ['2', getObs(1)?.nama || '', '', '4', getObs(3)?.nama || '', ''],
+        ['1', getObs(0).nama, getObs(0).nik || '', getObs(0).perusahaan || '', ''],
+        ['2', getObs(1).nama, getObs(1).nik || '', getObs(1).perusahaan || '', ''],
+        ['3', getObs(2).nama, getObs(2).nik || '', getObs(2).perusahaan || '', ''],
     ];
 
     autoTable(pdf, {
         startY: yPosition,
-        head: [['No', 'Nama Pemantau', 'Tanda Tangan', 'No', 'Nama Pemantau', 'Tanda Tangan']],
+        head: [['No', 'Nama Pemantau', 'NIK', 'Perusahaan', 'Tanda Tangan']],
         body: obsData,
         theme: 'grid',
         tableWidth: availableWidth,
-        styles: { fontSize: 7, cellPadding: 1, valign: 'middle', minCellHeight: 12, lineWidth: 0.15 },
+        styles: { fontSize: 8, cellPadding: 2, valign: 'middle', minCellHeight: 15, lineWidth: 0.2 },
         headStyles: { fillColor: [220, 220, 220], textColor: [0, 0, 0], fontStyle: 'bold', halign: 'center' },
         columnStyles: {
-            0: { cellWidth: 10, halign: 'center' },
-            1: { cellWidth: 'auto' },
-            2: { cellWidth: 40 },
-            3: { cellWidth: 10, halign: 'center' },
-            4: { cellWidth: 'auto' },
-            5: { cellWidth: 40 },
+            0: { cellWidth: 12, halign: 'center' },
+            1: { cellWidth: 60, halign: 'left' },
+            2: { cellWidth: 40, halign: 'center' },
+            3: { cellWidth: 50, halign: 'left' },
+            4: { cellWidth: 'auto', halign: 'center' },
         },
         didDrawCell: (cellData) => {
-            if ((cellData.column.index === 2 || cellData.column.index === 5) && cellData.section === 'body') {
-                const obsIdx = cellData.column.index === 2 ? cellData.row.index : cellData.row.index + 2;
-                const obs = getObs(obsIdx);
+            if (cellData.column.index === 4 && cellData.section === 'body') {
+                const obs = getObs(cellData.row.index);
                 if (obs?.tandaTangan) {
                     try {
-                        pdf.addImage(obs.tandaTangan, obs.tandaTangan.includes('png') ? 'PNG' : 'JPEG', cellData.cell.x + 1, cellData.cell.y + 1, cellData.cell.width - 2, cellData.cell.height - 2, undefined, 'FAST');
+                        pdf.addImage(obs.tandaTangan, obs.tandaTangan.includes('png') ? 'PNG' : 'JPEG', cellData.cell.x + 2, cellData.cell.y + 2, cellData.cell.width - 4, cellData.cell.height - 4, undefined, 'FAST');
                     } catch { }
                 }
             }
@@ -145,6 +203,7 @@ export async function generateSidakKecepatanPdf(data: SidakKecepatanData): Promi
     });
 
     pdf.setFontSize(8);
+    pdf.text('Mei 2020/R0', margin, pageHeight - 5);
     pdf.text('Page 1 of 1', pageWidth - margin, pageHeight - 5, { align: 'right' });
 
     return pdf;
@@ -152,8 +211,8 @@ export async function generateSidakKecepatanPdf(data: SidakKecepatanData): Promi
 
 export async function downloadSidakKecepatanAsJpg(data: SidakKecepatanData, filename: string): Promise<void> {
     if (typeof window === 'undefined') throw new Error('Browser only');
-    const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf');
-    const workerSrc = await import('pdfjs-dist/legacy/build/pdf.worker.min.mjs?url');
+    const pdfjsLib = await import('pdfjs-dist');
+    const workerSrc = await import('pdfjs-dist/build/pdf.worker.min.mjs?url');
     pdfjsLib.GlobalWorkerOptions.workerSrc = workerSrc.default;
 
     const pdf = await generateSidakKecepatanPdf(data);
@@ -167,7 +226,7 @@ export async function downloadSidakKecepatanAsJpg(data: SidakKecepatanData, file
     canvas.height = viewport.height;
     context.fillStyle = '#ffffff';
     context.fillRect(0, 0, canvas.width, canvas.height);
-    await page.render({ canvasContext: context, viewport }).promise;
+    await page.render({ canvas, canvasContext: context, viewport } as any).promise;
 
     return new Promise((resolve, reject) => {
         canvas.toBlob((blob) => {

@@ -47,31 +47,22 @@ export default function SidakKecepatanHistory() {
         mutationFn: async ({ sessionId, files }: { sessionId: string; files: File[] }) => {
             setUploadingPhotos(true);
             try {
-                let finalPhotos: string[] = [];
-                for (const file of files) {
-                    const urlResponse = await fetch(`/api/sidak-kecepatan/${sessionId}/request-upload-url`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ name: file.name, contentType: file.type || 'application/octet-stream' })
-                    });
-                    if (!urlResponse.ok) throw new Error((await urlResponse.json()).error || 'Gagal mendapatkan URL upload');
-                    const { uploadURL, objectPath } = await urlResponse.json();
-                    
-                    const uploadResponse = await fetch(uploadURL, {
-                        method: 'PUT', body: file,
-                        headers: { 'Content-Type': file.type || 'application/octet-stream' }
-                    });
-                    if (!uploadResponse.ok) throw new Error('Gagal mengupload file ke storage');
-                    
-                    const confirmResponse = await fetch(`/api/sidak-kecepatan/${sessionId}/confirm-upload`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ objectPath })
-                    });
-                    if (!confirmResponse.ok) throw new Error((await confirmResponse.json()).error || 'Gagal konfirmasi upload');
-                    finalPhotos = (await confirmResponse.json()).photos;
+                const formData = new FormData();
+                files.forEach((file) => {
+                    formData.append('photos', file);
+                });
+
+                const response = await fetch(`/api/sidak-kecepatan/${sessionId}/upload-photos`, {
+                    method: 'POST',
+                    body: formData,
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || 'Gagal mengupload foto');
                 }
-                return { photos: finalPhotos };
+
+                return await response.json();
             } finally {
                 setUploadingPhotos(false);
             }
@@ -295,30 +286,30 @@ export default function SidakKecepatanHistory() {
                                             </Button>
                                         </DropdownMenuTrigger>
                                         <DropdownMenuContent align="end" className="w-[calc(100vw-3rem)] sm:w-64 rounded-xl p-1 shadow-xl border-gray-200 dark:border-gray-700">
-                                            <DropdownMenuItem onClick={() => handleDownloadPDF(session.id)} disabled={downloadingId === session.id} className="rounded-lg py-2.5 px-3 focus:bg-red-50 dark:focus:bg-red-900/20 cursor-pointer">
+                                            <DropdownMenuItem onClick={() => handleDownloadPDF(session.id)} disabled={(!session.activityPhotos || session.activityPhotos.length === 0) || downloadingId === session.id} className="rounded-lg py-2.5 px-3 focus:bg-red-50 dark:focus:bg-red-900/20 cursor-pointer">
                                                 {downloadingId === session.id ? (
                                                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-600 mr-2"></div>
                                                 ) : (
-                                                    <div className="h-8 w-8 rounded-full bg-red-100 text-red-600 flex items-center justify-center mr-3">
+                                                    <div className={`h-8 w-8 rounded-full ${(!session.activityPhotos || session.activityPhotos.length === 0) ? 'bg-gray-100 text-gray-400' : 'bg-red-100 text-red-600'} flex items-center justify-center mr-3`}>
                                                         <FileText className="h-4 w-4" />
                                                     </div>
                                                 )}
                                                 <div className="flex flex-col">
-                                                    <span className="font-medium">Download PDF</span>
-                                                    <span className="text-xs text-muted-foreground">Laporan lengkap</span>
+                                                    <span className={`font-medium ${(!session.activityPhotos || session.activityPhotos.length === 0) ? 'text-gray-400' : ''}`}>Download PDF</span>
+                                                    <span className="text-xs text-muted-foreground">{(!session.activityPhotos || session.activityPhotos.length === 0) ? 'Butuh Foto' : 'Laporan lengkap'}</span>
                                                 </div>
                                             </DropdownMenuItem>
-                                            <DropdownMenuItem onClick={() => handleDownloadJPG(session.id)} disabled={downloadingJpgId === session.id} className="rounded-lg py-2.5 px-3 focus:bg-red-50 dark:focus:bg-red-900/20 cursor-pointer">
+                                            <DropdownMenuItem onClick={() => handleDownloadJPG(session.id)} disabled={(!session.activityPhotos || session.activityPhotos.length === 0) || downloadingJpgId === session.id} className="rounded-lg py-2.5 px-3 focus:bg-red-50 dark:focus:bg-red-900/20 cursor-pointer">
                                                 {downloadingJpgId === session.id ? (
                                                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-600 mr-2"></div>
                                                 ) : (
-                                                    <div className="h-8 w-8 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center mr-3">
+                                                    <div className={`h-8 w-8 rounded-full ${(!session.activityPhotos || session.activityPhotos.length === 0) ? 'bg-gray-100 text-gray-400' : 'bg-rose-100 text-rose-600'} flex items-center justify-center mr-3`}>
                                                         <Image className="h-4 w-4" />
                                                     </div>
                                                 )}
                                                 <div className="flex flex-col">
-                                                    <span className="font-medium">Download JPG</span>
-                                                    <span className="text-xs text-muted-foreground">Format gambar</span>
+                                                    <span className={`font-medium ${(!session.activityPhotos || session.activityPhotos.length === 0) ? 'text-gray-400' : ''}`}>Download JPG</span>
+                                                    <span className="text-xs text-muted-foreground">{(!session.activityPhotos || session.activityPhotos.length === 0) ? 'Butuh Foto' : 'Format gambar'}</span>
                                                 </div>
                                             </DropdownMenuItem>
                                             <div className="h-px bg-gray-100 dark:bg-gray-800 my-1" />

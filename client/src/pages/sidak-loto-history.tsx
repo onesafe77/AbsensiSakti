@@ -47,31 +47,30 @@ export default function SidakLotoHistory() {
         mutationFn: async ({ sessionId, files }: { sessionId: string; files: File[] }) => {
             setUploadingPhotos(true);
             try {
-                let finalPhotos: string[] = [];
-                for (const file of files) {
-                    const urlResponse = await fetch(`/api/sidak-loto/${sessionId}/request-upload-url`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ name: file.name, contentType: file.type || 'application/octet-stream' })
+                const photoPromises = files.map(file => {
+                    return new Promise<string>((resolve, reject) => {
+                        const reader = new FileReader();
+                        reader.onload = () => resolve(reader.result as string);
+                        reader.onerror = reject;
+                        reader.readAsDataURL(file);
                     });
-                    if (!urlResponse.ok) throw new Error((await urlResponse.json()).error || 'Gagal mendapatkan URL upload');
-                    const { uploadURL, objectPath } = await urlResponse.json();
-                    
-                    const uploadResponse = await fetch(uploadURL, {
-                        method: 'PUT', body: file,
-                        headers: { 'Content-Type': file.type || 'application/octet-stream' }
-                    });
-                    if (!uploadResponse.ok) throw new Error('Gagal mengupload file ke storage');
-                    
-                    const confirmResponse = await fetch(`/api/sidak-loto/${sessionId}/confirm-upload`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ objectPath })
-                    });
-                    if (!confirmResponse.ok) throw new Error((await confirmResponse.json()).error || 'Gagal konfirmasi upload');
-                    finalPhotos = (await confirmResponse.json()).photos;
+                });
+
+                const photoDataUrls = await Promise.all(photoPromises);
+
+                const response = await fetch(`/api/sidak-loto/${sessionId}/photos`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ photos: photoDataUrls })
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || 'Gagal upload foto');
                 }
-                return { photos: finalPhotos };
+
+                const data = await response.json();
+                return { photos: data.photos };
             } finally {
                 setUploadingPhotos(false);
             }
@@ -140,6 +139,18 @@ export default function SidakLotoHistory() {
             const response = await fetch(`/api/sidak-loto/${sessionId}`);
             if (!response.ok) throw new Error('Gagal mengambil data session');
             const { session, records, observers } = await response.json();
+
+            // Validasi: harus upload foto kegiatan dulu
+            if (!session.activityPhotos || session.activityPhotos.length === 0) {
+                toast({
+                    title: "Upload Foto Kegiatan Dulu",
+                    description: "Silakan upload minimal 1 foto kegiatan sebelum download laporan.",
+                    variant: "destructive"
+                });
+                setDownloadingId(null);
+                return;
+            }
+
             const { generateSidakLotoPdf } = await import('@/lib/sidak-loto-pdf-utils');
             const doc = await generateSidakLotoPdf({ session, records: records || [], observers: observers || [] });
             const fileName = `Sidak_LOTO_${session.tanggal}_${session.shift?.replace(' ', '_') || 'shift'}.pdf`;
@@ -158,6 +169,18 @@ export default function SidakLotoHistory() {
             const response = await fetch(`/api/sidak-loto/${sessionId}`);
             if (!response.ok) throw new Error('Gagal mengambil data session');
             const { session, records, observers } = await response.json();
+
+            // Validasi: harus upload foto kegiatan dulu
+            if (!session.activityPhotos || session.activityPhotos.length === 0) {
+                toast({
+                    title: "Upload Foto Kegiatan Dulu",
+                    description: "Silakan upload minimal 1 foto kegiatan sebelum download laporan.",
+                    variant: "destructive"
+                });
+                setDownloadingJpgId(null);
+                return;
+            }
+
             const { downloadSidakLotoAsJpg } = await import('@/lib/sidak-loto-pdf-utils');
             const fileName = `Sidak_LOTO_${session.tanggal}_${Date.now()}.jpg`;
             await downloadSidakLotoAsJpg({ session, records: records || [], observers: observers || [] }, fileName);

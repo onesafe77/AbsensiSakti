@@ -116,18 +116,19 @@ export async function generateSidakSeatbeltPdf(data: SidakSeatbeltData): Promise
     yPosition += 4;
 
     // ==================== INFO SECTION ====================
+    const session = data.session as any;
     const infoTableData = [
         [
             'Tanggal/ Shift',
-            `${data.session.tanggalPelaksanaan || ''} / ${data.session.shift || ''}`,
+            `${session.tanggalPelaksanaan || ''} / ${session.shift || ''}`,
             'Lokasi',
-            data.session.lokasi || ''
+            session.lokasi || ''
         ],
         [
             'Waktu',
-            data.session.jamPelaksanaan || '',
+            session.jamPelaksanaan || '',
             'Total Sampel',
-            data.session.totalSampel?.toString() || data.records.length.toString()
+            session.totalSampel?.toString() || data.records.length.toString()
         ]
     ];
 
@@ -450,8 +451,8 @@ export async function downloadSidakSeatbeltAsJpg(data: SidakSeatbeltData, filena
     }
 
     try {
-        const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf');
-        const workerSrc = await import('pdfjs-dist/legacy/build/pdf.worker.min.mjs?url');
+        const pdfjsLib = await import('pdfjs-dist');
+        const workerSrc = await import('pdfjs-dist/build/pdf.worker.min.mjs?url');
 
         pdfjsLib.GlobalWorkerOptions.workerSrc = workerSrc.default;
 
@@ -479,11 +480,12 @@ export async function downloadSidakSeatbeltAsJpg(data: SidakSeatbeltData, filena
         context.fillRect(0, 0, canvas.width, canvas.height);
 
         const renderContext = {
+            canvas,
             canvasContext: context,
             viewport: viewport,
         };
 
-        await page.render(renderContext).promise;
+        await page.render(renderContext as any).promise;
 
         return new Promise((resolve, reject) => {
             canvas.toBlob(

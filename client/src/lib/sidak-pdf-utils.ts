@@ -382,11 +382,11 @@ export async function downloadSidakFatigueAsJpg(data: SidakFatigueData, filename
   }
 
   try {
-    // Import PDF.js from legacy build (better Vite compatibility)
-    const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf');
+    // Import PDF.js (Vite compatible)
+    const pdfjsLib = await import('pdfjs-dist');
 
     // Import bundled worker as URL (Vite will handle this properly)
-    const workerSrc = await import('pdfjs-dist/legacy/build/pdf.worker.min.mjs?url');
+    const workerSrc = await import('pdfjs-dist/build/pdf.worker.min.mjs?url');
 
     // Configure PDF.js to use bundled worker
     pdfjsLib.GlobalWorkerOptions.workerSrc = workerSrc.default;
@@ -423,11 +423,12 @@ export async function downloadSidakFatigueAsJpg(data: SidakFatigueData, filename
       context.fillRect(0, 0, canvas.width, canvas.height);
 
       const renderContext = {
+        canvas,
         canvasContext: context,
         viewport: viewport,
       };
 
-      await page.render(renderContext).promise;
+      await page.render(renderContext as any).promise;
 
       return new Promise((resolve, reject) => {
         canvas.toBlob(
@@ -771,12 +772,11 @@ export async function downloadSidakRosterAsJpg(data: SidakRosterData, filename: 
   }
 
   try {
-    // Import PDF.js from legacy build (better Vite compatibility)
-    const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf');
+    // Import PDF.js (Vite compatible)
+    const pdfjsLib = await import('pdfjs-dist');
 
     // Import bundled worker as URL (Vite will handle this properly)
-    // Note: Using .mjs extension as that's what's available in legacy build
-    const workerSrc = await import('pdfjs-dist/legacy/build/pdf.worker.min.mjs?url');
+    const workerSrc = await import('pdfjs-dist/build/pdf.worker.min.mjs?url');
 
     // Configure PDF.js to use bundled worker
     pdfjsLib.GlobalWorkerOptions.workerSrc = workerSrc.default;
@@ -815,11 +815,12 @@ export async function downloadSidakRosterAsJpg(data: SidakRosterData, filename: 
 
     // Render PDF page to canvas
     const renderContext = {
+      canvas,
       canvasContext: context,
       viewport: viewport,
     };
 
-    await page.render(renderContext).promise;
+    await page.render(renderContext as any).promise;
 
     // Convert canvas to JPG blob
     return new Promise((resolve, reject) => {

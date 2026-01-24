@@ -1,14 +1,11 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
-import { ClipboardCheck, Check, X, ArrowLeft, ArrowRight, Save, Trash2, Plus, Lightbulb, Sun, Eye } from "lucide-react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { ClipboardCheck, Check, ArrowRight, Save, Plus, Lightbulb } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Progress } from "@/components/ui/progress";
-import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -16,17 +13,16 @@ import { SignaturePad } from "@/components/sidak/signature-pad";
 import { DraftRecoveryDialog } from "@/components/sidak/draft-recovery-dialog";
 import { useSidakDraft } from "@/hooks/use-sidak-draft";
 import { MobileSidakLayout } from "@/components/sidak/mobile-sidak-layout";
-import { cn } from "@/lib/utils";
 
 interface PencahayaanRecord {
     ordinal?: number;
-    titikPengambilan: string;
-    sumberPenerangan: string;
-    jenisPengukuran: string;
-    intensitasLux: string;
-    jarakDariSumber: string;
-    secaraVisual: string;
-    keterangan: string;
+    titikPengambilan: string; // Measurement point (required)
+    sumberPenerangan: string; // Light source
+    jenisPengukuran: string; // Measurement type
+    intensitasPencahayaan: string; // Lux value (numeric, use string in state then parse)
+    jarakSumberCahaya: string; // Distance from light source
+    secaraVisual: string; // Visual assessment (dropdown)
+    keterangan: string; // Remarks
 }
 
 interface Observer {
@@ -40,12 +36,14 @@ interface PencahayaanDraftData {
     step: number;
     sessionId: string | null;
     headerData: {
-        tanggal: string;
-        shift: string;
-        waktu: string;
-        lokasi: string;
+        namaPerusahaan: string;
+        jenisAlatMerk: string;
         departemen: string;
-        penanggungJawab: string;
+        noSeriAlat: string;
+        lokasiPengukuran: string;
+        tanggalPemeriksaan: string; // Date
+        penanggungjawabArea: string;
+        waktuPemeriksaan: string; // Time
     };
     records: PencahayaanRecord[];
     observers: Observer[];
@@ -55,12 +53,14 @@ const initialDraftData: PencahayaanDraftData = {
     step: 1,
     sessionId: null,
     headerData: {
-        tanggal: new Date().toISOString().split('T')[0],
-        shift: "Shift 1",
-        waktu: "",
-        lokasi: "",
+        namaPerusahaan: "",
+        jenisAlatMerk: "",
         departemen: "",
-        penanggungJawab: ""
+        noSeriAlat: "",
+        lokasiPengukuran: "",
+        tanggalPemeriksaan: new Date().toISOString().split('T')[0],
+        penanggungjawabArea: "",
+        waktuPemeriksaan: ""
     },
     records: [],
     observers: []
@@ -89,8 +89,8 @@ export default function SidakPencahayaanForm() {
         titikPengambilan: "",
         sumberPenerangan: "",
         jenisPengukuran: "",
-        intensitasLux: "",
-        jarakDariSumber: "",
+        intensitasPencahayaan: "",
+        jarakSumberCahaya: "",
         secaraVisual: "",
         keterangan: ""
     });
@@ -109,21 +109,47 @@ export default function SidakPencahayaanForm() {
 
     // Initial time set
     useEffect(() => {
-        if (!draft.headerData.waktu && draft.step === 1) {
+        if (!draft.headerData.waktuPemeriksaan && draft.step === 1) {
             const now = new Date();
             const timeString = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
             setDraft(prev => ({
                 ...prev,
-                headerData: { ...prev.headerData, waktu: timeString }
+                headerData: { ...prev.headerData, waktuPemeriksaan: timeString }
             }));
         }
     }, []);
 
+    // Validate session ID when on step 2 or 3
+    useEffect(() => {
+        if ((draft.step === 2 || draft.step === 3) && !draft.sessionId) {
+            toast({
+                title: "Sesi Tidak Valid",
+                description: "Silakan mulai dari awal untuk membuat sesi baru.",
+                variant: "destructive"
+            });
+            setDraft(prev => ({ ...prev, step: 1 }));
+        }
+    }, [draft.step, draft.sessionId, toast]);
+
     const handleRestoreDraft = async () => {
         const restored = restoreDraft();
         if (restored) {
-            setDraft(restored);
-            toast({ title: "Draft Dipulihkan", description: "Melanjutkan pengisian form sebelumnya." });
+            // Validate that if step is 2 or 3, sessionId must exist
+            if ((restored.step === 2 || restored.step === 3) && !restored.sessionId) {
+                toast({
+                    title: "Draft Tidak Lengkap",
+                    description: "Draft sebelumnya tidak memiliki sesi aktif. Dimulai dari awal.",
+                    variant: "destructive"
+                });
+                // Reset to step 1 but keep header data
+                setDraft({
+                    ...initialDraftData,
+                    headerData: restored.headerData
+                });
+            } else {
+                setDraft(restored);
+                toast({ title: "Draft Dipulihkan", description: "Melanjutkan pengisian form sebelumnya." });
+            }
         }
     };
 
@@ -138,7 +164,7 @@ export default function SidakPencahayaanForm() {
         },
         onSuccess: (data) => {
             setDraft(prev => ({ ...prev, sessionId: data.id, step: 2 }));
-            toast({ title: "Sesi Dimulai", description: "Silakan input data pengukuran cahaya." });
+            toast({ title: "Sesi Dimulai", description: "Silakan input data pengukuran pencahayaan." });
         },
         onError: (error: Error) => {
             toast({ title: "Gagal", description: error.message, variant: "destructive" });
@@ -150,7 +176,6 @@ export default function SidakPencahayaanForm() {
             if (!draft.sessionId) throw new Error("No active session");
             const res = await apiRequest(`/api/sidak-pencahayaan/${draft.sessionId}/records`, "POST", {
                 ...record,
-                intensitasLux: parseInt(record.intensitasLux) || 0,
                 sessionId: draft.sessionId,
                 ordinal: draft.records.length + 1
             });
@@ -162,15 +187,20 @@ export default function SidakPencahayaanForm() {
                 titikPengambilan: "",
                 sumberPenerangan: "",
                 jenisPengukuran: "",
-                intensitasLux: "",
-                jarakDariSumber: "",
+                intensitasPencahayaan: "",
+                jarakSumberCahaya: "",
                 secaraVisual: "",
                 keterangan: ""
             });
-            toast({ title: "Data Disimpan", description: "Titik pengukuran berhasil ditambahkan." });
+            toast({ title: "Data Disimpan", description: "Data pengukuran berhasil ditambahkan." });
         },
         onError: (error: Error) => {
-            toast({ title: "Gagal", description: error.message, variant: "destructive" });
+            console.error("Failed to add Pencahayaan record:", error);
+            toast({
+                title: "Gagal Menyimpan",
+                description: error.message || "Terjadi kesalahan saat menyimpan data. Silakan coba lagi.",
+                variant: "destructive"
+            });
         }
     });
 
@@ -190,25 +220,37 @@ export default function SidakPencahayaanForm() {
             toast({ title: "Observer Disimpan" });
         },
         onError: (error: Error) => {
-            toast({ title: "Gagal", description: error.message, variant: "destructive" });
+            console.error("Failed to add observer:", error);
+            toast({
+                title: "Gagal Menyimpan Observer",
+                description: error.message || "Terjadi kesalahan. Silakan coba lagi.",
+                variant: "destructive"
+            });
         }
     });
 
     const handleFinish = () => {
+        if (draft.observers.length === 0) {
+            toast({
+                title: "Observer Diperlukan",
+                description: "Minimal 1 pengawas harus ditambahkan.",
+                variant: "destructive"
+            });
+            return;
+        }
         navigate("/workspace/sidak/pencahayaan/history");
         toast({ title: "Selesai", description: "Laporan SIDAK Pencahayaan telah disimpan." });
     };
 
-    const maxRecords = 20;
+    const maxRecords = 10;
     const canAddMore = draft.records.length < maxRecords;
-
 
     const renderBottomAction = () => {
         if (draft.step === 1) {
             return (
                 <Button
-                    className="w-full h-12 text-lg font-medium shadow-md shadow-amber-200 dark:shadow-none bg-amber-600 hover:bg-amber-700 text-white"
-                    disabled={!draft.headerData.lokasi || handleCreateSession.isPending}
+                    className="w-full h-12 text-lg font-medium shadow-md shadow-slate-200 dark:shadow-none bg-slate-700 hover:bg-slate-800 text-white"
+                    disabled={!draft.headerData.lokasiPengukuran || !draft.headerData.tanggalPemeriksaan || handleCreateSession.isPending}
                     onClick={() => handleCreateSession.mutate(draft.headerData)}
                 >
                     {handleCreateSession.isPending ? "Membuat Sesi..." : "Lanjut ke Pengukuran"}
@@ -221,11 +263,17 @@ export default function SidakPencahayaanForm() {
                 <div className="flex flex-col gap-3">
                     <Button
                         onClick={() => handleAddRecord.mutate(currentRecord)}
-                        disabled={!currentRecord.titikPengambilan || !currentRecord.intensitasLux || !canAddMore || handleAddRecord.isPending}
-                        className="w-full h-12 text-lg font-medium shadow-md shadow-amber-200 dark:shadow-none bg-amber-600 hover:bg-amber-700 text-white"
+                        disabled={!currentRecord.titikPengambilan || !canAddMore || handleAddRecord.isPending}
+                        className="w-full h-12 text-lg font-medium shadow-md shadow-slate-200 dark:shadow-none bg-slate-700 hover:bg-slate-800 text-white"
                     >
-                        <Plus className="w-5 h-5 mr-2" />
-                        {canAddMore ? "Simpan Titik" : "Batas Maksimal"}
+                        {handleAddRecord.isPending ? (
+                            <>Menyimpan...</>
+                        ) : (
+                            <>
+                                <Plus className="w-5 h-5 mr-2" />
+                                {canAddMore ? "Simpan Log" : "Batas Maksimal"}
+                            </>
+                        )}
                     </Button>
                     {draft.records.length > 0 && (
                         <Button
@@ -247,7 +295,8 @@ export default function SidakPencahayaanForm() {
                     onClick={handleFinish}
                     disabled={draft.observers.length === 0}
                 >
-                    <Save className="w-5 h-5 mr-3" /> SELESAI & SIMPAN
+                    <Save className="w-5 h-5 mr-3" />
+                    SELESAI & SIMPAN {draft.observers.length > 0 && `(${draft.observers.length} Pengawas)`}
                 </Button>
             );
         }
@@ -266,8 +315,8 @@ export default function SidakPencahayaanForm() {
             />
 
             <MobileSidakLayout
-                title="Sidak Pencahayaan"
-                subtitle="Form Pengukuran Intensitas Cahaya"
+                title="PEMERIKSAAN DAN PENGUJIAN PENCAHAYAAN"
+                subtitle="Form Pengukuran Pencahayaan"
                 step={draft.step}
                 totalSteps={3}
                 onBack={() => navigate("/workspace/sidak")}
@@ -275,84 +324,101 @@ export default function SidakPencahayaanForm() {
             >
                 {draft.step === 1 && (
                     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                        <div className="bg-amber-50 dark:bg-amber-900/10 p-4 rounded-2xl border border-amber-100 dark:border-amber-800">
+                        <div className="bg-slate-50 dark:bg-slate-900/10 p-4 rounded-2xl border border-slate-100 dark:border-slate-800">
                             <div className="flex items-center gap-3 mb-2">
-                                <div className="h-8 w-8 bg-amber-100 rounded-lg flex items-center justify-center text-amber-600">
+                                <div className="h-8 w-8 bg-slate-100 rounded-lg flex items-center justify-center text-slate-600">
                                     <ClipboardCheck className="h-5 w-5" />
                                 </div>
-                                <h3 className="font-semibold text-amber-900 dark:text-amber-100">Info Pelaksanaan</h3>
+                                <h3 className="font-semibold text-slate-900 dark:text-slate-100">Info Pelaksanaan</h3>
                             </div>
-                            <p className="text-xs text-amber-600 dark:text-amber-300">
-                                Isi detail waktu dan lokasi pengukuran pencahayaan.
+                            <p className="text-xs text-slate-600 dark:text-slate-300">
+                                Pastikan detail alat ukur dan lokasi pengukuran pencahayaan sudah benar.
                             </p>
                         </div>
 
                         <div className="space-y-4">
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
-                                    <Label className="text-xs font-semibold uppercase text-gray-500">Tanggal</Label>
+                                    <Label className="text-xs font-semibold uppercase text-gray-500">Nama Perusahaan</Label>
                                     <Input
-                                        type="date"
                                         className="h-12 bg-gray-50 border-gray-200"
-                                        value={draft.headerData.tanggal}
-                                        onChange={(e) => setDraft(prev => ({ ...prev, headerData: { ...prev.headerData, tanggal: e.target.value } }))}
+                                        value={draft.headerData.namaPerusahaan}
+                                        onChange={(e) => setDraft(prev => ({ ...prev, headerData: { ...prev.headerData, namaPerusahaan: e.target.value } }))}
+                                        placeholder="PT..."
                                     />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label className="text-xs font-semibold uppercase text-gray-500">Waktu</Label>
+                                    <Label className="text-xs font-semibold uppercase text-gray-500">Jenis Alat & Merk</Label>
                                     <Input
-                                        type="time"
                                         className="h-12 bg-gray-50 border-gray-200"
-                                        value={draft.headerData.waktu}
-                                        onChange={(e) => setDraft(prev => ({ ...prev, headerData: { ...prev.headerData, waktu: e.target.value } }))}
+                                        value={draft.headerData.jenisAlatMerk}
+                                        onChange={(e) => setDraft(prev => ({ ...prev, headerData: { ...prev.headerData, jenisAlatMerk: e.target.value } }))}
+                                        placeholder="Contoh: Lux Meter - Extech"
                                     />
                                 </div>
                             </div>
 
-                            <div className="space-y-2">
-                                <Label className="text-xs font-semibold uppercase text-gray-500">Shift</Label>
-                                <Select
-                                    value={draft.headerData.shift}
-                                    onValueChange={(val) => setDraft(prev => ({ ...prev, headerData: { ...prev.headerData, shift: val } }))}
-                                >
-                                    <SelectTrigger className="h-12 bg-gray-50 border-gray-200">
-                                        <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="Shift 1">Shift 1</SelectItem>
-                                        <SelectItem value="Shift 2">Shift 2</SelectItem>
-                                    </SelectContent>
-                                </Select>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label className="text-xs font-semibold uppercase text-gray-500">Departemen</Label>
+                                    <Input
+                                        className="h-12 bg-gray-50 border-gray-200"
+                                        value={draft.headerData.departemen}
+                                        onChange={(e) => setDraft(prev => ({ ...prev, headerData: { ...prev.headerData, departemen: e.target.value } }))}
+                                        placeholder="Contoh: Plant, Mining"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label className="text-xs font-semibold uppercase text-gray-500">No Seri Alat</Label>
+                                    <Input
+                                        className="h-12 bg-gray-50 border-gray-200"
+                                        value={draft.headerData.noSeriAlat}
+                                        onChange={(e) => setDraft(prev => ({ ...prev, headerData: { ...prev.headerData, noSeriAlat: e.target.value } }))}
+                                        placeholder="Serial Number"
+                                    />
+                                </div>
                             </div>
 
-                            <div className="space-y-2">
-                                <Label className="text-xs font-semibold uppercase text-gray-500">Departemen</Label>
-                                <Input
-                                    className="h-12 bg-gray-50 border-gray-200"
-                                    value={draft.headerData.departemen}
-                                    onChange={(e) => setDraft(prev => ({ ...prev, headerData: { ...prev.headerData, departemen: e.target.value } }))}
-                                    placeholder="Contoh: Plant, Mining"
-                                />
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label className="text-xs font-semibold uppercase text-gray-500">Lokasi Pengukuran <span className="text-red-500">*</span></Label>
+                                    <Input
+                                        className="h-12 bg-gray-50 border-gray-200"
+                                        placeholder="Contoh: Workshop A, Ruang Kontrol"
+                                        value={draft.headerData.lokasiPengukuran}
+                                        onChange={(e) => setDraft(prev => ({ ...prev, headerData: { ...prev.headerData, lokasiPengukuran: e.target.value } }))}
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label className="text-xs font-semibold uppercase text-gray-500">Tanggal Pemeriksaan/Pengujian <span className="text-red-500">*</span></Label>
+                                    <Input
+                                        type="date"
+                                        className="h-12 bg-gray-50 border-gray-200"
+                                        value={draft.headerData.tanggalPemeriksaan}
+                                        onChange={(e) => setDraft(prev => ({ ...prev, headerData: { ...prev.headerData, tanggalPemeriksaan: e.target.value } }))}
+                                    />
+                                </div>
                             </div>
 
-                            <div className="space-y-2">
-                                <Label className="text-xs font-semibold uppercase text-gray-500">Lokasi</Label>
-                                <Input
-                                    className="h-12 bg-gray-50 border-gray-200"
-                                    placeholder="Contoh: Workshop, Office"
-                                    value={draft.headerData.lokasi}
-                                    onChange={(e) => setDraft(prev => ({ ...prev, headerData: { ...prev.headerData, lokasi: e.target.value } }))}
-                                />
-                            </div>
-
-                            <div className="space-y-2">
-                                <Label className="text-xs font-semibold uppercase text-gray-500">PJ Area</Label>
-                                <Input
-                                    className="h-12 bg-gray-50 border-gray-200"
-                                    value={draft.headerData.penanggungJawab}
-                                    onChange={(e) => setDraft(prev => ({ ...prev, headerData: { ...prev.headerData, penanggungJawab: e.target.value } }))}
-                                    placeholder="Nama PIC Area"
-                                />
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label className="text-xs font-semibold uppercase text-gray-500">Penganggungjawab Area</Label>
+                                    <Input
+                                        className="h-12 bg-gray-50 border-gray-200"
+                                        value={draft.headerData.penanggungjawabArea}
+                                        onChange={(e) => setDraft(prev => ({ ...prev, headerData: { ...prev.headerData, penanggungjawabArea: e.target.value } }))}
+                                        placeholder="Nama Penanggung Jawab"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label className="text-xs font-semibold uppercase text-gray-500">Waktu Pemeriksaan/Pengujian</Label>
+                                    <Input
+                                        type="time"
+                                        className="h-12 bg-gray-50 border-gray-200"
+                                        value={draft.headerData.waktuPemeriksaan}
+                                        onChange={(e) => setDraft(prev => ({ ...prev, headerData: { ...prev.headerData, waktuPemeriksaan: e.target.value } }))}
+                                    />
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -363,102 +429,93 @@ export default function SidakPencahayaanForm() {
                         {/* Stats */}
                         <div className="flex items-center justify-between bg-white dark:bg-gray-800 p-4 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
                             <div>
-                                <p className="text-xs text-gray-500 uppercase font-semibold">Titik Diukur</p>
+                                <p className="text-xs text-gray-500 uppercase font-semibold">Pengukuran Tercatat</p>
                                 <p className="text-2xl font-bold text-gray-900 dark:text-white">{draft.records.length} <span className="text-sm text-gray-400 font-normal">/ {maxRecords}</span></p>
                             </div>
-                            <div className="h-10 w-10 bg-amber-50 dark:bg-amber-900/30 rounded-full flex items-center justify-center text-amber-600">
+                            <div className="h-10 w-10 bg-yellow-50 dark:bg-yellow-900/30 rounded-full flex items-center justify-center text-yellow-600">
                                 <Lightbulb className="h-5 w-5" />
                             </div>
                         </div>
 
                         {/* Input Form */}
                         <div className="space-y-6">
-                            <h2 className="text-lg font-bold text-gray-900 dark:text-white">Input Hasil Pengukuran</h2>
+                            <h2 className="text-lg font-bold text-gray-900 dark:text-white">Input Data Pengukuran Pencahayaan</h2>
 
                             <div className="bg-white dark:bg-gray-800 p-5 rounded-2xl border border-gray-100 dark:border-gray-700 space-y-4 shadow-sm">
+                                {/* Measurement Information */}
                                 <div className="space-y-2">
                                     <Label className="text-xs font-semibold uppercase text-gray-500">Titik Pengambilan <span className="text-red-500">*</span></Label>
                                     <Input
                                         className="h-12 bg-gray-50 border-gray-200"
                                         value={currentRecord.titikPengambilan}
                                         onChange={(e) => setCurrentRecord(prev => ({ ...prev, titikPengambilan: e.target.value }))}
-                                        placeholder="Contoh: Meja Kerja, Lorong"
+                                        placeholder="Contoh: Meja Kerja A1, Area Loading"
                                     />
                                 </div>
 
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="space-y-2">
-                                        <Label className="text-xs font-semibold uppercase text-gray-500">Sumber Cahaya</Label>
+                                <div className="space-y-2">
+                                    <Label className="text-xs font-semibold uppercase text-gray-500">Sumber Penerangan</Label>
+                                    <Input
+                                        className="h-12 bg-gray-50 border-gray-200"
+                                        value={currentRecord.sumberPenerangan}
+                                        onChange={(e) => setCurrentRecord(prev => ({ ...prev, sumberPenerangan: e.target.value }))}
+                                        placeholder="Contoh: Lampu LED, Cahaya Alami"
+                                    />
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label className="text-xs font-semibold uppercase text-gray-500">Jenis Pengukuran</Label>
+                                    <Input
+                                        className="h-12 bg-gray-50 border-gray-200"
+                                        value={currentRecord.jenisPengukuran}
+                                        onChange={(e) => setCurrentRecord(prev => ({ ...prev, jenisPengukuran: e.target.value }))}
+                                        placeholder="Contoh: Horizontal, Vertikal"
+                                    />
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label className="text-xs font-semibold uppercase text-gray-500">Intensitas Pencahayaan (lux)</Label>
+                                    <div className="relative">
                                         <Input
-                                            className="h-12 bg-gray-50 border-gray-200"
-                                            value={currentRecord.sumberPenerangan}
-                                            onChange={(e) => setCurrentRecord(prev => ({ ...prev, sumberPenerangan: e.target.value }))}
-                                            placeholder="Lampu/Matahari"
+                                            type="number"
+                                            className="h-12 bg-gray-50 border-gray-200 pr-12"
+                                            value={currentRecord.intensitasPencahayaan}
+                                            onChange={(e) => setCurrentRecord(prev => ({ ...prev, intensitasPencahayaan: e.target.value }))}
+                                            placeholder="350"
                                         />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label className="text-xs font-semibold uppercase text-gray-500">Jenis Ukur</Label>
-                                        <Select
-                                            value={currentRecord.jenisPengukuran}
-                                            onValueChange={(val) => setCurrentRecord(prev => ({ ...prev, jenisPengukuran: val }))}
-                                        >
-                                            <SelectTrigger className="h-12 bg-gray-50 border-gray-200">
-                                                <SelectValue placeholder="Pilih Jenis" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="Penerangan Umum">Umum</SelectItem>
-                                                <SelectItem value="Penerangan Lokal">Lokal</SelectItem>
-                                                <SelectItem value="Darurat">Emergency</SelectItem>
-                                            </SelectContent>
-                                        </Select>
+                                        <div className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-gray-500 font-medium">
+                                            lux
+                                        </div>
                                     </div>
                                 </div>
 
-                                <div className="space-y-4 pt-2">
-                                    <div className="p-3 bg-gray-50 rounded-xl border border-gray-100 space-y-3">
-                                        <div className="space-y-2">
-                                            <Label className="text-xs font-semibold uppercase text-gray-500">Intensitas (Lux) <span className="text-red-500">*</span></Label>
-                                            <div className="relative">
-                                                <Input
-                                                    type="number"
-                                                    className="h-12 bg-white border-gray-200 font-bold text-lg text-amber-600 pl-10"
-                                                    value={currentRecord.intensitasLux}
-                                                    onChange={(e) => setCurrentRecord(prev => ({ ...prev, intensitasLux: e.target.value }))}
-                                                    placeholder="0"
-                                                />
-                                                <Sun className="absolute left-3 top-3.5 h-5 w-5 text-gray-400" />
-                                            </div>
-                                        </div>
-                                        <div className="grid grid-cols-2 gap-3">
-                                            <div className="space-y-2">
-                                                <Label className="text-xs font-semibold uppercase text-gray-500">Jarak Sumber</Label>
-                                                <Input
-                                                    className="h-12 bg-white border-gray-200"
-                                                    value={currentRecord.jarakDariSumber}
-                                                    onChange={(e) => setCurrentRecord(prev => ({ ...prev, jarakDariSumber: e.target.value }))}
-                                                    placeholder="2 Meter"
-                                                />
-                                            </div>
-                                            <div className="space-y-2">
-                                                <Label className="text-xs font-semibold uppercase text-gray-500">Kondisi Visual</Label>
-                                                <Select
-                                                    value={currentRecord.secaraVisual}
-                                                    onValueChange={(val) => setCurrentRecord(prev => ({ ...prev, secaraVisual: val }))}
-                                                >
-                                                    <SelectTrigger className="h-12 bg-white border-gray-200">
-                                                        <SelectValue placeholder="Pilih" />
-                                                    </SelectTrigger>
-                                                    <SelectContent>
-                                                        <SelectItem value="Terang">Terang</SelectItem>
-                                                        <SelectItem value="Cukup">Cukup</SelectItem>
-                                                        <SelectItem value="Redup">Redup</SelectItem>
-                                                        <SelectItem value="Gelap">Gelap</SelectItem>
-                                                        <SelectItem value="Silau">Silau</SelectItem>
-                                                    </SelectContent>
-                                                </Select>
-                                            </div>
-                                        </div>
-                                    </div>
+                                <div className="space-y-2">
+                                    <Label className="text-xs font-semibold uppercase text-gray-500">Jarak dari sumber cahaya</Label>
+                                    <Input
+                                        className="h-12 bg-gray-50 border-gray-200"
+                                        value={currentRecord.jarakSumberCahaya}
+                                        onChange={(e) => setCurrentRecord(prev => ({ ...prev, jarakSumberCahaya: e.target.value }))}
+                                        placeholder="Contoh: 2 meter, 1.5m"
+                                    />
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label className="text-xs font-semibold uppercase text-gray-500">Secara Visual <span className="text-red-500">*</span></Label>
+                                    <Select
+                                        value={currentRecord.secaraVisual}
+                                        onValueChange={(val) => setCurrentRecord(prev => ({ ...prev, secaraVisual: val }))}
+                                    >
+                                        <SelectTrigger className="h-12 bg-gray-50 border-gray-200">
+                                            <SelectValue placeholder="Pilih penilaian visual" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="sangat gelap">Sangat Gelap</SelectItem>
+                                            <SelectItem value="gelap">Gelap</SelectItem>
+                                            <SelectItem value="cukup">Cukup</SelectItem>
+                                            <SelectItem value="terang">Terang</SelectItem>
+                                            <SelectItem value="sangat terang">Sangat Terang</SelectItem>
+                                        </SelectContent>
+                                    </Select>
                                 </div>
 
                                 <div className="space-y-2">
@@ -466,8 +523,8 @@ export default function SidakPencahayaanForm() {
                                     <Textarea
                                         value={currentRecord.keterangan}
                                         onChange={(e) => setCurrentRecord(prev => ({ ...prev, keterangan: e.target.value }))}
-                                        placeholder="Catatan tambahan"
-                                        className="bg-gray-50 border-gray-200"
+                                        placeholder="Penjelasan hasil penilaian visual dan catatan tambahan"
+                                        className="bg-gray-50 border-gray-200 min-h-[80px]"
                                     />
                                 </div>
                             </div>
@@ -479,15 +536,16 @@ export default function SidakPencahayaanForm() {
                                 <h3 className="font-semibold mb-3">Tercatat ({draft.records.length})</h3>
                                 <div className="space-y-2">
                                     {draft.records.map((rec, idx) => (
-                                        <div key={idx} className="bg-white p-3 rounded-lg border border-gray-100 shadow-sm flex justify-between items-center">
+                                        <div key={idx} className="bg-white p-3 rounded-lg border border-gray-100 shadow-sm">
                                             <div>
-                                                <p className="font-medium text-sm">{rec.titikPengambilan}</p>
-                                                <p className="text-xs text-gray-500">{rec.jenisPengukuran} • <span className="text-amber-600">{rec.secaraVisual}</span></p>
-                                            </div>
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-sm font-bold text-amber-600 bg-amber-50 px-2 py-1 rounded-md border border-amber-100">
-                                                    {rec.intensitasLux} Lux
-                                                </span>
+                                                <p className="font-medium text-sm">Titik: {rec.titikPengambilan}</p>
+                                                <p className="text-xs text-gray-500 mt-1">
+                                                    Intensitas: {rec.intensitasPencahayaan ? `${rec.intensitasPencahayaan} lux` : '-'} •
+                                                    Visual: {rec.secaraVisual || '-'}
+                                                </p>
+                                                {rec.sumberPenerangan && (
+                                                    <p className="text-xs text-gray-500">Sumber: {rec.sumberPenerangan}</p>
+                                                )}
                                             </div>
                                         </div>
                                     ))}
@@ -559,7 +617,7 @@ export default function SidakPencahayaanForm() {
                                     </div>
                                     <Button
                                         onClick={() => handleAddObserver.mutate(currentObserver)}
-                                        disabled={!currentObserver.nama || !currentObserver.tandaTangan || handleAddObserver.isPending}
+                                        disabled={!currentObserver.nama || !currentObserver.perusahaan || !currentObserver.tandaTangan || handleAddObserver.isPending}
                                         className="w-full mt-2"
                                     >
                                         <Plus className="w-4 h-4 mr-2" /> Tambahkan

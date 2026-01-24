@@ -1,14 +1,11 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
-import { ClipboardCheck, Check, X, ArrowLeft, ArrowRight, Save, Trash2, Plus, Lock, Key } from "lucide-react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { ClipboardCheck, Check, ArrowRight, Save, Plus, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Progress } from "@/components/ui/progress";
-import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -16,16 +13,19 @@ import { SignaturePad } from "@/components/sidak/signature-pad";
 import { DraftRecoveryDialog } from "@/components/sidak/draft-recovery-dialog";
 import { useSidakDraft } from "@/hooks/use-sidak-draft";
 import { MobileSidakLayout } from "@/components/sidak/mobile-sidak-layout";
-import { cn } from "@/lib/utils";
 
 interface LotoRecord {
     ordinal?: number;
-    namaKaryawan: string;
+    // Worker identification (from official PDF)
+    nama: string;
+    nik: string;
     perusahaan: string;
-    jenisPekerjaan: string;
-    lokasiIsolasi: string;
-    nomorGembok: string;
-    jamPasang: string;
+    // 5 compliance questions from PDF
+    q1_gembokTagTerpasang: boolean;
+    q2_dangerTagSesuai: boolean;
+    q3_gembokSesuai: boolean;
+    q4_kunciUnik: boolean;
+    q5_haspBenar: boolean;
     keterangan: string;
 }
 
@@ -84,12 +84,14 @@ export default function SidakLotoForm() {
     const [draft, setDraft] = useState<LotoDraftData>(initialDraftData);
 
     const [currentRecord, setCurrentRecord] = useState<LotoRecord>({
-        namaKaryawan: "",
+        nama: "",
+        nik: "",
         perusahaan: "",
-        jenisPekerjaan: "",
-        lokasiIsolasi: "",
-        nomorGembok: "",
-        jamPasang: "",
+        q1_gembokTagTerpasang: false,
+        q2_dangerTagSesuai: false,
+        q3_gembokSesuai: false,
+        q4_kunciUnik: false,
+        q5_haspBenar: false,
         keterangan: ""
     });
 
@@ -117,11 +119,37 @@ export default function SidakLotoForm() {
         }
     }, []);
 
+    // Validate session ID when on step 2 or 3
+    useEffect(() => {
+        if ((draft.step === 2 || draft.step === 3) && !draft.sessionId) {
+            toast({
+                title: "Sesi Tidak Valid",
+                description: "Silakan mulai dari awal untuk membuat sesi baru.",
+                variant: "destructive"
+            });
+            setDraft(prev => ({ ...prev, step: 1 }));
+        }
+    }, [draft.step, draft.sessionId, toast]);
+
     const handleRestoreDraft = async () => {
         const restored = restoreDraft();
         if (restored) {
-            setDraft(restored);
-            toast({ title: "Draft Dipulihkan", description: "Melanjutkan pengisian form sebelumnya." });
+            // Validate that if step is 2 or 3, sessionId must exist
+            if ((restored.step === 2 || restored.step === 3) && !restored.sessionId) {
+                toast({
+                    title: "Draft Tidak Lengkap",
+                    description: "Draft sebelumnya tidak memiliki sesi aktif. Dimulai dari awal.",
+                    variant: "destructive"
+                });
+                // Reset to step 1 but keep header data
+                setDraft({
+                    ...initialDraftData,
+                    headerData: restored.headerData
+                });
+            } else {
+                setDraft(restored);
+                toast({ title: "Draft Dipulihkan", description: "Melanjutkan pengisian form sebelumnya." });
+            }
         }
     };
 
@@ -156,15 +184,25 @@ export default function SidakLotoForm() {
         onSuccess: (data) => {
             setDraft(prev => ({ ...prev, records: [...prev.records, data] }));
             setCurrentRecord({
-                namaKaryawan: "",
+                nama: "",
+                nik: "",
                 perusahaan: "",
-                jenisPekerjaan: "",
-                lokasiIsolasi: "",
-                nomorGembok: "",
-                jamPasang: "",
+                q1_gembokTagTerpasang: false,
+                q2_dangerTagSesuai: false,
+                q3_gembokSesuai: false,
+                q4_kunciUnik: false,
+                q5_haspBenar: false,
                 keterangan: ""
             });
             toast({ title: "Data Disimpan", description: "Log LOTO berhasil ditambahkan." });
+        },
+        onError: (error: Error) => {
+            console.error("Failed to add LOTO record:", error);
+            toast({
+                title: "Gagal Menyimpan",
+                description: error.message || "Terjadi kesalahan saat menyimpan data. Silakan coba lagi.",
+                variant: "destructive"
+            });
         }
     });
 
@@ -182,15 +220,31 @@ export default function SidakLotoForm() {
             setDraft(prev => ({ ...prev, observers: [...prev.observers, data] }));
             setCurrentObserver({ nama: "", nik: "", perusahaan: "", tandaTangan: "" });
             toast({ title: "Observer Disimpan" });
+        },
+        onError: (error: Error) => {
+            console.error("Failed to add observer:", error);
+            toast({
+                title: "Gagal Menyimpan Observer",
+                description: error.message || "Terjadi kesalahan. Silakan coba lagi.",
+                variant: "destructive"
+            });
         }
     });
 
     const handleFinish = () => {
+        if (draft.observers.length === 0) {
+            toast({
+                title: "Observer Diperlukan",
+                description: "Minimal 1 pengawas harus ditambahkan.",
+                variant: "destructive"
+            });
+            return;
+        }
         navigate("/workspace/sidak/loto/history");
         toast({ title: "Selesai", description: "Laporan SIDAK LOTO telah disimpan." });
     };
 
-    const maxRecords = 20;
+    const maxRecords = 10;
     const canAddMore = draft.records.length < maxRecords;
 
 
@@ -212,11 +266,17 @@ export default function SidakLotoForm() {
                 <div className="flex flex-col gap-3">
                     <Button
                         onClick={() => handleAddRecord.mutate(currentRecord)}
-                        disabled={!currentRecord.namaKaryawan || !canAddMore || handleAddRecord.isPending}
+                        disabled={!currentRecord.nama || !canAddMore || handleAddRecord.isPending}
                         className="w-full h-12 text-lg font-medium shadow-md shadow-slate-200 dark:shadow-none bg-slate-700 hover:bg-slate-800 text-white"
                     >
-                        <Plus className="w-5 h-5 mr-2" />
-                        {canAddMore ? "Simpan Log" : "Batas Maksimal"}
+                        {handleAddRecord.isPending ? (
+                            <>Menyimpan...</>
+                        ) : (
+                            <>
+                                <Plus className="w-5 h-5 mr-2" />
+                                {canAddMore ? "Simpan Log" : "Batas Maksimal"}
+                            </>
+                        )}
                     </Button>
                     {draft.records.length > 0 && (
                         <Button
@@ -238,7 +298,8 @@ export default function SidakLotoForm() {
                     onClick={handleFinish}
                     disabled={draft.observers.length === 0}
                 >
-                    <Save className="w-5 h-5 mr-3" /> SELESAI & SIMPAN
+                    <Save className="w-5 h-5 mr-3" />
+                    SELESAI & SIMPAN {draft.observers.length > 0 && `(${draft.observers.length} Pengawas)`}
                 </Button>
             );
         }
@@ -354,68 +415,113 @@ export default function SidakLotoForm() {
 
                         {/* Input Form */}
                         <div className="space-y-6">
-                            <h2 className="text-lg font-bold text-gray-900 dark:text-white">Input Data LOTO</h2>
+                            <h2 className="text-lg font-bold text-gray-900 dark:text-white">Input Data Pekerja</h2>
 
                             <div className="bg-white dark:bg-gray-800 p-5 rounded-2xl border border-gray-100 dark:border-gray-700 space-y-4 shadow-sm">
+                                {/* Worker Information */}
                                 <div className="space-y-2">
-                                    <Label className="text-xs font-semibold uppercase text-gray-500">Nama Pemasang <span className="text-red-500">*</span></Label>
+                                    <Label className="text-xs font-semibold uppercase text-gray-500">Nama <span className="text-red-500">*</span></Label>
                                     <Input
                                         className="h-12 bg-gray-50 border-gray-200"
-                                        value={currentRecord.namaKaryawan}
-                                        onChange={(e) => setCurrentRecord(prev => ({ ...prev, namaKaryawan: e.target.value }))}
-                                        placeholder="Nama Karyawan"
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label className="text-xs font-semibold uppercase text-gray-500">Perusahaan</Label>
-                                    <Input
-                                        className="h-12 bg-gray-50 border-gray-200"
-                                        value={currentRecord.perusahaan}
-                                        onChange={(e) => setCurrentRecord(prev => ({ ...prev, perusahaan: e.target.value }))}
-                                        placeholder="PT..."
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label className="text-xs font-semibold uppercase text-gray-500">Jenis Pekerjaan</Label>
-                                    <Input
-                                        className="h-12 bg-gray-50 border-gray-200"
-                                        value={currentRecord.jenisPekerjaan}
-                                        onChange={(e) => setCurrentRecord(prev => ({ ...prev, jenisPekerjaan: e.target.value }))}
-                                        placeholder="Contoh: Perbaikan AC"
+                                        value={currentRecord.nama}
+                                        onChange={(e) => setCurrentRecord(prev => ({ ...prev, nama: e.target.value }))}
+                                        placeholder="Nama Lengkap Pekerja"
                                     />
                                 </div>
 
-                                <div className="space-y-4 pt-2">
-                                    <div className="p-3 bg-gray-50 rounded-xl border border-gray-100 space-y-3">
-                                        <div className="space-y-2">
-                                            <Label className="text-xs font-semibold uppercase text-gray-500">Lokasi Isolasi / Unit</Label>
-                                            <Input
-                                                className="h-12 bg-white border-gray-200"
-                                                value={currentRecord.lokasiIsolasi}
-                                                onChange={(e) => setCurrentRecord(prev => ({ ...prev, lokasiIsolasi: e.target.value }))}
-                                                placeholder="Unit ID / Panel"
-                                            />
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label className="text-xs font-semibold uppercase text-gray-500">NIK</Label>
+                                        <Input
+                                            className="h-12 bg-gray-50 border-gray-200"
+                                            value={currentRecord.nik}
+                                            onChange={(e) => setCurrentRecord(prev => ({ ...prev, nik: e.target.value }))}
+                                            placeholder="Nomor Identitas"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label className="text-xs font-semibold uppercase text-gray-500">Perusahaan</Label>
+                                        <Input
+                                            className="h-12 bg-gray-50 border-gray-200"
+                                            value={currentRecord.perusahaan}
+                                            onChange={(e) => setCurrentRecord(prev => ({ ...prev, perusahaan: e.target.value }))}
+                                            placeholder="PT..."
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* 5 Compliance Questions */}
+                                <div className="p-4 bg-slate-50 dark:bg-slate-900/20 rounded-xl border border-slate-100 dark:border-slate-800 space-y-3">
+                                    <Label className="text-sm font-bold text-gray-700 dark:text-gray-200">Checklist Kepatuhan LOTO</Label>
+
+                                    <div className="flex items-start justify-between p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200">
+                                        <div className="flex-1">
+                                            <span className="text-sm font-medium text-gray-700 dark:text-gray-200">
+                                                1. Apakah gembok dan danger tag terpasang pada unit yang sedang diperbaiki?
+                                            </span>
                                         </div>
-                                        <div className="grid grid-cols-2 gap-3">
-                                            <div className="space-y-2">
-                                                <Label className="text-xs font-semibold uppercase text-gray-500">Gembok ID</Label>
-                                                <Input
-                                                    className="h-12 bg-white border-gray-200 font-mono"
-                                                    value={currentRecord.nomorGembok}
-                                                    onChange={(e) => setCurrentRecord(prev => ({ ...prev, nomorGembok: e.target.value }))}
-                                                    placeholder="LOTO-XXX"
-                                                />
-                                            </div>
-                                            <div className="space-y-2">
-                                                <Label className="text-xs font-semibold uppercase text-gray-500">Jam Pasang</Label>
-                                                <Input
-                                                    type="time"
-                                                    className="h-12 bg-white border-gray-200"
-                                                    value={currentRecord.jamPasang}
-                                                    onChange={(e) => setCurrentRecord(prev => ({ ...prev, jamPasang: e.target.value }))}
-                                                />
-                                            </div>
+                                        <input
+                                            type="checkbox"
+                                            checked={currentRecord.q1_gembokTagTerpasang}
+                                            onChange={(e) => setCurrentRecord(prev => ({ ...prev, q1_gembokTagTerpasang: e.target.checked }))}
+                                            className="h-5 w-5 rounded border-gray-300 mt-1 ml-3"
+                                        />
+                                    </div>
+
+                                    <div className="flex items-start justify-between p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200">
+                                        <div className="flex-1">
+                                            <span className="text-sm font-medium text-gray-700 dark:text-gray-200">
+                                                2. Apakah danger tag sesuai dan memadai?
+                                            </span>
                                         </div>
+                                        <input
+                                            type="checkbox"
+                                            checked={currentRecord.q2_dangerTagSesuai}
+                                            onChange={(e) => setCurrentRecord(prev => ({ ...prev, q2_dangerTagSesuai: e.target.checked }))}
+                                            className="h-5 w-5 rounded border-gray-300 mt-1 ml-3"
+                                        />
+                                    </div>
+
+                                    <div className="flex items-start justify-between p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200">
+                                        <div className="flex-1">
+                                            <span className="text-sm font-medium text-gray-700 dark:text-gray-200">
+                                                3. Apakah gembok sesuai dan memadai?
+                                            </span>
+                                        </div>
+                                        <input
+                                            type="checkbox"
+                                            checked={currentRecord.q3_gembokSesuai}
+                                            onChange={(e) => setCurrentRecord(prev => ({ ...prev, q3_gembokSesuai: e.target.checked }))}
+                                            className="h-5 w-5 rounded border-gray-300 mt-1 ml-3"
+                                        />
+                                    </div>
+
+                                    <div className="flex items-start justify-between p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200">
+                                        <div className="flex-1">
+                                            <span className="text-sm font-medium text-gray-700 dark:text-gray-200">
+                                                4. Apakah setiap pekerja memiliki kunci unik untuk gemboknya sendiri?
+                                            </span>
+                                        </div>
+                                        <input
+                                            type="checkbox"
+                                            checked={currentRecord.q4_kunciUnik}
+                                            onChange={(e) => setCurrentRecord(prev => ({ ...prev, q4_kunciUnik: e.target.checked }))}
+                                            className="h-5 w-5 rounded border-gray-300 mt-1 ml-3"
+                                        />
+                                    </div>
+
+                                    <div className="flex items-start justify-between p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200">
+                                        <div className="flex-1">
+                                            <span className="text-sm font-medium text-gray-700 dark:text-gray-200">
+                                                5. Apakah hasp (multi-lock) digunakan dengan benar jika lebih dari satu pekerja terlibat?
+                                            </span>
+                                        </div>
+                                        <input
+                                            type="checkbox"
+                                            checked={currentRecord.q5_haspBenar}
+                                            onChange={(e) => setCurrentRecord(prev => ({ ...prev, q5_haspBenar: e.target.checked }))}
+                                            className="h-5 w-5 rounded border-gray-300 mt-1 ml-3"
+                                        />
                                     </div>
                                 </div>
 
@@ -437,15 +543,27 @@ export default function SidakLotoForm() {
                                 <h3 className="font-semibold mb-3">Tercatat ({draft.records.length})</h3>
                                 <div className="space-y-2">
                                     {draft.records.map((rec, idx) => (
-                                        <div key={idx} className="bg-white p-3 rounded-lg border border-gray-100 shadow-sm flex justify-between items-center">
+                                        <div key={idx} className="bg-white p-3 rounded-lg border border-gray-100 shadow-sm">
                                             <div>
-                                                <p className="font-medium text-sm">{rec.namaKaryawan} <span className="text-xs text-gray-400">({rec.perusahaan})</span></p>
-                                                <p className="text-xs text-gray-500">{rec.lokasiIsolasi} • {rec.jenisPekerjaan}</p>
-                                            </div>
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-xs font-mono font-bold text-slate-600 bg-slate-100 px-2 py-1 rounded-md border border-slate-200">
-                                                    {rec.nomorGembok}
-                                                </span>
+                                                <p className="font-medium text-sm">{rec.nama}</p>
+                                                <p className="text-xs text-gray-500">{rec.nik} • {rec.perusahaan}</p>
+                                                <div className="flex flex-wrap gap-1 mt-2">
+                                                    <span className={`text-xs px-2 py-0.5 rounded ${rec.q1_gembokTagTerpasang ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                                                        Q1: {rec.q1_gembokTagTerpasang ? '✓' : '✗'}
+                                                    </span>
+                                                    <span className={`text-xs px-2 py-0.5 rounded ${rec.q2_dangerTagSesuai ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                                                        Q2: {rec.q2_dangerTagSesuai ? '✓' : '✗'}
+                                                    </span>
+                                                    <span className={`text-xs px-2 py-0.5 rounded ${rec.q3_gembokSesuai ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                                                        Q3: {rec.q3_gembokSesuai ? '✓' : '✗'}
+                                                    </span>
+                                                    <span className={`text-xs px-2 py-0.5 rounded ${rec.q4_kunciUnik ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                                                        Q4: {rec.q4_kunciUnik ? '✓' : '✗'}
+                                                    </span>
+                                                    <span className={`text-xs px-2 py-0.5 rounded ${rec.q5_haspBenar ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                                                        Q5: {rec.q5_haspBenar ? '✓' : '✗'}
+                                                    </span>
+                                                </div>
                                             </div>
                                         </div>
                                     ))}
@@ -517,7 +635,7 @@ export default function SidakLotoForm() {
                                     </div>
                                     <Button
                                         onClick={() => handleAddObserver.mutate(currentObserver)}
-                                        disabled={!currentObserver.nama || !currentObserver.tandaTangan || handleAddObserver.isPending}
+                                        disabled={!currentObserver.nama || !currentObserver.perusahaan || !currentObserver.tandaTangan || handleAddObserver.isPending}
                                         className="w-full mt-2"
                                     >
                                         <Plus className="w-4 h-4 mr-2" /> Tambahkan

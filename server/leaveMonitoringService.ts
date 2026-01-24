@@ -31,7 +31,7 @@ export class LeaveMonitoringService {
       // Get all approved leave requests
       const leaveRequests = await this.storage.getLeaveRequests();
       const employees = await this.storage.getEmployees();
-      
+
       const reminders: LeaveReminder[] = [];
 
       for (const leave of leaveRequests) {
@@ -46,10 +46,10 @@ export class LeaveMonitoringService {
           if (!employee || !employee.phone) continue;
 
           const reminderType = `${daysUntil}_days` as '7_days' | '3_days' | '1_day';
-          
+
           // Check if reminder already sent
           const existingReminder = await this.storage.getLeaveReminder(leave.id, reminderType);
-          
+
           if (!existingReminder) {
             reminders.push({
               id: `${leave.id}_${reminderType}`,
@@ -84,14 +84,14 @@ export class LeaveMonitoringService {
       try {
         const formattedStartDate = format(parseISO(reminder.leaveStartDate), 'dd MMMM yyyy', { locale: localeId });
         const formattedEndDate = format(parseISO(reminder.leaveEndDate), 'dd MMMM yyyy', { locale: localeId });
-        
+
         // Message creation for reminder notifications
         const message = `Pengingat Cuti: ${reminder.employeeName}, cuti Anda akan dimulai ${reminder.daysUntil} hari lagi (${formattedStartDate} - ${formattedEndDate})`;
 
         // Reminder notification processing
         const success = false; // Placeholder - integrate with notif.my.id if needed
         // Send message disabled - placeholder for notif.my.id integration
-        
+
         if (success) {
           // Save reminder record
           await this.storage.saveLeaveReminder({
@@ -99,7 +99,7 @@ export class LeaveMonitoringService {
             leaveRequestId: reminder.id.split('_')[0],
             employeeId: reminder.employeeId,
             reminderType: reminder.reminderType,
-            sentAt: new Date().toISOString(),
+            sentAt: new Date(),
             phoneNumber: reminder.employeePhone,
             message
           });

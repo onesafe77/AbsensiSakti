@@ -1,5 +1,5 @@
 ﻿import { sql, relations } from "drizzle-orm";
-import { pgTable, text, varchar, timestamp, boolean, integer, unique, jsonb, index, uniqueIndex, real, date, time, uuid } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, timestamp, boolean, integer, unique, jsonb, index, uniqueIndex, real, date, time, uuid, numeric } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -1498,60 +1498,6 @@ export type SidakKecepatanObserver = typeof sidakKecepatanObservers.$inferSelect
 export type InsertSidakKecepatanObserver = z.infer<typeof insertSidakKecepatanObserverSchema>;
 
 // ============================================================================
-// SIDAK PENCAHAYAAN (Lighting Inspection)
-// ============================================================================
-
-export const sidakPencahayaanSessions = pgTable("sidak_pencahayaan_sessions", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  tanggal: varchar("tanggal").notNull(),
-  shift: varchar("shift").notNull(),
-  waktu: varchar("waktu").notNull(),
-  lokasi: text("lokasi").notNull(),
-  departemen: text("departemen"),
-  penanggungJawab: varchar("penanggung_jawab"),
-  totalSampel: integer("total_sampel").notNull().default(0),
-  activityPhotos: text("activity_photos").array(),
-  createdBy: varchar("created_by"),
-  createdAt: timestamp("created_at").defaultNow(),
-}, (table) => [index("IDX_pencahayaan_sessions_created_by").on(table.createdBy)]);
-
-export const sidakPencahayaanRecords = pgTable("sidak_pencahayaan_records", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  sessionId: varchar("session_id").notNull().references(() => sidakPencahayaanSessions.id, { onDelete: "cascade" }),
-  ordinal: integer("ordinal").notNull(),
-  titikPengambilan: text("titik_pengambilan").notNull(),
-  sumberPenerangan: text("sumber_penerangan"),
-  jenisPengukuran: varchar("jenis_pengukuran"),
-  intensitasLux: integer("intensitas_lux"),
-  jarakDariSumber: varchar("jarak_dari_sumber"),
-  secaraVisual: varchar("secara_visual"),
-  keterangan: text("keterangan"),
-  createdAt: timestamp("created_at").defaultNow(),
-}, (table) => [index("IDX_pencahayaan_records_session").on(table.sessionId)]);
-
-export const sidakPencahayaanObservers = pgTable("sidak_pencahayaan_observers", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  sessionId: varchar("session_id").notNull().references(() => sidakPencahayaanSessions.id, { onDelete: "cascade" }),
-  ordinal: integer("ordinal").notNull(),
-  nama: text("nama").notNull(),
-  nik: varchar("nik"),
-  perusahaan: text("perusahaan"),
-  tandaTangan: text("tanda_tangan"),
-  createdAt: timestamp("created_at").defaultNow(),
-}, (table) => [index("IDX_pencahayaan_observers_session").on(table.sessionId)]);
-
-export const insertSidakPencahayaanSessionSchema = createInsertSchema(sidakPencahayaanSessions).omit({ id: true, createdAt: true, totalSampel: true });
-export const insertSidakPencahayaanRecordSchema = createInsertSchema(sidakPencahayaanRecords).omit({ id: true, createdAt: true });
-export const insertSidakPencahayaanObserverSchema = createInsertSchema(sidakPencahayaanObservers).omit({ id: true, createdAt: true });
-
-export type SidakPencahayaanSession = typeof sidakPencahayaanSessions.$inferSelect;
-export type InsertSidakPencahayaanSession = z.infer<typeof insertSidakPencahayaanSessionSchema>;
-export type SidakPencahayaanRecord = typeof sidakPencahayaanRecords.$inferSelect;
-export type InsertSidakPencahayaanRecord = z.infer<typeof insertSidakPencahayaanRecordSchema>;
-export type SidakPencahayaanObserver = typeof sidakPencahayaanObservers.$inferSelect;
-export type InsertSidakPencahayaanObserver = z.infer<typeof insertSidakPencahayaanObserverSchema>;
-
-// ============================================================================
 // SIDAK LOTO (Inspeksi Kepatuhan LOTO)
 // ============================================================================
 
@@ -1572,13 +1518,33 @@ export const sidakLotoRecords = pgTable("sidak_loto_records", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   sessionId: varchar("session_id").notNull().references(() => sidakLotoSessions.id, { onDelete: "cascade" }),
   ordinal: integer("ordinal").notNull(),
-  namaKaryawan: text("nama_karyawan").notNull(),
-  perusahaan: text("perusahaan"),
+
+  // Old fields (kept for backward compatibility) - DEPRECATED
+  namaKaryawan: text("nama_karyawan"),
   jenisPekerjaan: text("jenis_pekerjaan"),
   lokasiIsolasi: text("lokasi_isolasi"),
   nomorGembok: varchar("nomor_gembok"),
   jamPasang: varchar("jam_pasang"),
-  keterangan: text("keterangan"),
+  namaNik: text("nama_nik"), // Old combined field - DEPRECATED
+  noLambung: text("no_lambung"), // Old field - DEPRECATED
+  tipeUnit: text("tipe_unit"), // Old field - DEPRECATED
+  lockApplied: boolean("lock_applied"), // Old field - DEPRECATED
+  tagApplied: boolean("tag_applied"), // Old field - DEPRECATED
+  hazardIdentified: boolean("hazard_identified"), // Old field - DEPRECATED
+
+  // NEW FIELDS matching official PDF template (BIB – HSE – ES – F – 3.02 – 83)
+  nama: text("nama"), // Worker name (separate field)
+  nik: text("nik"), // Worker ID (separate field)
+  perusahaan: text("perusahaan"), // Company name
+
+  // 5 specific compliance questions from PDF
+  q1_gembokTagTerpasang: boolean("q1_gembok_tag_terpasang").default(false), // Q1: Apakah gembok dan danger tag terpasang pada unit yang sedang diperbaiki?
+  q2_dangerTagSesuai: boolean("q2_danger_tag_sesuai").default(false), // Q2: Apakah danger tag sesuai dan memadai?
+  q3_gembokSesuai: boolean("q3_gembok_sesuai").default(false), // Q3: Apakah gembok sesuai dan memadai?
+  q4_kunciUnik: boolean("q4_kunci_unik").default(false), // Q4: Apakah setiap pekerja memiliki kunci unik untuk gemboknya sendiri?
+  q5_haspBenar: boolean("q5_hasp_benar").default(false), // Q5: Apakah hasp (multi-lock) digunakan dengan benar jika lebih dari satu pekerja terlibat?
+
+  keterangan: text("keterangan"), // Remarks/Notes
   createdAt: timestamp("created_at").defaultNow(),
 }, (table) => [index("IDX_loto_records_session").on(table.sessionId)]);
 
@@ -1610,12 +1576,12 @@ export type InsertSidakLotoObserver = z.infer<typeof insertSidakLotoObserverSche
 
 export const sidakDigitalSessions = pgTable("sidak_digital_sessions", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  tanggal: varchar("tanggal").notNull(),
-  shift: varchar("shift").notNull(),
-  waktu: varchar("waktu").notNull(),
-  lokasi: text("lokasi").notNull(),
-  departemen: text("departemen"),
-  totalSampel: integer("total_sampel").notNull().default(0),
+  tanggal: date("tanggal").notNull(), // Date field from PDF
+  waktu: varchar("waktu"), // "Waktu sampai" from PDF
+  lokasi: text("lokasi").notNull(), // Location
+  shift: varchar("shift"), // Shift info (combined with date in PDF)
+  departemen: text("departemen"), // Department (optional)
+  totalSampel: integer("total_sampel").default(0), // Auto-calculated sample count
   activityPhotos: text("activity_photos").array(),
   createdBy: varchar("created_by"),
   createdAt: timestamp("created_at").defaultNow(),
@@ -1625,13 +1591,22 @@ export const sidakDigitalRecords = pgTable("sidak_digital_records", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   sessionId: varchar("session_id").notNull().references(() => sidakDigitalSessions.id, { onDelete: "cascade" }),
   ordinal: integer("ordinal").notNull(),
-  namaPengawas: text("nama_pengawas").notNull(),
-  nik: varchar("nik"),
-  jabatan: text("jabatan"),
-  appUsage: boolean("app_usage").notNull().default(true),
-  timelyReporting: boolean("timely_reporting").notNull().default(true),
-  feedbackQuality: text("feedback_quality"), // "Baik", "Cukup", "Kurang"
-  keterangan: text("keterangan"),
+
+  // Worker/Supervisor identification (from PDF)
+  nama: text("nama").notNull(),
+  nik: text("nik"),
+  perusahaan: text("perusahaan"),
+
+  // 7 compliance questions from PDF (BIB – HSE – ES – F – 3.02 – 88)
+  q1_lokasiKerja: boolean("q1_lokasi_kerja").default(false), // Apakah pengawas berada di lokasi kerja sesuai tugasnya dan aktif mengawasi?
+  q2_sapHazard: boolean("q2_sap_hazard").default(false), // Apakah pengawas telah mengerjakan SAP pelaporan hazard?
+  q3_sapInspeksi: boolean("q3_sap_inspeksi").default(false), // Apakah pengawas telah mengerjakan SAP pelaporan inspeksi?
+  q4_sapObservasi: boolean("q4_sap_observasi").default(false), // Apakah pengawas telah mengerjakan SAP pelaporan observasi?
+  q5_validasiFamous: boolean("q5_validasi_famous").default(false), // Apakah pengawas telah melakukan validasi pada semua temuan yang ada pada Famous?
+  q6_identifikasiBahaya: boolean("q6_identifikasi_bahaya").default(false), // Apakah pengawas mampu mengidentifikasi potensi bahaya dan segera mengambil tindakan korektif?
+  q7_prosedurKeselamatan: boolean("q7_prosedur_keselamatan").default(false), // Apakah pengawas memastikan pekerja mengikuti prosedur keselamatan dan aturan kerja?
+
+  keterangan: text("keterangan"), // Remarks
   createdAt: timestamp("created_at").defaultNow(),
 }, (table) => [index("IDX_digital_records_session").on(table.sessionId)]);
 
@@ -1658,55 +1633,116 @@ export type SidakDigitalObserver = typeof sidakDigitalObservers.$inferSelect;
 export type InsertSidakDigitalObserver = z.infer<typeof insertSidakDigitalObserverSchema>;
 
 // ============================================================================
-// SIDAK WORKSHOP (Checklist Peralatan Workshop)
+// SIDAK PENCAHAYAAN (Lighting Inspection)
+// ============================================================================
+
+export const sidakPencahayaanSessions = pgTable("sidak_pencahayaan_sessions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  namaPerusahaan: text("nama_perusahaan").notNull(), // Company name
+  jenisAlatMerk: text("jenis_alat_merk").notNull(), // Equipment type & brand
+  departemen: text("departemen"), // Department
+  noSeriAlat: varchar("no_seri_alat"), // Equipment serial number
+  lokasiPengukuran: text("lokasi_pengukuran").notNull(), // Measurement location
+  tanggalPemeriksaan: date("tanggal_pemeriksaan").notNull(), // Inspection date
+  penanggungjawabArea: text("penanggungjawab_area"), // Area supervisor
+  waktuPemeriksaan: varchar("waktu_pemeriksaan"), // Inspection time
+  totalSampel: integer("total_sampel").default(0), // Auto-calculated sample count
+  activityPhotos: text("activity_photos").array(),
+  createdBy: varchar("created_by"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [index("IDX_pencahayaan_sessions_created_by").on(table.createdBy)]);
+
+export const sidakPencahayaanRecords = pgTable("sidak_pencahayaan_records", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  sessionId: varchar("session_id").notNull().references(() => sidakPencahayaanSessions.id, { onDelete: "cascade" }),
+  ordinal: integer("ordinal").notNull(),
+
+  // Measurement fields (from PDF)
+  titikPengambilan: text("titik_pengambilan").notNull(), // Measurement point
+  sumberPenerangan: text("sumber_penerangan"), // Light source
+  jenisPengukuran: text("jenis_pengukuran"), // Measurement type
+  intensitasPencahayaan: numeric("intensitas_pencahayaan"), // Lux value (numeric)
+  jarakSumberCahaya: text("jarak_sumber_cahaya"), // Distance from light source
+  secaraVisual: varchar("secara_visual"), // Visual assessment: "sangat gelap", "gelap", "cukup", "terang", "sangat terang"
+  keterangan: text("keterangan"), // Remarks (explanation of visual assessment)
+
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [index("IDX_pencahayaan_records_session").on(table.sessionId)]);
+
+export const sidakPencahayaanObservers = pgTable("sidak_pencahayaan_observers", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  sessionId: varchar("session_id").notNull().references(() => sidakPencahayaanSessions.id, { onDelete: "cascade" }),
+  ordinal: integer("ordinal").notNull(),
+  nama: text("nama").notNull(),
+  nik: text("nik"),
+  perusahaan: text("perusahaan"),
+  tandaTangan: text("tanda_tangan"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [index("IDX_pencahayaan_observers_session").on(table.sessionId)]);
+
+export const insertSidakPencahayaanSessionSchema = createInsertSchema(sidakPencahayaanSessions).omit({ id: true, createdAt: true, totalSampel: true });
+export const insertSidakPencahayaanRecordSchema = createInsertSchema(sidakPencahayaanRecords).omit({ id: true, createdAt: true });
+export const insertSidakPencahayaanObserverSchema = createInsertSchema(sidakPencahayaanObservers).omit({ id: true, createdAt: true });
+
+export type SidakPencahayaanSession = typeof sidakPencahayaanSessions.$inferSelect;
+export type InsertSidakPencahayaanSession = z.infer<typeof insertSidakPencahayaanSessionSchema>;
+export type SidakPencahayaanRecord = typeof sidakPencahayaanRecords.$inferSelect;
+export type InsertSidakPencahayaanRecord = z.infer<typeof insertSidakPencahayaanRecordSchema>;
+export type SidakPencahayaanObserver = typeof sidakPencahayaanObservers.$inferSelect;
+export type InsertSidakPencahayaanObserver = z.infer<typeof insertSidakPencahayaanObserverSchema>;
+
+// ============================================================================
+// SIDAK WORKSHOP (Checklist Inspeksi Peralatan Workshop)
+// BIB – HSE – ES – F – 3.02 – 87
 // ============================================================================
 
 export const sidakWorkshopSessions = pgTable("sidak_workshop_sessions", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  tanggal: varchar("tanggal").notNull(),
-  shift: varchar("shift").notNull(),
-  waktu: varchar("waktu").notNull(),
-  lokasi: text("lokasi").notNull(), // Workshop Name/Area
-  departemen: text("departemen"),
-  totalSampel: integer("total_sampel").notNull().default(0),
+  tanggal: date("tanggal").notNull(), // Inspection date
+  namaWorkshop: text("nama_workshop").notNull(), // Workshop name
+  lokasi: text("lokasi").notNull(), // Location
+  penanggungJawabArea: text("penanggung_jawab_area"), // Area supervisor
+  totalEquipment: integer("total_equipment").default(0), // Auto-calculated equipment count
   activityPhotos: text("activity_photos").array(),
   createdBy: varchar("created_by"),
   createdAt: timestamp("created_at").defaultNow(),
 }, (table) => [index("IDX_workshop_sessions_created_by").on(table.createdBy)]);
 
-export const sidakWorkshopRecords = pgTable("sidak_workshop_records", {
+// Equipment inspection records - stores inspection results as JSON
+// 10 equipment types: APAR, COMPRESSOR, IMPACT, HYDRAULIC_JACK, GERINDA, HAMMER, ENGINE_WELDING, CUTTING_TORCH, KERANGKENG, GREASE_GUN
+export const sidakWorkshopEquipment = pgTable("sidak_workshop_equipment", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   sessionId: varchar("session_id").notNull().references(() => sidakWorkshopSessions.id, { onDelete: "cascade" }),
   ordinal: integer("ordinal").notNull(),
-  namaAlat: text("nama_alat").notNull(),
-  kondisi: boolean("kondisi").notNull().default(true), // true = Baik, false = Rusak
-  kebersihan: boolean("kebersihan").notNull().default(true), // true = Rapi, false = Kotor
-  sertifikasi: boolean("sertifikasi").notNull().default(true), // true = Valid, false = Expired
-  keterangan: text("keterangan"),
+  equipmentType: varchar("equipment_type").notNull(), // APAR, COMPRESSOR, IMPACT, etc.
+  noRegisterPeralatan: varchar("no_register_peralatan"), // Equipment registration number
+  inspectionResults: jsonb("inspection_results").notNull().default({}), // JSON object with inspection item results
+  tindakLanjutPerbaikan: text("tindak_lanjut_perbaikan"), // Corrective action
+  dueDate: date("due_date"), // Due date for corrective action
   createdAt: timestamp("created_at").defaultNow(),
-}, (table) => [index("IDX_workshop_records_session").on(table.sessionId)]);
+}, (table) => [index("IDX_workshop_equipment_session").on(table.sessionId)]);
 
-export const sidakWorkshopObservers = pgTable("sidak_workshop_observers", {
+// Inspectors (different from observers - this form uses "Inspektor")
+export const sidakWorkshopInspectors = pgTable("sidak_workshop_inspectors", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   sessionId: varchar("session_id").notNull().references(() => sidakWorkshopSessions.id, { onDelete: "cascade" }),
   ordinal: integer("ordinal").notNull(),
   nama: text("nama").notNull(),
-  nik: varchar("nik"),
   perusahaan: text("perusahaan"),
   tandaTangan: text("tanda_tangan"),
   createdAt: timestamp("created_at").defaultNow(),
-}, (table) => [index("IDX_workshop_observers_session").on(table.sessionId)]);
+}, (table) => [index("IDX_workshop_inspectors_session").on(table.sessionId)]);
 
-export const insertSidakWorkshopSessionSchema = createInsertSchema(sidakWorkshopSessions).omit({ id: true, createdAt: true, totalSampel: true });
-export const insertSidakWorkshopRecordSchema = createInsertSchema(sidakWorkshopRecords).omit({ id: true, createdAt: true });
-export const insertSidakWorkshopObserverSchema = createInsertSchema(sidakWorkshopObservers).omit({ id: true, createdAt: true });
+export const insertSidakWorkshopSessionSchema = createInsertSchema(sidakWorkshopSessions).omit({ id: true, createdAt: true, totalEquipment: true });
+export const insertSidakWorkshopEquipmentSchema = createInsertSchema(sidakWorkshopEquipment).omit({ id: true, createdAt: true });
+export const insertSidakWorkshopInspectorSchema = createInsertSchema(sidakWorkshopInspectors).omit({ id: true, createdAt: true });
 
 export type SidakWorkshopSession = typeof sidakWorkshopSessions.$inferSelect;
 export type InsertSidakWorkshopSession = z.infer<typeof insertSidakWorkshopSessionSchema>;
-export type SidakWorkshopRecord = typeof sidakWorkshopRecords.$inferSelect;
-export type InsertSidakWorkshopRecord = z.infer<typeof insertSidakWorkshopRecordSchema>;
-export type SidakWorkshopObserver = typeof sidakWorkshopObservers.$inferSelect;
-export type InsertSidakWorkshopObserver = z.infer<typeof insertSidakWorkshopObserverSchema>;
+export type SidakWorkshopEquipment = typeof sidakWorkshopEquipment.$inferSelect;
+export type InsertSidakWorkshopEquipment = z.infer<typeof insertSidakWorkshopEquipmentSchema>;
+export type SidakWorkshopInspector = typeof sidakWorkshopInspectors.$inferSelect;
+export type InsertSidakWorkshopInspector = z.infer<typeof insertSidakWorkshopInspectorSchema>;
 
 // ============================================
 // MONITORING KOMPETENSI & SERTIFIKASI
@@ -2280,6 +2316,14 @@ export const insertSiAsefChatSessionSchema = createInsertSchema(siAsefChatSessio
 export const insertSiAsefChatMessageSchema = createInsertSchema(siAsefChatMessages).omit({ id: true, createdAt: true });
 
 // Types
+export type SiAsefDocument = typeof siAsefDocuments.$inferSelect;
+export type InsertSiAsefDocument = z.infer<typeof insertSiAsefDocumentSchema>;
+export type SiAsefChunk = typeof siAsefChunks.$inferSelect;
+export type InsertSiAsefChunk = z.infer<typeof insertSiAsefChunkSchema>;
+export type SiAsefChatSession = typeof siAsefChatSessions.$inferSelect;
+export type InsertSiAsefChatSession = z.infer<typeof insertSiAsefChatSessionSchema>;
+export type SiAsefChatMessage = typeof siAsefChatMessages.$inferSelect;
+export type InsertSiAsefChatMessage = z.infer<typeof insertSiAsefChatMessageSchema>;
 // ============================================
 // FMS FATIGUE ALERTS (Fleet Management System Monitoring)
 // For high-volume automated ingestion from Excel/API

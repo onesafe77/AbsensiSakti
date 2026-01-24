@@ -265,10 +265,10 @@ export default function SidakPencahayaanHistory() {
                                             </h3>
                                             <div className="flex items-center gap-2 mt-1 text-xs text-gray-500 dark:text-gray-400">
                                                 <Calendar className="h-3.5 w-3.5" />
-                                                <span>{format(new Date(session.tanggal), 'dd MMM yyyy', { locale: id })}</span>
+                                                <span>{session.tanggal ? format(new Date(session.tanggal), 'dd MMM yyyy', { locale: id }) : '-'}</span>
                                                 <span className="text-gray-300">•</span>
                                                 <Clock className="h-3.5 w-3.5" />
-                                                <span>{session.waktu}</span>
+                                                <span>{session.waktu || '-'}</span>
                                             </div>
                                         </div>
                                         <Badge variant="secondary" className="bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-300 rounded-full px-3 py-0.5 text-xs font-semibold whitespace-nowrap border-0">
@@ -392,7 +392,7 @@ export default function SidakPencahayaanHistory() {
                     {selectedSession && (
                         <div className="space-y-4">
                             <div className="text-sm text-gray-600">
-                                <p><strong>Tanggal:</strong> {format(new Date(selectedSession.tanggal), 'dd MMMM yyyy', { locale: id })}</p>
+                                <p><strong>Tanggal:</strong> {selectedSession.tanggal ? format(new Date(selectedSession.tanggal), 'dd MMMM yyyy', { locale: id }) : '-'}</p>
                                 <p><strong>Lokasi:</strong> {selectedSession.lokasi}</p>
                             </div>
 

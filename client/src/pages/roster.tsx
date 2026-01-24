@@ -69,7 +69,7 @@ export default function Roster() {
   const { data: employeesResponse } = useQuery<any>({
     queryKey: ["/api/employees"],
   });
-  const employees = Array.isArray(employeesResponse?.data) ? employeesResponse.data : [];
+  const employees = Array.isArray(employeesResponse) ? employeesResponse : (Array.isArray(employeesResponse?.data) ? employeesResponse.data : []);
 
   const { data: rosterSchedules = [], isLoading: isLoadingRoster } = useQuery<any[]>({
     queryKey: ["/api/roster", selectedDate],

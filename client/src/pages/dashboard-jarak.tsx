@@ -55,22 +55,22 @@ const COMPANY_FILTER_DEFAULT = "GEC";
 const DASHBOARD_ID = "jarak-aman";
 
 interface SheetConfig {
-  id: string;
-  name: string;
-  spreadsheetId: string;
-  sheetName: string;
-  spreadsheetTitle?: string;
+    id: string;
+    name: string;
+    spreadsheetId: string;
+    sheetName: string;
+    spreadsheetTitle?: string;
 }
 
 function getSheetConfig(): SheetConfig | null {
-  try {
-    const saved = localStorage.getItem("google-sheets-configs");
-    if (!saved) return null;
-    const configs: SheetConfig[] = JSON.parse(saved);
-    return configs.find(c => c.id === DASHBOARD_ID) || null;
-  } catch {
-    return null;
-  }
+    try {
+        const saved = localStorage.getItem("google-sheets-configs");
+        if (!saved) return null;
+        const configs: SheetConfig[] = JSON.parse(saved);
+        return configs.find(c => c.id === DASHBOARD_ID) || null;
+    } catch {
+        return null;
+    }
 }
 
 // --- Types ---
@@ -95,6 +95,7 @@ interface OverspeedData {
     ValidationStatus?: string;
     "Durasi Close"?: string;
     "Tanggal Pemenuhan": string;
+    StatusClosedNC?: string;
     // Helper fields for easier filtering
     _dateObj?: Date;
     _year?: number;
@@ -165,6 +166,11 @@ export default function DashboardJarak() {
         const iLocation = headersTrimmed.indexOf("Location (KM)") > -1 ? headersTrimmed.indexOf("Location (KM)") : headersTrimmed.indexOf("Location SiCantik");
         const iDurasi = headersTrimmed.indexOf("Durasi Close");
         const iPemenuhan = headersTrimmed.indexOf("Tanggal Pemenuhan");
+        // Flexible matching for Status Closed NC column
+        let iStatusClosedNC = headersTrimmed.indexOf("Status Closed NC");
+        if (iStatusClosedNC === -1) iStatusClosedNC = headersTrimmed.findIndex(h => h.toLowerCase().includes("status closed"));
+        if (iStatusClosedNC === -1) iStatusClosedNC = headersTrimmed.findIndex(h => h.toLowerCase().includes("closed nc"));
+        console.log("[Dashboard Jarak] StatusClosedNC column index:", iStatusClosedNC, "Headers:", headersTrimmed.slice(0, 20));
         const iWeek = headersTrimmed.indexOf("Week");
         const iMonth = headersTrimmed.indexOf("Month");
         const iTicketStatus = headersTrimmed.indexOf("Status");
@@ -200,6 +206,7 @@ export default function DashboardJarak() {
                     ValidationStatus: r[iValidationStatus],
                     "Durasi Close": r[iDurasi],
                     "Tanggal Pemenuhan": r[iPemenuhan],
+                    StatusClosedNC: r[iStatusClosedNC],
                     _dateObj: d,
                     _year: d.getFullYear(),
                     _monthIndex: d.getMonth(),
@@ -216,15 +223,24 @@ export default function DashboardJarak() {
             const res = await fetch(`/api/google-sheets/data/${sheetConfig.spreadsheetId}/${encodeURIComponent(sheetConfig.sheetName)}`);
             if (!res.ok) throw new Error("Gagal mengambil data dari Google Sheets");
             const data = await res.json();
-            
+
             if (data.rows && data.rows.length > 0) {
                 const headers = data.columns.map((c: any) => c.name);
+                console.log("[Dashboard Jarak] API Headers:", headers);
+                console.log("[Dashboard Jarak] Sample raw row keys:", Object.keys(data.rows[0]));
+                console.log("[Dashboard Jarak] Sample raw row full:", JSON.stringify(data.rows[0]));
+
+                // Check if Status Closed NC exists in row keys
+                const rowKeys = Object.keys(data.rows[0]);
+                const statusClosedKey = rowKeys.find(k => k.toLowerCase().includes("status closed") || k.toLowerCase().includes("closed nc"));
+                console.log("[Dashboard Jarak] Found Status Closed key:", statusClosedKey);
+
                 const rows = data.rows.map((row: any) => headers.map((h: string) => row[h] || ""));
                 const processedData = processRows(rows, headers);
-                
+
                 const years = Array.from(new Set(processedData.map(d => d._year).filter(Boolean))) as number[];
                 const units = Array.from(new Set(processedData.map(d => d["Vehicle No"]).filter(Boolean))) as string[];
-                
+
                 setRawData(processedData);
                 setFilteredData(processedData);
                 setAvailableYears(years.sort((a, b) => b - a));
@@ -271,6 +287,7 @@ export default function DashboardJarak() {
                     const iLocation = headersTrimmed.indexOf("Location (KM)") > -1 ? headersTrimmed.indexOf("Location (KM)") : headersTrimmed.indexOf("Location SiCantik");
                     const iDurasi = headersTrimmed.indexOf("Durasi Close");
                     const iPemenuhan = headersTrimmed.indexOf("Tanggal Pemenuhan");
+                    const iStatusClosedNC = headersTrimmed.indexOf("Status Closed NC");
                     const iWeek = headersTrimmed.indexOf("Week");
                     const iMonth = headersTrimmed.indexOf("Month");
                     const iNIK = headersTrimmed.indexOf("NIK");
@@ -307,6 +324,7 @@ export default function DashboardJarak() {
                                 ValidationStatus: iValidationStatus !== -1 ? r[iValidationStatus] : "",
                                 "Durasi Close": r[iDurasi],
                                 "Tanggal Pemenuhan": r[iPemenuhan],
+                                StatusClosedNC: r[iStatusClosedNC],
                                 // Helpers
                                 _dateObj: d,
                                 _year: d.getFullYear(),
@@ -446,12 +464,16 @@ export default function DashboardJarak() {
             .slice(0, 10);
 
         // 7. Status & Duration Metrics
+        // 7. Status & Duration Metrics
         let openCount = 0;
         let closedCount = 0;
         let validCount = 0;
         let invalidCount = 0;
         let totalDuration = 0;
         let durationCount = 0;
+
+        let closedOntime = 0;
+        let closedOverdue = 0;
 
         filteredData.forEach(row => {
             // Ticket Status (from 'Status' col)
@@ -470,10 +492,20 @@ export default function DashboardJarak() {
                 totalDuration += dur;
                 durationCount++;
             }
+            // Status Closed NC Breakdown
+            const sc = row.StatusClosedNC?.toLowerCase() || "";
+            if (sc.includes("ontime")) closedOntime++;
+            else if (sc.includes("overdue")) closedOverdue++;
         });
+        console.log("[Dashboard Jarak] Status Closed NC Stats - Ontime:", closedOntime, "Overdue:", closedOverdue);
+        console.log("[Dashboard Jarak] Sample StatusClosedNC values:", filteredData.slice(0, 5).map(d => d.StatusClosedNC));
         const avgDuration = durationCount > 0 ? (totalDuration / durationCount).toFixed(1) : "0";
 
-        return { monthData, weekData, hourData, topEmployees, topUnits, openCount, closedCount, validCount, invalidCount, avgDuration };
+        return {
+            monthData, weekData, hourData, topEmployees, topUnits,
+            openCount, closedCount, validCount, invalidCount, avgDuration,
+            closedOntime, closedOverdue
+        };
     }, [filteredData]);
 
     // --- AI Analysis Logic ---
@@ -540,37 +572,32 @@ export default function DashboardJarak() {
     }
 
     return (
-        <div id="dashboard-content" className="min-h-screen bg-gray-50/30 p-4 md:p-6 space-y-6 font-sans">
+        <div id="dashboard-content" className="min-h-screen bg-gray-50/50 p-4 md:p-6 space-y-6 font-sans relative overflow-hidden">
+            {/* Ambient Background */}
+            <div className="absolute top-0 right-0 w-full h-[500px] bg-gradient-to-bl from-blue-500/10 via-cyan-500/5 to-transparent pointer-events-none -z-10 blur-3xl" />
+
             {/* Header Section */}
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white/70 backdrop-blur-xl p-6 rounded-2xl shadow-sm border border-white/50 sticky top-0 z-50">
                 <div>
-                    <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight">
-                        Safe Distance Dashboard
+                    <h1 className="text-3xl font-black text-gray-900 tracking-tight bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent">
+                        Safe Distance Monitor
                     </h1>
-                    <div className="flex items-center gap-2 mt-1">
-                        <p className="text-gray-500 text-sm">
-                            Total {rawData.length} data (GEC Only) fetched from {dataSource === "sheets" ? "Google Sheets" : "Spreadsheet"}
+                    <div className="flex items-center gap-2 mt-2">
+                        <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200 px-3 py-1">
+                            Live Monitoring
+                        </Badge>
+                        <p className="text-gray-500 text-sm font-medium">
+                            Total {rawData.length} records • Updated {lastUpdated ? lastUpdated.toLocaleTimeString() : "-"}
                         </p>
-                        {sheetConfig ? (
-                            <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">
-                                <Link2 className="w-3 h-3 mr-1" /> Terhubung: {sheetConfig.sheetName}
-                            </Badge>
-                        ) : (
-                            <Link href="/workspace/settings/google-sheets">
-                                <Badge variant="outline" className="text-xs bg-yellow-50 text-yellow-700 border-yellow-200 cursor-pointer hover:bg-yellow-100">
-                                    <Settings className="w-3 h-3 mr-1" /> Hubungkan Spreadsheet
-                                </Badge>
-                            </Link>
-                        )}
                     </div>
                 </div>
 
-                <div className="flex items-center gap-2 w-full md:w-auto">
-                    {/* Filters */}
-                    <div className="flex items-center gap-2 bg-gray-50 p-1 rounded-lg border border-gray-200">
+                <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
+                    {/* Glassy Filters */}
+                    <div className="flex items-center gap-2 bg-white/50 backdrop-blur-md p-1.5 rounded-xl border border-gray-200/50 shadow-sm">
                         <Filter className="w-4 h-4 text-gray-400 ml-2" />
                         <Select value={filterYear} onValueChange={setFilterYear}>
-                            <SelectTrigger className="border-none bg-transparent h-8 w-[90px] text-xs font-semibold focus:ring-0">
+                            <SelectTrigger className="border-none bg-transparent h-9 w-[90px] text-xs font-bold focus:ring-0 text-gray-700">
                                 <SelectValue placeholder="Year" />
                             </SelectTrigger>
                             <SelectContent>
@@ -580,239 +607,220 @@ export default function DashboardJarak() {
                         </Select>
                         <div className="w-px h-4 bg-gray-300"></div>
                         <Select value={filterMonth} onValueChange={setFilterMonth}>
-                            <SelectTrigger className="border-none bg-transparent h-8 w-[100px] text-xs font-semibold focus:ring-0">
+                            <SelectTrigger className="border-none bg-transparent h-9 w-[110px] text-xs font-bold focus:ring-0 text-gray-700">
                                 <SelectValue placeholder="Bulan" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="All">Semua Bulan</SelectItem>
+                                <SelectItem value="All">All Month</SelectItem>
                                 {Array.from({ length: 12 }, (_, i) => (
                                     <SelectItem key={i} value={i.toString()}>{getMonthName(i)}</SelectItem>
                                 ))}
                             </SelectContent>
                         </Select>
-                        <div className="w-px h-4 bg-gray-300"></div>
+                    </div>
+
+                    <div className="flex items-center gap-2 bg-white/50 backdrop-blur-md p-1.5 rounded-xl border border-gray-200/50 shadow-sm">
                         <Select value={filterUnit} onValueChange={setFilterUnit}>
-                            <SelectTrigger className="border-none bg-transparent h-8 w-[110px] text-xs font-semibold focus:ring-0">
+                            <SelectTrigger className="border-none bg-transparent h-9 w-[120px] text-xs font-bold focus:ring-0 text-gray-700">
                                 <SelectValue placeholder="Unit" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="All">Semua Unit</SelectItem>
+                                <SelectItem value="All">All Units</SelectItem>
                                 {availableUnits.map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}
                             </SelectContent>
                         </Select>
                     </div>
 
-                    <Button variant="outline" size="icon" onClick={fetchData} title="Refresh Data">
+                    <Button variant="outline" size="icon" onClick={fetchData} className="rounded-xl border-gray-200 hover:bg-gray-100 hover:text-blue-600 transition-colors">
                         <RefreshCw className="h-4 w-4" />
                     </Button>
-                    <Button variant="outline" onClick={handleExport} title="Export JPG" className="gap-2">
-                        <Download className="h-4 w-4" /> Export JPG
+                    <Button variant="default" onClick={handleExport} className="rounded-xl bg-gray-900 hover:bg-gray-800 text-white shadow-lg shadow-gray-900/20">
+                        <Download className="h-4 w-4 mr-2" /> Export
                     </Button>
                 </div>
             </div>
 
+            {/* Key Metrics Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                {[
+                    {
+                        title: "TOTAL INCIDENTS",
+                        value: filteredData.length,
+                        icon: AlertCircle,
+                        color: "red",
+                        subtext: "Safe Distance Violations"
+                    },
+                    {
+                        title: "AVG RESOLUTION TIME",
+                        value: `${stats?.avgDuration || 0}`,
+                        unit: "Days",
+                        icon: Clock,
+                        color: "blue",
+                        subtext: "Case Closing Duration"
+                    },
+                    {
+                        title: "CLOSED ONTIME",
+                        value: stats?.closedOntime || 0,
+                        icon: CheckCircle,
+                        color: "emerald",
+                        subtext: `${stats?.closedOverdue || 0} Overdue`
+                    },
+                    {
+                        title: "VALID INCIDENTS",
+                        value: `${stats?.validCount || 0}`,
+                        unit: "Valid",
+                        icon: Sparkles,
+                        color: "purple",
+                        subtext: `${stats?.invalidCount || 0} Invalid/Rejected`
+                    }
+                ].map((metric, i) => (
+                    <Card key={i} className={`border-none shadow-lg relative overflow-hidden group hover:shadow-xl transition-all duration-300 bg-white`}>
+                        <div className={`absolute top-0 left-0 w-1 h-full bg-${metric.color}-500`} />
+                        <div className={`absolute -right-6 -top-6 w-24 h-24 bg-${metric.color}-50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-500`} />
 
-
-
-            {/* Key Metrics */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                {/* 1. Total Metric */}
-                <Card className="border-none shadow-sm relative overflow-hidden bg-white border-l-4 border-l-red-600">
-                    <CardContent className="p-4">
-                        <div className="flex justify-between items-start">
-                            <div>
-                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">TOTAL PELANGGARAN</p>
-                                <div className="text-4xl font-extrabold text-red-600">
-                                    {filteredData.length}
+                        <CardContent className="p-6 relative z-10">
+                            <div className="flex justify-between items-start">
+                                <div>
+                                    <p className="text-[11px] font-extrabold text-gray-400 uppercase tracking-widest">{metric.title}</p>
+                                    <div className="flex items-baseline gap-1 mt-2">
+                                        <span className={`text-4xl font-black text-${metric.color}-600 tracking-tight`}>
+                                            {metric.value}
+                                        </span>
+                                        {metric.unit && <span className="text-sm font-bold text-gray-400">{metric.unit}</span>}
+                                    </div>
+                                    <div className="mt-3 flex items-center gap-2">
+                                        <Badge variant="secondary" className={`bg-${metric.color}-50 text-${metric.color}-700 border-${metric.color}-100 font-bold`}>
+                                            {metric.subtext}
+                                        </Badge>
+                                    </div>
+                                </div>
+                                <div className={`p-3 rounded-2xl bg-${metric.color}-50 text-${metric.color}-600 shadow-sm group-hover:scale-110 transition-transform`}>
+                                    <metric.icon className="w-6 h-6" />
                                 </div>
                             </div>
-                            <div className="p-2 bg-red-50 rounded-lg">
-                                <AlertCircle className="w-5 h-5 text-red-600" />
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-
-                {/* 2. Status Breakdown */}
-                <Card className="border-none shadow-sm relative overflow-hidden bg-white border-l-4 border-l-emerald-500">
-                    <CardContent className="p-4">
-                        <div className="flex justify-between items-start mb-2">
-                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">STATUS CASE</p>
-                            <div className="p-2 bg-emerald-50 rounded-lg">
-                                <CheckCircle className="w-5 h-5 text-emerald-600" />
-                            </div>
-                        </div>
-                        <div className="flex items-end gap-3">
-                            <div>
-                                <span className="text-2xl font-bold text-emerald-600">{stats?.closedCount || 0}</span>
-                                <span className="text-xs text-gray-400 ml-1">Closed</span>
-                            </div>
-                            <div className="h-4 w-px bg-gray-200"></div>
-                            <div>
-                                <span className="text-2xl font-bold text-orange-500">{stats?.openCount || 0}</span>
-                                <span className="text-xs text-gray-400 ml-1">Open</span>
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-
-                {/* 3. Duration */}
-                <Card className="border-none shadow-sm relative overflow-hidden bg-white border-l-4 border-l-blue-500">
-                    <CardContent className="p-4">
-                        <div className="flex justify-between items-start">
-                            <div>
-                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">RATA-RATA DURASI</p>
-                                <div className="text-3xl font-extrabold text-blue-600">
-                                    {stats?.avgDuration || 0}<span className="text-sm font-medium text-gray-400 ml-1">Hari</span>
-                                </div>
-                                <p className="text-[10px] text-gray-400 mt-1">Waktu penyelesaian case</p>
-                            </div>
-                            <div className="p-2 bg-blue-50 rounded-lg">
-                                <Clock className="w-5 h-5 text-blue-600" />
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-
-                {/* 4. Validation Status */}
-                <Card className="border-none shadow-sm relative overflow-hidden bg-white border-l-4 border-l-purple-500">
-                    <CardContent className="p-4">
-                        <div className="flex justify-between items-start mb-2">
-                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">VALIDASI</p>
-                            <div className="p-2 bg-purple-50 rounded-lg">
-                                <CheckCircle className="w-5 h-5 text-purple-600" />
-                            </div>
-                        </div>
-                        <div className="flex items-end gap-3">
-                            <div>
-                                <span className="text-2xl font-bold text-purple-600">{stats?.validCount || 0}</span>
-                                <span className="text-xs text-gray-400 ml-1">Valid</span>
-                            </div>
-                            <div className="h-4 w-px bg-gray-200"></div>
-                            <div>
-                                <span className="text-2xl font-bold text-red-500">{stats?.invalidCount || 0}</span>
-                                <span className="text-xs text-gray-400 ml-1">Invalid</span>
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
+                        </CardContent>
+                    </Card>
+                ))}
             </div>
 
-            {/* Main Content Grid: Charts (Left) & Sidebar (Right) */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+            {/* Main Content Layout */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-                {/* Left Column: Charts (Span 2) */}
+                {/* Charts Column (Left) */}
                 <div className="lg:col-span-2 space-y-6">
-
-                    {/* Main Monthly Trend */}
-                    <Card className="border-none shadow-sm bg-white">
-                        <CardHeader>
-                            <CardTitle className="text-base font-bold text-gray-900">Tren Pelanggaran (Bulanan)</CardTitle>
+                    {/* Monthly Trend */}
+                    <Card className="border-none shadow-lg bg-white/80 backdrop-blur-sm rounded-2xl">
+                        <CardHeader className="flex flex-row items-center justify-between pb-2 border-b border-gray-100/50">
+                            <div>
+                                <CardTitle className="text-lg font-bold text-gray-800">Monthly Incident Trend</CardTitle>
+                                <CardDescription>Frequency of distance violations</CardDescription>
+                            </div>
+                            <TrendingUp className="w-5 h-5 text-gray-400" />
                         </CardHeader>
-                        <CardContent className="h-[320px] pt-4">
+                        <CardContent className="h-[350px] pt-6">
                             <ResponsiveContainer width="100%" height="100%">
-                                <BarChart data={stats?.monthData} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
-                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
-                                    <XAxis dataKey="name" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
-                                    <YAxis hide />
-                                    <Tooltip cursor={{ fill: '#f3f4f6' }} />
-                                    <Bar dataKey="count" fill="#ef4444" radius={[4, 4, 0, 0]} maxBarSize={50}>
-                                        <LabelList dataKey="count" position="top" fill="#ef4444" fontSize={12} formatter={(val: number) => val > 0 ? val : ''} />
+                                <BarChart data={stats?.monthData}>
+                                    <defs>
+                                        <linearGradient id="barBlueGradient" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.8} />
+                                            <stop offset="100%" stopColor="#3b82f6" stopOpacity={0.3} />
+                                        </linearGradient>
+                                    </defs>
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 12 }} dy={10} />
+                                    <Tooltip
+                                        cursor={{ fill: '#f8fafc' }}
+                                        contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)' }}
+                                    />
+                                    <Bar dataKey="count" fill="url(#barBlueGradient)" radius={[6, 6, 0, 0]} maxBarSize={40}>
+                                        <LabelList dataKey="count" position="top" fill="#3b82f6" fontSize={12} fontWeight="bold" formatter={(v: number) => v > 0 ? v : ''} />
                                     </Bar>
                                 </BarChart>
                             </ResponsiveContainer>
                         </CardContent>
                     </Card>
 
-                    {/* Secondary Charts Grid */}
+                    {/* Secondary Charts */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {/* Weekly Trend */}
-                        <Card className="border-none shadow-sm bg-white">
+                        {/* Weekly Analysis */}
+                        <Card className="border-none shadow-sm">
                             <CardHeader>
-                                <CardTitle className="text-xs font-bold text-gray-500 uppercase">MINGGUAN</CardTitle>
+                                <CardTitle className="text-base font-bold text-gray-800">MINGGUAN</CardTitle>
+                                <CardDescription>Distribusi pelanggaran per minggu</CardDescription>
                             </CardHeader>
-                            <CardContent className="h-[200px] pt-4">
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <BarChart data={stats?.weekData} margin={{ top: 20 }}>
-                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
-                                        <XAxis dataKey="name" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
-                                        <YAxis hide />
-                                        <Tooltip />
-                                        <Bar dataKey="count" fill="#ef4444" radius={[4, 4, 0, 0]}>
-                                            <LabelList dataKey="count" position="top" fill="#ef4444" fontSize={11} />
-                                        </Bar>
-                                    </BarChart>
-                                </ResponsiveContainer>
+                            <CardContent>
+                                <div className="h-[250px]">
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <BarChart data={stats?.weekData || []}>
+                                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                                            <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 10 }} dy={10} />
+                                            <Tooltip
+                                                cursor={{ fill: '#f8fafc' }}
+                                                contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)' }}
+                                            />
+                                            <Bar dataKey="count" fill="#3b82f6" radius={[4, 4, 0, 0]} maxBarSize={30}>
+                                                <LabelList dataKey="count" position="top" fill="#3b82f6" fontSize={11} fontWeight="bold" formatter={(v: number) => v > 0 ? v : ''} />
+                                            </Bar>
+                                        </BarChart>
+                                    </ResponsiveContainer>
+                                </div>
                             </CardContent>
                         </Card>
 
-                        {/* Hourly Trend */}
-                        <Card className="border-none shadow-sm bg-white">
+                        {/* Hourly Analysis */}
+                        <Card className="border-none shadow-sm">
                             <CardHeader>
-                                <CardTitle className="text-xs font-bold text-gray-500 uppercase">JAM RAWAN</CardTitle>
+                                <CardTitle className="text-base font-bold text-gray-800">JAM RAWAN</CardTitle>
+                                <CardDescription>Waktu kejadian paling sering</CardDescription>
                             </CardHeader>
-                            <CardContent className="h-[200px] pt-4">
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <BarChart data={stats?.hourData} margin={{ top: 20 }}>
-                                        <XAxis dataKey="name" tick={{ fontSize: 10 }} interval={3} axisLine={false} tickLine={false} />
-                                        <YAxis hide />
-                                        <Tooltip cursor={{ fill: 'transparent' }} />
-                                        <Bar dataKey="count" fill="#ef4444" radius={[2, 2, 0, 0]}>
-                                            <LabelList dataKey="count" position="top" fill="#ef4444" fontSize={10} formatter={(val: number) => val > 0 ? val : ''} />
-                                        </Bar>
-                                    </BarChart>
-                                </ResponsiveContainer>
+                            <CardContent>
+                                <div className="h-[250px]">
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <BarChart data={stats?.hourData || []}>
+                                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                                            <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 10 }} dy={10} />
+                                            <Tooltip
+                                                cursor={{ fill: '#f8fafc' }}
+                                                contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)' }}
+                                            />
+                                            <Bar dataKey="count" fill="#ef4444" radius={[4, 4, 0, 0]} maxBarSize={20}>
+                                                <LabelList dataKey="count" position="top" fill="#ef4444" fontSize={10} fontWeight="bold" formatter={(v: number) => v > 0 ? v : ''} />
+                                            </Bar>
+                                        </BarChart>
+                                    </ResponsiveContainer>
+                                </div>
                             </CardContent>
                         </Card>
                     </div>
-
-                    {/* Unit Distribution (Wide) */}
-                    <Card className="border-none shadow-sm bg-white">
-                        <CardHeader>
-                            <CardTitle className="text-xs font-bold text-gray-500 uppercase">UNIT DISTRIBUTION (TOP 10)</CardTitle>
-                        </CardHeader>
-                        <CardContent className="h-[250px] pt-4">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <BarChart data={stats?.topUnits} layout="vertical" margin={{ top: 0, right: 30 }}>
-                                    <XAxis type="number" hide />
-                                    <YAxis dataKey="name" type="category" width={70} tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
-                                    <Tooltip />
-                                    <Bar dataKey="count" fill="#ef4444" radius={[0, 4, 4, 0]} barSize={15}>
-                                        <LabelList dataKey="count" position="right" fill="#ef4444" fontSize={11} />
-                                    </Bar>
-                                </BarChart>
-                            </ResponsiveContainer>
-                        </CardContent>
-                    </Card>
                 </div>
 
                 {/* Right Column: AI Analysis & Lists (Span 1) */}
                 <div className="space-y-6">
 
                     {/* AI Analysis - Vertical Card */}
-                    <Card className="bg-gradient-to-br from-white to-red-50/30 border border-red-100 shadow-sm overflow-hidden relative">
+                    <Card className="bg-gradient-to-br from-white to-blue-50/30 border border-blue-100 shadow-sm overflow-hidden relative">
                         <div className="absolute top-0 right-0 p-3 opacity-5">
-                            <BrainCircuit className="w-32 h-32 text-red-900" />
+                            <BrainCircuit className="w-32 h-32 text-blue-900" />
                         </div>
                         <CardHeader className="pb-2">
                             <div className="flex items-center gap-2">
-                                <BrainCircuit className="w-5 h-5 text-red-600" />
+                                <BrainCircuit className="w-5 h-5 text-blue-600" />
                                 <CardTitle className="text-base font-bold text-gray-900">AI Analysis</CardTitle>
                             </div>
                             <CardDescription className="text-xs text-gray-500">
-                                Powered by OpenAI • Real-time Insights
+                                Powered by Mystic AI • Real-time Insights
                             </CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-4">
                             {isAnalyzing ? (
                                 <div className="text-gray-400 italic flex items-center gap-2">
-                                    <Sparkles className="w-4 h-4 animate-spin text-red-500" />
+                                    <Sparkles className="w-4 h-4 animate-spin text-blue-500" />
                                     <span className="text-sm">Menganalisa data...</span>
                                 </div>
                             ) : (aiInsights || []).length > 0 ? (aiInsights || []).map((text, i) => (
-                                <div key={i} className="bg-white p-3 rounded-lg border border-red-100 shadow-sm text-sm text-gray-700 leading-relaxed relative z-10 pl-4">
-                                    <div className="absolute left-0 top-3 w-1 h-6 bg-red-500 rounded-r-lg"></div>
-                                    <span dangerouslySetInnerHTML={{ __html: text.replace(/\*\*(.*?)\*\*/g, '<span class="text-red-700 font-bold">$1</span>') }} />
+                                <div key={i} className="bg-white p-3 rounded-lg border border-blue-100 shadow-sm text-sm text-gray-700 leading-relaxed relative z-10 pl-4">
+                                    <div className="absolute left-0 top-3 w-1 h-6 bg-blue-500 rounded-r-lg"></div>
+                                    <span dangerouslySetInnerHTML={{ __html: text.replace(/\*\*(.*?)\*\*/g, '<span class="text-blue-700 font-bold">$1</span>') }} />
                                 </div>
                             )) : (
                                 <div className="text-sm text-gray-400 text-center py-4 italic">
@@ -823,7 +831,7 @@ export default function DashboardJarak() {
                     </Card>
 
                     {/* Top Employees List */}
-                    <Card className="border-none shadow-sm bg-white">
+                    < Card className="border-none shadow-sm bg-white" >
                         <CardHeader>
                             <CardTitle className="text-base font-bold text-gray-900">Top 5 Pelanggar</CardTitle>
                         </CardHeader>
@@ -847,10 +855,10 @@ export default function DashboardJarak() {
                                 )) : <div className="text-center text-gray-400 py-10">Tidak ada data</div>}
                             </div>
                         </CardContent>
-                    </Card>
+                    </Card >
 
-                </div>
-            </div>
+                </div >
+            </div >
 
             <div className="text-center text-xs text-gray-300 pb-8">
                 Dashboard Version 2.1 • Data updated at {lastUpdated ? lastUpdated.toLocaleTimeString() : "-"}

@@ -174,14 +174,13 @@ import {
   sidakDigitalObservers,
   type SidakWorkshopSession,
   type InsertSidakWorkshopSession,
-  type SidakWorkshopRecord,
-  type InsertSidakWorkshopRecord,
-  type SidakWorkshopObserver,
-  type InsertSidakWorkshopObserver,
+  type SidakWorkshopEquipment,
+  type InsertSidakWorkshopEquipment,
+  type SidakWorkshopInspector,
+  type InsertSidakWorkshopInspector,
   sidakWorkshopSessions,
-  sidakWorkshopRecords,
-
-  sidakWorkshopObservers,
+  sidakWorkshopEquipment,
+  sidakWorkshopInspectors,
   // TNA Types
   type Training, type InsertTraining,
   type TnaSummary, type InsertTnaSummary,
@@ -200,13 +199,21 @@ import {
   inductionSchedules,
   inductionAnswers,
 
+  type InductionMaterial,
+  type InsertInductionMaterial,
+  type InductionQuestion,
+  type InsertInductionQuestion,
+  type InductionSchedule,
+  type InsertInductionSchedule,
+  type InductionAnswer,
+  type InsertInductionAnswer,
+
   mcuRecords,
   type McuRecord,
   type InsertMcuRecord,
 } from "@shared/schema";
 import { randomUUID } from "crypto";
-import { drizzle } from "drizzle-orm/neon-http";
-import { neon } from "@neondatabase/serverless";
+
 import { eq, and, inArray, desc, asc, getTableColumns, or, ilike, sql } from "drizzle-orm";
 import { db } from "./db";
 import PDFDocument from "pdfkit";
@@ -505,6 +512,9 @@ export interface IStorage {
     byHour: any[];
     summary: any;
     validationStats: any[];
+    availableViolationTypes: any[];
+    topDrivers: any[];
+    byWeek: any[];
   }>;
 
   // Induction Methods
@@ -1413,22 +1423,22 @@ export class MemStorage {
   async updateSidakWorkshopSession(id: string, updates: Partial<InsertSidakWorkshopSession>): Promise<SidakWorkshopSession | undefined> {
     throw new Error("Sidak Workshop not implemented in MemStorage. Use DrizzleStorage.");
   }
-  async getSidakWorkshopRecords(sessionId: string): Promise<SidakWorkshopRecord[]> {
+  async getSidakWorkshopEquipment(sessionId: string): Promise<SidakWorkshopEquipment[]> {
     throw new Error("Sidak Workshop not implemented in MemStorage. Use DrizzleStorage.");
   }
-  async createSidakWorkshopRecord(record: InsertSidakWorkshopRecord): Promise<SidakWorkshopRecord> {
+  async createSidakWorkshopEquipment(equipment: InsertSidakWorkshopEquipment): Promise<SidakWorkshopEquipment> {
     throw new Error("Sidak Workshop not implemented in MemStorage. Use DrizzleStorage.");
   }
-  async getSidakWorkshopObservers(sessionId: string): Promise<SidakWorkshopObserver[]> {
+  async getSidakWorkshopInspectors(sessionId: string): Promise<SidakWorkshopInspector[]> {
     throw new Error("Sidak Workshop not implemented in MemStorage. Use DrizzleStorage.");
   }
-  async createSidakWorkshopObserver(observer: Omit<InsertSidakWorkshopObserver, 'ordinal'>): Promise<SidakWorkshopObserver> {
+  async createSidakWorkshopInspector(inspector: Omit<InsertSidakWorkshopInspector, 'ordinal'>): Promise<SidakWorkshopInspector> {
     throw new Error("Sidak Workshop not implemented in MemStorage. Use DrizzleStorage.");
   }
-  async updateSidakWorkshopSessionSampleCount(sessionId: string): Promise<void> {
+  async updateSidakWorkshopSessionEquipmentCount(sessionId: string): Promise<void> {
     throw new Error("Sidak Workshop not implemented in MemStorage. Use DrizzleStorage.");
   }
-  async generateSidakWorkshopPDF(data: { session: SidakWorkshopSession; records: SidakWorkshopRecord[]; observers: SidakWorkshopObserver[] }): Promise<Buffer> {
+  async generateSidakWorkshopPDF(data: { session: SidakWorkshopSession; equipment: SidakWorkshopEquipment[]; inspectors: SidakWorkshopInspector[] }): Promise<Buffer> {
     throw new Error("Sidak Workshop not implemented in MemStorage. Use DrizzleStorage.");
   }
 
@@ -1597,17 +1607,7 @@ export class DrizzleStorage implements IStorage {
   private db;
 
   constructor() {
-    if (!process.env.DATABASE_URL) {
-      throw new Error("DATABASE_URL environment variable is not set");
-    }
-    try {
-      const sql = neon(process.env.DATABASE_URL);
-      this.db = drizzle(sql);
-      console.log("✅ Database connection initialized successfully");
-    } catch (error: any) {
-      console.error("❌ Failed to initialize database:", error?.message || error);
-      throw error;
-    }
+    this.db = db;
   }
 
   // User operations implementation (required for Replit Auth)
@@ -5023,7 +5023,97 @@ export class DrizzleStorage implements IStorage {
 
   async updateSidakPencahayaanSessionSampleCount(sessionId: string): Promise<void> {
     const records = await this.getSidakPencahayaanRecords(sessionId);
-    await this.updateSidakPencahayaanSession(sessionId, { totalSampel: records.length } as any);
+
+    // Direct SQL update to bypass schema validation for totalSampel
+    await this.db
+      .update(sidakPencahayaanSessions)
+      .set({ totalSampel: records.length })
+      .where(eq(sidakPencahayaanSessions.id, sessionId));
+  }
+
+  // ============================================================================
+  // SIDAK WORKSHOP METHODS
+  // ============================================================================
+
+  async getSidakWorkshopSession(id: string): Promise<SidakWorkshopSession | undefined> {
+    const [result] = await this.db
+      .select()
+      .from(sidakWorkshopSessions)
+      .where(eq(sidakWorkshopSessions.id, id));
+    return result;
+  }
+
+  async getAllSidakWorkshopSessions(): Promise<SidakWorkshopSession[]> {
+    return await this.db
+      .select()
+      .from(sidakWorkshopSessions)
+      .orderBy(desc(sidakWorkshopSessions.createdAt));
+  }
+
+  async createSidakWorkshopSession(session: InsertSidakWorkshopSession): Promise<SidakWorkshopSession> {
+    const [result] = await this.db
+      .insert(sidakWorkshopSessions)
+      .values(session)
+      .returning();
+    return result;
+  }
+
+  async updateSidakWorkshopSession(id: string, updates: Partial<InsertSidakWorkshopSession>): Promise<SidakWorkshopSession | undefined> {
+    const [result] = await this.db
+      .update(sidakWorkshopSessions)
+      .set(updates)
+      .where(eq(sidakWorkshopSessions.id, id))
+      .returning();
+    return result;
+  }
+
+  async getSidakWorkshopEquipment(sessionId: string): Promise<SidakWorkshopEquipment[]> {
+    return await this.db
+      .select()
+      .from(sidakWorkshopEquipment)
+      .where(eq(sidakWorkshopEquipment.sessionId, sessionId))
+      .orderBy(asc(sidakWorkshopEquipment.ordinal));
+  }
+
+  async createSidakWorkshopEquipment(equipment: InsertSidakWorkshopEquipment): Promise<SidakWorkshopEquipment> {
+    const [result] = await this.db
+      .insert(sidakWorkshopEquipment)
+      .values(equipment)
+      .returning();
+
+    // Update session total equipment count
+    await this.updateSidakWorkshopSessionEquipmentCount(equipment.sessionId);
+
+    return result;
+  }
+
+  async getSidakWorkshopInspectors(sessionId: string): Promise<SidakWorkshopInspector[]> {
+    return await this.db
+      .select()
+      .from(sidakWorkshopInspectors)
+      .where(eq(sidakWorkshopInspectors.sessionId, sessionId))
+      .orderBy(asc(sidakWorkshopInspectors.ordinal));
+  }
+
+  async createSidakWorkshopInspector(inspector: Omit<InsertSidakWorkshopInspector, 'ordinal'>): Promise<SidakWorkshopInspector> {
+    const existingInspectors = await this.getSidakWorkshopInspectors(inspector.sessionId);
+    const nextOrdinal = existingInspectors.length + 1;
+
+    const [result] = await this.db
+      .insert(sidakWorkshopInspectors)
+      .values({ ...inspector, ordinal: nextOrdinal } as InsertSidakWorkshopInspector)
+      .returning();
+    return result;
+  }
+
+  async updateSidakWorkshopSessionEquipmentCount(sessionId: string): Promise<void> {
+    const equipment = await this.getSidakWorkshopEquipment(sessionId);
+
+    // Direct SQL update to bypass schema validation for totalEquipment
+    await this.db
+      .update(sidakWorkshopSessions)
+      .set({ totalEquipment: equipment.length })
+      .where(eq(sidakWorkshopSessions.id, sessionId));
   }
 
   async generateSidakPencahayaanPDF(data: {
@@ -5289,7 +5379,12 @@ export class DrizzleStorage implements IStorage {
 
   async updateSidakLotoSessionSampleCount(sessionId: string): Promise<void> {
     const records = await this.getSidakLotoRecords(sessionId);
-    await this.updateSidakLotoSession(sessionId, { totalSampel: records.length } as any);
+
+    // Direct SQL update to bypass schema validation for totalSampel
+    await this.db
+      .update(sidakLotoSessions)
+      .set({ totalSampel: records.length })
+      .where(eq(sidakLotoSessions.id, sessionId));
   }
 
   async generateSidakLotoPDF(data: {
@@ -5316,129 +5411,366 @@ export class DrizzleStorage implements IStorage {
 
         const margin = 30;
         const pageWidth = 841.89;
+        const pageHeight = 595.28;
         const contentWidth = pageWidth - (margin * 2);
 
-        // --- Header ---
+        // --- HEADER SECTION ---
         const logoPath = path.join(process.cwd(), 'client', 'public', 'blogo.png');
-        doc.lineWidth(1).rect(margin, margin, contentWidth, 60).stroke();
+
+        // 1. Logo (Left)
         if (fs.existsSync(logoPath)) {
-          doc.image(logoPath, margin + 10, margin + 5, { height: 50 });
+          doc.image(logoPath, margin, margin, { height: 35 });
+        } else {
+          doc.font('Helvetica-Bold').fontSize(14).text('PT BORNEO INDOBARA', margin, margin);
         }
-        doc.font('Helvetica-Bold').fontSize(16)
-          .text('INSPEKSI KEPATUHAN LOTO (LOCK OUT TAG OUT)', margin + 100, margin + 20, { width: contentWidth - 200, align: 'center' });
 
+        // 2. Doc Code (Right)
         doc.font('Helvetica').fontSize(9)
-          .text('No. Dokumen: BIB-HSE-PPO-F-078-18', margin + contentWidth - 200, margin + 10, { width: 190, align: 'right' });
-        doc.text('Revisi: 00', margin + contentWidth - 200, margin + 22, { width: 190, align: 'right' });
+          .text('BIB - HSE - ES - F - 3.02 - 83', margin + contentWidth - 200, margin + 10, { width: 200, align: 'right' });
 
-        // --- Info ---
-        const infoY = margin + 70;
-        doc.fontSize(10).font('Helvetica');
-        doc.text(`Tanggal: ${session.tanggal}`, margin + 20, infoY);
-        doc.text(`Shift: ${session.shift}`, margin + 20, infoY + 15);
-        doc.text(`Waktu: ${session.waktu}`, margin + 20, infoY + 30);
-        doc.text(`Lokasi: ${session.lokasi}`, margin + 400, infoY);
-        doc.text(`Departemen: ${session.departemen || '-'}`, margin + 400, infoY + 15);
+        // 3. Title Box
+        const titleY = margin + 45;
+        doc.fillColor('#e0e0e0').rect(margin, titleY, contentWidth, 35).fill();
+        doc.fillColor('#000000').rect(margin, titleY, contentWidth, 35).stroke();
 
-        // --- Table ---
-        const tableTop = infoY + 50;
-        const rowHeight = 25;
-        const colWidths = [30, 150, 120, 120, 100, 80, 160];
-        const headers = ['No', 'Nama Karyawan', 'Perusahaan', 'Jenis Pekerjaan', 'Lokasi Isolasi', 'No. Gembok', 'Keterangan'];
+        doc.font('Helvetica-Bold').fontSize(14)
+          .text('INSPEKSI KEPATUHAN LOTO', margin, titleY + 7, { width: contentWidth, align: 'center' });
+        doc.font('Helvetica-Oblique').fontSize(9)
+          .text('Formulir ini digunakan sebagai catatan hasil inspeksi LOTO yang dilaksanakan di PT Borneo Indobara', margin, titleY + 22, { width: contentWidth, align: 'center' });
 
-        let x = margin;
-        doc.font('Helvetica-Bold');
-        headers.forEach((h, i) => {
-          doc.rect(x, tableTop, colWidths[i], rowHeight).stroke();
-          doc.text(h, x + 2, tableTop + 7, { width: colWidths[i] - 4, align: 'center' });
-          x += colWidths[i];
-        });
 
-        doc.font('Helvetica');
-        let currentY = tableTop + rowHeight;
-        records.forEach((rec, i) => {
-          if (currentY > 500) { // Simple page break
-            doc.addPage();
-            currentY = margin;
-          }
-          x = margin;
-          const vals = [(i + 1).toString(), rec.namaKaryawan, rec.perusahaan || '-', rec.jenisPekerjaan || '-', rec.lokasiIsolasi || '-', rec.nomorGembok || '-', rec.keterangan || '-'];
-          vals.forEach((v, j) => {
-            doc.rect(x, currentY, colWidths[j], rowHeight).stroke();
-            doc.text(v || '-', x + 2, currentY + 7, { width: colWidths[j] - 4, align: j === 1 ? 'left' : 'center' });
-            x += colWidths[j];
+        // --- INFO SECTION ---
+        const infoY = titleY + 35; // Attached to title box
+        const infoRowHeight = 25;
+
+        // Draw outer box for info (2 rows)
+        doc.rect(margin, infoY, contentWidth, infoRowHeight * 2).stroke();
+
+        // Vertical divider (approx 40% / 60% split based on image)
+        const splitX = margin + 350;
+
+        doc.moveTo(splitX, infoY).lineTo(splitX, infoY + infoRowHeight * 2).stroke();
+        doc.moveTo(margin, infoY + infoRowHeight).lineTo(margin + contentWidth, infoY + infoRowHeight).stroke();
+
+        // Labels and Values
+        doc.font('Helvetica-Bold').fontSize(9);
+        const padding = 6;
+
+        const labelWidth = 100;
+
+        // Row 1
+        // Col 1 (Left)
+        doc.rect(margin, infoY, labelWidth, infoRowHeight).fillColor('#e0e0e0').fill().stroke();
+        doc.fillColor('#000000').text('Tanggal/ Shift', margin + padding, infoY + 8);
+        doc.text(`${session.tanggal || ''} / ${session.shift || ''}`, margin + labelWidth + padding, infoY + 8);
+
+        // Col 2 (Right)
+        doc.rect(splitX, infoY, labelWidth, infoRowHeight).fillColor('#e0e0e0').fill().stroke();
+        doc.fillColor('#000000').text('Lokasi', splitX + padding, infoY + 8);
+        doc.text(session.lokasi || '', splitX + labelWidth + padding, infoY + 8);
+
+        // Row 2
+        const r2y = infoY + infoRowHeight;
+        // Col 1 (Left)
+        doc.rect(margin, r2y, labelWidth, infoRowHeight).fillColor('#e0e0e0').fill().stroke();
+        doc.fillColor('#000000').text('Waktu', margin + padding, r2y + 8);
+        const wEnd = ' sampai ...';
+        doc.text(`${session.waktu || ''} ${wEnd}`, margin + labelWidth + padding, r2y + 8);
+
+        // Col 2 (Right)
+        doc.rect(splitX, r2y, labelWidth, infoRowHeight).fillColor('#e0e0e0').fill().stroke();
+        doc.fillColor('#000000').text('Jumlah Sampel', splitX + padding, r2y + 8);
+        doc.text((session.totalSampel || records.length).toString(), splitX + labelWidth + padding, r2y + 8);
+
+
+        // --- TABLE SECTION ---
+        const tableTop = infoY + (infoRowHeight * 2) + 10;
+
+        const qWidth = 35;
+
+        const cols = [
+          { name: 'No', label: 'No', w: 30, align: 'center', type: 'text' },
+          { name: 'Nama', label: 'Nama', w: 140, align: 'left', type: 'text' },
+          { name: 'NIK', label: 'NIK', w: 70, align: 'left', type: 'text' },
+          { name: 'Perusahaan', label: 'Perusahaan', w: 90, align: 'left', type: 'text' },
+          { name: 'Q1', label: 'Gembok & Danger tag terpasang?', w: qWidth, align: 'center', type: 'vertical' },
+          { name: 'Q2', label: 'Danger tag sesuai & memadai?', w: qWidth, align: 'center', type: 'vertical' },
+          { name: 'Q3', label: 'Gembok sesuai & memadai?', w: qWidth, align: 'center', type: 'vertical' },
+          { name: 'Q4', label: 'Kunci unik untuk gembok sendiri?', w: qWidth, align: 'center', type: 'vertical' },
+          { name: 'Q5', label: 'Hasp digunakan dengan benar?', w: qWidth, align: 'center', type: 'vertical' },
+          { name: 'Ket', label: 'Keterangan', w: 0, align: 'left', type: 'text' }
+        ];
+
+        // Calc remaining width for Ket
+        const fixedWidth = cols.reduce((sum, c) => sum + c.w, 0);
+        cols[cols.length - 1].w = contentWidth - fixedWidth;
+
+        let currentY = tableTop;
+        const headerHeightTable = 140; // Taller for vertical text
+        const rowHeight = 20;
+
+        const drawHeader = (y: number) => {
+          let x = margin;
+          doc.fillColor('#e0e0e0').rect(margin, y, contentWidth, headerHeightTable).fill();
+          doc.fillColor('#000000');
+
+          cols.forEach(col => {
+            doc.rect(x, y, col.w, headerHeightTable).stroke();
+            doc.font('Helvetica-Bold').fontSize(9);
+
+            if (col.type === 'vertical') {
+              // Draw vertical text
+              doc.save();
+              const textX = x + (col.w / 2) + 3; // slight offset for font baseline
+              const textY = y + headerHeightTable - 5;
+              doc.translate(textX, textY);
+              doc.rotate(-90);
+              doc.text(col.label, 0, 0, { width: headerHeightTable - 10, align: 'left' }); // align left relative to rotation start (which is bottom)
+              doc.restore();
+            } else {
+              // Draw centered text normally
+              const textHeight = doc.heightOfString(col.label, { width: col.w - 4 });
+              const textY = y + (headerHeightTable - textHeight) / 2;
+              doc.text(col.label, x + 2, textY, { width: col.w - 4, align: 'center' });
+            }
+            x += col.w;
           });
+        };
+
+        drawHeader(currentY);
+        currentY += headerHeightTable;
+
+        // Table Rows
+        doc.font('Helvetica').fontSize(9);
+
+        records.forEach((rec, idx) => {
+          // Page break check...
+          if (currentY > pageHeight - margin - 150) {
+            doc.addPage({ layout: 'landscape', margins: { top: 30, bottom: 30, left: 30, right: 30 } });
+            currentY = margin;
+            drawHeader(currentY);
+            currentY += headerHeightTable;
+            doc.font('Helvetica').fontSize(9); // Reset font
+          }
+
+          let x = margin;
+
+          // Draw cells
+          cols.forEach((col, cIdx) => {
+            doc.rect(x, currentY, col.w, rowHeight).stroke();
+
+            let text = '';
+            if (col.name === 'No') text = (idx + 1).toString();
+            else if (col.name === 'Nama') text = rec.nama || '';
+            else if (col.name === 'NIK') text = rec.nik || '';
+            else if (col.name === 'Perusahaan') text = rec.perusahaan || '';
+            else if (col.name === 'Q1') text = rec.q1_gembokTagTerpasang ? 'V' : (rec.q1_gembokTagTerpasang === false ? 'X' : '');
+            else if (col.name === 'Q2') text = rec.q2_dangerTagSesuai ? 'V' : (rec.q2_dangerTagSesuai === false ? 'X' : '');
+            else if (col.name === 'Q3') text = rec.q3_gembokSesuai ? 'V' : (rec.q3_gembokSesuai === false ? 'X' : '');
+            else if (col.name === 'Q4') text = rec.q4_kunciUnik ? 'V' : (rec.q4_kunciUnik === false ? 'X' : '');
+            else if (col.name === 'Q5') text = rec.q5_haspBenar ? 'V' : (rec.q5_haspBenar === false ? 'X' : '');
+            else if (col.name === 'Ket') text = rec.keterangan || '';
+
+            // Center compliance checks
+            const align = (col.name.startsWith('Q') || col.name === 'No') ? 'center' : 'left';
+
+            doc.text(text, x + 2, currentY + 6, { width: col.w - 4, align: align as any });
+            x += col.w;
+          });
+
           currentY += rowHeight;
         });
 
-        // --- Observers ---
+        // Fill empty rows to minimum 10
+        const minRows = 10;
+        const rowsToAdd = Math.max(0, minRows - records.length);
+
+        for (let i = 0; i < rowsToAdd; i++) {
+          // Check page
+          if (currentY > pageHeight - margin - 150) break;
+
+          let x = margin;
+          cols.forEach(col => {
+            doc.rect(x, currentY, col.w, rowHeight).stroke();
+            if (col.name === 'No') {
+              doc.text((records.length + i + 1).toString(), x + 2, currentY + 6, { width: col.w, align: 'center' });
+            }
+            x += col.w;
+          });
+          currentY += rowHeight;
+        }
+
+        // --- OBSERVER SECTION ---
         currentY += 20;
-        doc.font('Helvetica-Bold').text('Observer:', margin, currentY);
-        currentY += 15;
-        let obsX = margin;
-        observers.forEach(obs => {
-          doc.rect(obsX, currentY, 120, 80).stroke();
-          doc.fontSize(8).text(obs.nama, obsX, currentY + 5, { width: 120, align: 'center' });
-          if (obs.tandaTangan) {
-            try { doc.image(obs.tandaTangan, obsX + 20, currentY + 20, { height: 40 }); } catch (e) { }
-          }
-          obsX += 130;
+
+        if (currentY + 100 > pageHeight - margin) doc.addPage({ layout: 'landscape' });
+
+        // Grid Layout:
+        // No | Nama Pemantau | Perusahaan | Tanda Tangan || No | Nama Pemantau | Perusahaan | Tanda Tangan
+
+        const obsHeaderH = 20;
+        const obsRowH = 40;
+
+        // Background gray for header
+        doc.fillColor('#e0e0e0').rect(margin, currentY, contentWidth, obsHeaderH).fill();
+        doc.fillColor('#000000');
+
+        const halfW = (contentWidth / 2);
+
+        const oCols = [30, 100, 80, halfW - 210];
+
+        let ox = margin;
+        // Header Left
+        const obHeaders = ['No', 'Nama Pemantau', 'Perusahaan', 'Tanda Tangan'];
+        obHeaders.forEach((h, i) => {
+          doc.rect(ox, currentY, oCols[i], obsHeaderH).stroke().text(h, ox, currentY + 6, { width: oCols[i], align: 'center' });
+          ox += oCols[i];
         });
+
+        // Header Right
+        obHeaders.forEach((h, i) => {
+          doc.rect(ox, currentY, oCols[i], obsHeaderH).stroke().text(h, ox, currentY + 6, { width: oCols[i], align: 'center' });
+          ox += oCols[i];
+        });
+
+        currentY += obsHeaderH;
+
+        // Render 4 rows (8 slots)
+        for (let r = 0; r < 4; r++) {
+          const obs1 = observers[r];
+          const obs2 = observers[r + 4];
+
+          let rowX = margin;
+
+          // --- LEFT SIDE ---
+          // No
+          doc.rect(rowX, currentY, oCols[0], obsRowH).stroke().text((r + 1).toString(), rowX, currentY + 15, { width: oCols[0], align: 'center' }); rowX += oCols[0];
+          // Nama
+          doc.rect(rowX, currentY, oCols[1], obsRowH).stroke();
+          if (obs1) doc.text(obs1.nama, rowX + 5, currentY + 15, { width: oCols[1] - 10 }); rowX += oCols[1];
+          // Perusahaan
+          doc.rect(rowX, currentY, oCols[2], obsRowH).stroke();
+          // Placeholder for perusahaan if not available
+          rowX += oCols[2];
+          // TT
+          doc.rect(rowX, currentY, oCols[3], obsRowH).stroke();
+          if (obs1?.tandaTangan && obs1.tandaTangan.length > 100) {
+            try { doc.image(obs1.tandaTangan, rowX + 10, currentY + 5, { height: 30 }); } catch (e) { }
+          }
+          rowX += oCols[3];
+
+          // --- RIGHT SIDE ---
+          // No
+          doc.rect(rowX, currentY, oCols[0], obsRowH).stroke().text((r + 5).toString(), rowX, currentY + 15, { width: oCols[0], align: 'center' }); rowX += oCols[0];
+          // Nama
+          doc.rect(rowX, currentY, oCols[1], obsRowH).stroke();
+          if (obs2) doc.text(obs2.nama, rowX + 5, currentY + 15, { width: oCols[1] - 10 }); rowX += oCols[1];
+          // Perusahaan
+          doc.rect(rowX, currentY, oCols[2], obsRowH).stroke();
+          rowX += oCols[2];
+          // TT
+          doc.rect(rowX, currentY, oCols[3], obsRowH).stroke();
+          if (obs2?.tandaTangan && obs2.tandaTangan.length > 100) {
+            try { doc.image(obs2.tandaTangan, rowX + 10, currentY + 5, { height: 30 }); } catch (e) { }
+          }
+
+          currentY += obsRowH;
+        }
+
+        // Footer Data
+        doc.fontSize(8).text(`Maret 2025/R0`, margin, pageHeight - 20, { align: 'left' });
+        doc.text(`Page 1 of 1`, margin, pageHeight - 20, { width: contentWidth, align: 'right' });
 
         doc.end();
       } catch (err) {
         reject(err);
       }
     });
-  }
 
+  }
   // ============================================================================
   // SIDAK DIGITAL METHODS
   // ============================================================================
 
   async getSidakDigitalSession(id: string): Promise<SidakDigitalSession | undefined> {
-    const [result] = await this.db.select().from(sidakDigitalSessions).where(eq(sidakDigitalSessions.id, id));
+    const [result] = await this.db
+      .select()
+      .from(sidakDigitalSessions)
+      .where(eq(sidakDigitalSessions.id, id));
     return result;
   }
 
   async getAllSidakDigitalSessions(): Promise<SidakDigitalSession[]> {
-    return await this.db.select().from(sidakDigitalSessions).orderBy(desc(sidakDigitalSessions.createdAt));
+    return await this.db
+      .select()
+      .from(sidakDigitalSessions)
+      .orderBy(desc(sidakDigitalSessions.createdAt));
   }
 
   async createSidakDigitalSession(session: InsertSidakDigitalSession): Promise<SidakDigitalSession> {
-    const [result] = await this.db.insert(sidakDigitalSessions).values(session).returning();
+    const [result] = await this.db
+      .insert(sidakDigitalSessions)
+      .values(session)
+      .returning();
     return result;
   }
 
   async updateSidakDigitalSession(id: string, updates: Partial<InsertSidakDigitalSession>): Promise<SidakDigitalSession | undefined> {
-    const [result] = await this.db.update(sidakDigitalSessions).set(updates).where(eq(sidakDigitalSessions.id, id)).returning();
+    const [result] = await this.db
+      .update(sidakDigitalSessions)
+      .set(updates)
+      .where(eq(sidakDigitalSessions.id, id))
+      .returning();
     return result;
   }
 
   async getSidakDigitalRecords(sessionId: string): Promise<SidakDigitalRecord[]> {
-    return await this.db.select().from(sidakDigitalRecords).where(eq(sidakDigitalRecords.sessionId, sessionId)).orderBy(asc(sidakDigitalRecords.ordinal));
+    return await this.db
+      .select()
+      .from(sidakDigitalRecords)
+      .where(eq(sidakDigitalRecords.sessionId, sessionId))
+      .orderBy(asc(sidakDigitalRecords.ordinal));
   }
 
   async createSidakDigitalRecord(record: InsertSidakDigitalRecord): Promise<SidakDigitalRecord> {
-    const [result] = await this.db.insert(sidakDigitalRecords).values(record).returning();
+    const [result] = await this.db
+      .insert(sidakDigitalRecords)
+      .values(record)
+      .returning();
+
+    // Update session total sampel
     await this.updateSidakDigitalSessionSampleCount(record.sessionId);
+
     return result;
   }
 
   async getSidakDigitalObservers(sessionId: string): Promise<SidakDigitalObserver[]> {
-    return await this.db.select().from(sidakDigitalObservers).where(eq(sidakDigitalObservers.sessionId, sessionId)).orderBy(asc(sidakDigitalObservers.ordinal));
+    return await this.db
+      .select()
+      .from(sidakDigitalObservers)
+      .where(eq(sidakDigitalObservers.sessionId, sessionId))
+      .orderBy(asc(sidakDigitalObservers.ordinal));
   }
 
   async createSidakDigitalObserver(observer: Omit<InsertSidakDigitalObserver, 'ordinal'>): Promise<SidakDigitalObserver> {
     const existingObservers = await this.getSidakDigitalObservers(observer.sessionId);
     const nextOrdinal = existingObservers.length + 1;
-    const [result] = await this.db.insert(sidakDigitalObservers).values({ ...observer, ordinal: nextOrdinal } as InsertSidakDigitalObserver).returning();
+
+    const [result] = await this.db
+      .insert(sidakDigitalObservers)
+      .values({ ...observer, ordinal: nextOrdinal } as InsertSidakDigitalObserver)
+      .returning();
     return result;
   }
 
   async updateSidakDigitalSessionSampleCount(sessionId: string): Promise<void> {
     const records = await this.getSidakDigitalRecords(sessionId);
-    await this.updateSidakDigitalSession(sessionId, { totalSampel: records.length } as any);
+
+    // Direct SQL update to bypass schema validation for totalSampel
+    await this.db
+      .update(sidakDigitalSessions)
+      .set({ totalSampel: records.length })
+      .where(eq(sidakDigitalSessions.id, sessionId));
   }
 
   async generateSidakDigitalPDF(data: { session: SidakDigitalSession; records: SidakDigitalRecord[]; observers: SidakDigitalObserver[] }): Promise<Buffer> {
@@ -5646,55 +5978,27 @@ export class DrizzleStorage implements IStorage {
   // ============================================================================
 
   async getSidakWorkshopSession(id: string): Promise<SidakWorkshopSession | undefined> {
-    const [result] = await this.db.select().from(sidakWorkshopSessions).where(eq(sidakWorkshopSessions.id, id));
+    const [result] = await this.db
+      .select()
+      .from(sidakWorkshopSessions)
+      .where(eq(sidakWorkshopSessions.id, id));
     return result;
   }
 
   async getAllSidakWorkshopSessions(): Promise<SidakWorkshopSession[]> {
-    return await this.db.select().from(sidakWorkshopSessions).orderBy(desc(sidakWorkshopSessions.createdAt));
+    return await this.db
+      .select()
+      .from(sidakWorkshopSessions)
+      .orderBy(desc(sidakWorkshopSessions.createdAt));
   }
 
-  async createSidakWorkshopSession(session: InsertSidakWorkshopSession): Promise<SidakWorkshopSession> {
-    const [result] = await this.db.insert(sidakWorkshopSessions).values(session).returning();
-    return result;
-  }
 
-  async updateSidakWorkshopSession(id: string, updates: Partial<InsertSidakWorkshopSession>): Promise<SidakWorkshopSession | undefined> {
-    const [result] = await this.db.update(sidakWorkshopSessions).set(updates).where(eq(sidakWorkshopSessions.id, id)).returning();
-    return result;
-  }
 
-  async getSidakWorkshopRecords(sessionId: string): Promise<SidakWorkshopRecord[]> {
-    return await this.db.select().from(sidakWorkshopRecords).where(eq(sidakWorkshopRecords.sessionId, sessionId)).orderBy(asc(sidakWorkshopRecords.ordinal));
-  }
-
-  async createSidakWorkshopRecord(record: InsertSidakWorkshopRecord): Promise<SidakWorkshopRecord> {
-    const [result] = await this.db.insert(sidakWorkshopRecords).values(record).returning();
-    await this.updateSidakWorkshopSessionSampleCount(record.sessionId);
-    return result;
-  }
-
-  async getSidakWorkshopObservers(sessionId: string): Promise<SidakWorkshopObserver[]> {
-    return await this.db.select().from(sidakWorkshopObservers).where(eq(sidakWorkshopObservers.sessionId, sessionId)).orderBy(asc(sidakWorkshopObservers.ordinal));
-  }
-
-  async createSidakWorkshopObserver(observer: Omit<InsertSidakWorkshopObserver, 'ordinal'>): Promise<SidakWorkshopObserver> {
-    const existingObservers = await this.getSidakWorkshopObservers(observer.sessionId);
-    const nextOrdinal = existingObservers.length + 1;
-    const [result] = await this.db.insert(sidakWorkshopObservers).values({ ...observer, ordinal: nextOrdinal } as InsertSidakWorkshopObserver).returning();
-    return result;
-  }
-
-  async updateSidakWorkshopSessionSampleCount(sessionId: string): Promise<void> {
-    const records = await this.getSidakWorkshopRecords(sessionId);
-    await this.updateSidakWorkshopSession(sessionId, { totalSampel: records.length } as any);
-  }
-
-  async generateSidakWorkshopPDF(data: { session: SidakWorkshopSession; records: SidakWorkshopRecord[]; observers: SidakWorkshopObserver[] }): Promise<Buffer> {
+  async generateSidakWorkshopPDF(data: { session: SidakWorkshopSession; equipment: SidakWorkshopEquipment[]; inspectors: SidakWorkshopInspector[] }): Promise<Buffer> {
     const PDFDocument = require('pdfkit');
     const path = require('path');
     const fs = require('fs');
-    const { session, records, observers } = data;
+    const { session, equipment, inspectors } = data;
 
     return new Promise((resolve, reject) => {
       try {
@@ -5773,7 +6077,7 @@ export class DrizzleStorage implements IStorage {
 
         drawInfoField('Lokasi', session.lokasi, col2X, infoY, 250);
         drawInfoField('Departemen', session.departemen || '-', col2X, infoY + infoRowHeight, 250);
-        drawInfoField('Total Sampel', session.totalSampel.toString(), col2X, infoY + infoRowHeight * 2, 250);
+        drawInfoField('Total Equipment', (session.totalEquipment || 0).toString(), col2X, infoY + infoRowHeight * 2, 250);
 
         // --- TABLE SECTION ---
         const tableTop = infoY + (infoRowHeight * 3) + 15;
@@ -7232,6 +7536,7 @@ export class DrizzleStorage implements IStorage {
     topDrivers: any[];
     summary: any;
     validationStats: any[];
+    availableViolationTypes: any[];
   }> {
     // Build dynamic filter conditions
     const conditions: any[] = [];
@@ -7665,6 +7970,95 @@ export class DrizzleStorage implements IStorage {
     }).length;
 
     return { total, fit, unfit, expiredSoon };
+  }
+
+  // ============================================================================
+  // SIDAK WORKSHOP METHODS
+  // ============================================================================
+
+  async getSidakWorkshopSession(id: string): Promise<SidakWorkshopSession | undefined> {
+    const [result] = await this.db
+      .select()
+      .from(sidakWorkshopSessions)
+      .where(eq(sidakWorkshopSessions.id, id));
+    return result;
+  }
+
+  async getAllSidakWorkshopSessions(): Promise<SidakWorkshopSession[]> {
+    return await this.db
+      .select()
+      .from(sidakWorkshopSessions)
+      .orderBy(desc(sidakWorkshopSessions.createdAt));
+  }
+
+  async createSidakWorkshopSession(session: InsertSidakWorkshopSession): Promise<SidakWorkshopSession> {
+    const [result] = await this.db
+      .insert(sidakWorkshopSessions)
+      .values(session)
+      .returning();
+    return result;
+  }
+
+  async updateSidakWorkshopSession(id: string, updates: Partial<InsertSidakWorkshopSession>): Promise<SidakWorkshopSession | undefined> {
+    const [result] = await this.db
+      .update(sidakWorkshopSessions)
+      .set(updates)
+      .where(eq(sidakWorkshopSessions.id, id))
+      .returning();
+    return result;
+  }
+
+  async deleteSidakWorkshopSession(id: string): Promise<void> {
+    await this.db.delete(sidakWorkshopSessions).where(eq(sidakWorkshopSessions.id, id));
+  }
+
+  // Equipment Methods
+  async getSidakWorkshopEquipment(sessionId: string): Promise<SidakWorkshopEquipment[]> {
+    return await this.db
+      .select()
+      .from(sidakWorkshopEquipment)
+      .where(eq(sidakWorkshopEquipment.sessionId, sessionId))
+      .orderBy(asc(sidakWorkshopEquipment.ordinal));
+  }
+
+  async createSidakWorkshopEquipment(equipment: InsertSidakWorkshopEquipment): Promise<SidakWorkshopEquipment> {
+    const [result] = await this.db
+      .insert(sidakWorkshopEquipment)
+      .values(equipment)
+      .returning();
+
+    // Update session total equipment count
+    await this.updateSidakWorkshopSessionEquipmentCount(equipment.sessionId);
+
+    return result;
+  }
+
+  async getSidakWorkshopInspectors(sessionId: string): Promise<SidakWorkshopInspector[]> {
+    return await this.db
+      .select()
+      .from(sidakWorkshopInspectors)
+      .where(eq(sidakWorkshopInspectors.sessionId, sessionId))
+      .orderBy(asc(sidakWorkshopInspectors.ordinal));
+  }
+
+  async createSidakWorkshopInspector(inspector: Omit<InsertSidakWorkshopInspector, 'ordinal'>): Promise<SidakWorkshopInspector> {
+    const existingInspectors = await this.getSidakWorkshopInspectors(inspector.sessionId);
+    const nextOrdinal = existingInspectors.length + 1;
+
+    const [result] = await this.db
+      .insert(sidakWorkshopInspectors)
+      .values({ ...inspector, ordinal: nextOrdinal } as InsertSidakWorkshopInspector)
+      .returning();
+    return result;
+  }
+
+  async updateSidakWorkshopSessionEquipmentCount(sessionId: string): Promise<void> {
+    const equipment = await this.getSidakWorkshopEquipment(sessionId);
+
+    await this.db
+      .update(sidakWorkshopSessions)
+      .set({ totalEquipment: equipment.length })
+      .where(eq(sidakWorkshopSessions.id, sessionId));
   }
 
   async getDashboardStats(date?: string): Promise<{ totalEmployees: number; scheduledToday: number; presentToday: number; absentToday: number; onLeaveToday: number; pendingLeaveRequests: number }> {

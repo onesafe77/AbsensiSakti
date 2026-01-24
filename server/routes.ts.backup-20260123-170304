@@ -61,8 +61,8 @@ import {
   insertSidakDigitalRecordSchema,
   insertSidakDigitalObserverSchema,
   insertSidakWorkshopSessionSchema,
-  insertSidakWorkshopEquipmentSchema,
-  insertSidakWorkshopInspectorSchema,
+  insertSidakWorkshopRecordSchema,
+  insertSidakWorkshopObserverSchema,
 
   // TNA Schemas
   insertTrainingSchema,
@@ -956,18 +956,7 @@ Format sebagai bullet points singkat per insight.`;
   // Employee routes - OPTIMIZED WITH CACHING
   app.get("/api/employees", async (req, res) => {
     try {
-      // Handle pagination if requested
-      const page = req.query.page ? parseInt(req.query.page as string) : undefined;
-      const perPage = req.query.per_page ? parseInt(req.query.per_page as string) : 20;
-      const search = req.query.search as string;
-
-      if (page) {
-        // Use database pagination when page is specified
-        const result = await storage.getEmployeesPaginated(page, perPage, search);
-        return res.json(result);
-      }
-
-      // Check cache first for massive performance improvement (Full List)
+      // Check cache first for massive performance improvement
       let employees = getCachedAllEmployees();
 
       if (!employees) {
@@ -5053,13 +5042,112 @@ Format sebagai bullet points singkat per insight.`;
   // TNA Routes
 
   // --- Master Data Trainings ---
+  app.get("/api/hse/trainings", async (req, res) => {
+    try {
+      const allTrainings = await storage.getTrainings();
+      res.json(allTrainings);
+    } catch (error) {
+      console.error("Error fetching trainings:", error);
+      res.status(500).json({ message: "Failed to fetch trainings" });
+    }
+  });
 
+  app.post("/api/hse/trainings", async (req, res) => {
+    try {
+      const validatedData = insertTrainingSchema.parse(req.body);
+      const newTraining = await storage.createTraining(validatedData);
+      res.status(201).json(newTraining);
+    } catch (error) {
+      console.error("Error creating training:", error);
+      res.status(400).json({ message: "Invalid training data" });
+    }
+  });
 
   // --- TNA Input/Process ---
+  app.get("/api/hse/tna/:employeeId/:period", async (req, res) => {
+    try {
+      const { employeeId, period } = req.params;
 
+      // Try to get existing TNA
+      const existingTna = await storage.getTnaSummary(employeeId, period);
+
+      if (existingTna) {
+        // Return existing structure with entries
+        const entries = await storage.getTnaEntries(existingTna.id);
+        return res.json({ summary: existingTna, entries });
+      }
+
+      // If not exists, return "draft" structure (frontend handles this logic usually, 
+      // but here we might just return null to indicate 'create new')
+      res.status(404).json({ message: "TNA not found for this period" });
+
+    } catch (error) {
+      console.error("Error fetching TNA:", error);
+      res.status(500).json({ message: "Failed to fetch TNA" });
+    }
+  });
+
+  app.post("/api/hse/tna", async (req, res) => {
+    try {
+      const { employeeId, period, entries } = req.body;
+      const user = (req.session as any).user;
+      const createdBy = user?.nik || "SYSTEM";
+
+      // 1. Find or Create TNA Summary
+      let summary = await storage.getTnaSummary(employeeId, period);
+
+      if (!summary) {
+        summary = await storage.createTnaSummary({
+          employeeId,
+          period,
+          status: "Draft",
+          createdBy
+        });
+      }
+
+      // 2. Process Entries (Upsert)
+      // Transaction-like logic would be ideal here
+      const results = [];
+      for (const entry of entries) {
+        const entryData = {
+          ...entry,
+          tnaSummaryId: summary.id
+        };
+        // We need to handle upsert logic for entries locally in storage or here
+        // For now, let's assume storage.upsertTnaEntry handles "if exits update else insert"
+        const savedEntry = await storage.upsertTnaEntry(entryData);
+        results.push(savedEntry);
+      }
+
+      res.json({ summary, entries: results });
+
+    } catch (error) {
+      console.error("Error saving TNA:", error);
+      res.status(500).json({ message: "Failed to save TNA" });
+    }
+  });
 
   // --- TNA Dashboard Stats ---
+  app.get("/api/hse/tna-dashboard/stats", async (req, res) => {
+    try {
+      // Mock or calculated stats
+      const stats = await storage.getTnaDashboardStats();
+      res.json(stats);
+    } catch (error) {
+      console.error("Error fetching TNA stats:", error);
+      res.status(500).json({ message: "Failed to fetch stats" });
+    }
+  });
 
+  app.get("/api/hse/tna-dashboard/gap-analysis", async (req, res) => {
+    try {
+      const gaps = await storage.getTnaGapAnalysis();
+      res.json(gaps);
+    } catch (error) {
+      console.error("Error fetching TNA gaps:", error);
+      res.status(500).json({ message: "Failed to fetch gap analysis" });
+    }
+  });
 
   // ============================================
   // SIDAK SEATBELT PHOTO UPLOAD (Direct Upload)
@@ -5373,16 +5461,7 @@ Format sebagai bullet points singkat per insight.`;
   app.post("/api/sidak-kecepatan/:id/records", async (req, res) => {
     try {
       const { id } = req.params;
-      console.log(`[SidakKecepatan] Adding record to session ${id}:`, req.body);
-
-      // Get existing records to calculate ordinal
-      const existingRecords = await storage.getSidakKecepatanRecords(id);
-      const ordinal = existingRecords.length + 1;
-
-      const payload = { ...req.body, sessionId: id, ordinal };
-      console.log(`[SidakKecepatan] Validating payload for ordinal ${ordinal}:`, payload);
-
-      const validatedData = insertSidakKecepatanRecordSchema.parse(payload);
+      const validatedData = insertSidakKecepatanRecordSchema.parse({ ...req.body, sessionId: id });
 
       const record = await storage.createSidakKecepatanRecord(validatedData);
 
@@ -5531,22 +5610,13 @@ Format sebagai bullet points singkat per insight.`;
   app.post("/api/sidak-pencahayaan/:id/records", async (req, res) => {
     try {
       const { id } = req.params;
-      console.log(`[SidakPencahayaan] Adding record to session ${id}:`, req.body);
-
-      // Get existing records to calculate ordinal
-      const existingRecords = await storage.getSidakPencahayaanRecords(id);
-      const ordinal = existingRecords.length + 1;
-
-      const payload = { ...req.body, sessionId: id, ordinal };
-      console.log(`[SidakPencahayaan] Validating payload for ordinal ${ordinal}:`, payload);
-
-      const validatedData = insertSidakPencahayaanRecordSchema.parse(payload);
+      const validatedData = insertSidakPencahayaanRecordSchema.parse({ ...req.body, sessionId: id });
 
       const record = await storage.createSidakPencahayaanRecord(validatedData);
 
       res.json(record);
     } catch (error: any) {
-      console.error("Error adding Pencahayaan record:", error);
+      console.error("Error adding record:", error);
       if (error.name === 'ZodError') {
         return res.status(400).json({ message: "Data tidak valid", errors: error.errors });
       }
@@ -5574,153 +5644,53 @@ Format sebagai bullet points singkat per insight.`;
   // PDF Generation
   app.get("/api/sidak-pencahayaan/:id/pdf", async (req, res) => {
     try {
-      // NOTE: PDF generation handled on client side
-      res.status(501).json({ message: "PDF generation handled on client side" });
+      const session = await storage.getSidakPencahayaanSession(req.params.id);
+      if (!session) return res.status(404).json({ message: "Sesi tidak ditemukan" });
+
+      const records = await storage.getSidakPencahayaanRecords(session.id);
+      const observers = await storage.getSidakPencahayaanObservers(session.id);
+
+      const pdfBuffer = await storage.generateSidakPencahayaanPDF({ session, records, observers });
+
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename=SIDAK_PENCAHAYAAN_${session.tanggal}.pdf`);
+      res.send(pdfBuffer);
     } catch (error) {
       console.error("Error generating PDF:", error);
-      res.status(500).json({ message: "Gagal membuat PDF" });
+      res.status(500).json({ message: "Gagal generate PDF" });
     }
   });
 
   // JPG Generation
   app.get("/api/sidak-pencahayaan/:id/jpg", async (req, res) => {
     try {
-      // NOTE: JPG generation handled on client side
-      res.status(501).json({ message: "JPG generation handled on client side" });
-    } catch (error) {
-      console.error("Error generating JPG:", error);
-      res.status(500).json({ message: "Gagal generate JPG" });
-    }
-  });
-
-  // ============================================
-  // SIDAK WORKSHOP ROUTES
-  // ============================================
-
-  // Create new session
-  app.post("/api/sidak-workshop", async (req, res) => {
-    try {
-      const validatedData = insertSidakWorkshopSessionSchema.parse(req.body);
-      const sessionUser = (req.session as any).user;
-      const createdBy = sessionUser?.nik || null;
-
-      const session = await storage.createSidakWorkshopSession({ ...validatedData, createdBy });
-      res.json(session);
-    } catch (error: any) {
-      console.error("Error creating Sidak Workshop session:", error);
-      if (error.name === 'ZodError') {
-        return res.status(400).json({ message: "Data tidak valid", errors: error.errors });
-      }
-      res.status(500).json({ message: "Gagal membuat sesi" });
-    }
-  });
-
-  // Get all sessions
-  app.get("/api/sidak-workshop", async (req, res) => {
-    try {
-      const sessions = await storage.getAllSidakWorkshopSessions();
-      res.json(sessions);
-    } catch (error) {
-      console.error("Error fetching Sidak Workshop sessions:", error);
-      res.status(500).json({ message: "Gagal mengambil data" });
-    }
-  });
-
-  // NOTE: /sessions route MUST be before /:id to avoid matching "sessions" as ID
-  app.get("/api/sidak-workshop/sessions", async (req, res) => {
-    try {
-      const sessions = await storage.getAllSidakWorkshopSessions();
-      res.json(sessions);
-    } catch (error) {
-      console.error("Error fetching Sidak Workshop sessions:", error);
-      res.status(500).json({ message: "Gagal mengambil data" });
-    }
-  });
-
-  // Get single session with equipment and inspectors
-  app.get("/api/sidak-workshop/:id", async (req, res) => {
-    try {
-      const session = await storage.getSidakWorkshopSession(req.params.id);
+      const session = await storage.getSidakPencahayaanSession(req.params.id);
       if (!session) return res.status(404).json({ message: "Sesi tidak ditemukan" });
 
-      const equipment = await storage.getSidakWorkshopEquipment(req.params.id);
-      const inspectors = await storage.getSidakWorkshopInspectors(req.params.id);
+      const records = await storage.getSidakPencahayaanRecords(session.id);
+      const observers = await storage.getSidakPencahayaanObservers(session.id);
 
-      res.json({ session, equipment, inspectors });
+      const pdfBuffer = await storage.generateSidakPencahayaanPDF({ session, records, observers });
+
+      const { fromBuffer } = require('pdf2pic');
+      const options = {
+        density: 100,
+        saveFilename: "sidak_pencahayaan",
+        savePath: "./temp",
+        format: "jpg",
+        width: 1190,
+        height: 842
+      };
+
+      const convert = fromBuffer(pdfBuffer, options);
+      const pageToConvertAsImage = 1;
+      const result = await convert(pageToConvertAsImage, { responseType: "base64" });
+
+      const imgBuffer = Buffer.from(result.base64, 'base64');
+      res.setHeader('Content-Type', 'image/jpeg');
+      res.send(imgBuffer);
     } catch (error) {
-      console.error("Error fetching Workshop session details:", error);
-      res.status(500).json({ message: "Gagal mengambil detail" });
-    }
-  });
-
-  // Add equipment inspection record
-  app.post("/api/sidak-workshop/:id/equipment", async (req, res) => {
-    try {
-      const { id } = req.params;
-      console.log(`[SidakWorkshop] Adding equipment to session ${id}:`, req.body);
-
-      // Get existing equipment to calculate ordinal
-      const existingEquipment = await storage.getSidakWorkshopEquipment(id);
-      const ordinal = existingEquipment.length + 1;
-
-      const payload = { ...req.body, sessionId: id, ordinal };
-
-      // Convert empty string dueDate to null for database
-      if (payload.dueDate === "" || payload.dueDate === undefined) {
-        payload.dueDate = null;
-      }
-
-      console.log(`[SidakWorkshop] Validating payload for ordinal ${ordinal}:`, payload);
-
-      const validatedData = insertSidakWorkshopEquipmentSchema.parse(payload);
-
-      const equipment = await storage.createSidakWorkshopEquipment(validatedData);
-
-      res.json(equipment);
-    } catch (error: any) {
-      console.error("Error adding Workshop equipment:", error);
-      if (error.name === 'ZodError') {
-        return res.status(400).json({ message: "Data tidak valid", errors: error.errors });
-      }
-      res.status(500).json({ message: "Gagal menambahkan data peralatan" });
-    }
-  });
-
-  // Add inspector
-  app.post("/api/sidak-workshop/:id/inspectors", async (req, res) => {
-    try {
-      const { id } = req.params;
-      const validatedData = insertSidakWorkshopInspectorSchema.parse({ ...req.body, sessionId: id });
-
-      const inspector = await storage.createSidakWorkshopInspector(validatedData);
-      res.json(inspector);
-    } catch (error: any) {
-      console.error("Error adding Workshop inspector:", error);
-      if (error.name === 'ZodError') {
-        return res.status(400).json({ message: "Data tidak valid", errors: error.errors });
-      }
-      res.status(500).json({ message: "Gagal menambahkan inspector" });
-    }
-  });
-
-  // PDF Generation (handled on client side)
-  app.get("/api/sidak-workshop/:id/pdf", async (req, res) => {
-    try {
-      // NOTE: PDF generation handled on client side
-      res.status(501).json({ message: "PDF generation handled on client side" });
-    } catch (error) {
-      console.error("Error generating Workshop PDF:", error);
-      res.status(500).json({ message: "Gagal membuat PDF" });
-    }
-  });
-
-  // JPG Generation (handled on client side)
-  app.get("/api/sidak-workshop/:id/jpg", async (req, res) => {
-    try {
-      // NOTE: JPG generation handled on client side
-      res.status(501).json({ message: "JPG generation handled on client side" });
-    } catch (error) {
-      console.error("Error generating Workshop JPG:", error);
+      console.error("Error generating JPG:", error);
       res.status(500).json({ message: "Gagal generate JPG" });
     }
   });
@@ -5789,22 +5759,13 @@ Format sebagai bullet points singkat per insight.`;
   app.post("/api/sidak-loto/:id/records", async (req, res) => {
     try {
       const { id } = req.params;
-      console.log(`[SidakLOTO] Adding record to session ${id}:`, req.body);
-
-      // Get existing records to calculate ordinal
-      const existingRecords = await storage.getSidakLotoRecords(id);
-      const ordinal = existingRecords.length + 1;
-
-      const payload = { ...req.body, sessionId: id, ordinal };
-      console.log(`[SidakLOTO] Validating payload for ordinal ${ordinal}:`, payload);
-
-      const validatedData = insertSidakLotoRecordSchema.parse(payload);
+      const validatedData = insertSidakLotoRecordSchema.parse({ ...req.body, sessionId: id });
 
       const record = await storage.createSidakLotoRecord(validatedData);
 
       res.json(record);
     } catch (error: any) {
-      console.error("Error adding LOTO record:", error);
+      console.error("Error adding record:", error);
       if (error.name === 'ZodError') {
         return res.status(400).json({ message: "Data tidak valid", errors: error.errors });
       }
@@ -5883,104 +5844,28 @@ Format sebagai bullet points singkat per insight.`;
     }
   });
 
-  // Photo Upload Routes - Base64 Storage
-  app.post("/api/sidak-loto/:id/photos", async (req, res) => {
-    try {
-      const { id } = req.params;
-      const { photos } = req.body;
-
-      if (!photos || !Array.isArray(photos)) {
-        return res.status(400).json({ error: "Photos array is required" });
-      }
-
-      const session = await storage.getSidakLotoSession(id);
-      if (!session) {
-        return res.status(404).json({ error: "SIDAK LOTO session not found" });
-      }
-
-      const existingPhotos = session.activityPhotos || [];
-      const totalPhotos = existingPhotos.length + photos.length;
-
-      if (totalPhotos > 6) {
-        return res.status(400).json({ error: "Maximum 6 photos allowed" });
-      }
-
-      const allPhotos = [...existingPhotos, ...photos];
-
-      const updatedSession = await storage.updateSidakLotoSession(id, {
-        activityPhotos: allPhotos
-      });
-
-      res.json({
-        photos: updatedSession.activityPhotos,
-        message: "Photos uploaded successfully"
-      });
-    } catch (error: any) {
-      console.error("Error uploading photos for LOTO:", error);
-      res.status(500).json({ error: error.message || "Failed to upload photos" });
-    }
-  });
-
-  app.delete("/api/sidak-loto/:id/photos/:index", async (req, res) => {
-    try {
-      const { id, index } = req.params;
-      const photoIndex = parseInt(index, 10);
-
-      const session = await storage.getSidakLotoSession(id);
-      if (!session) {
-        return res.status(404).json({ error: "SIDAK LOTO session not found" });
-      }
-
-      const existingPhotos = session.activityPhotos || [];
-      if (photoIndex < 0 || photoIndex >= existingPhotos.length) {
-        return res.status(404).json({ error: "Invalid photo index" });
-      }
-
-      const updatedPhotos = existingPhotos.filter((_, idx) => idx !== photoIndex);
-
-      const updatedSession = await storage.updateSidakLotoSession(id, {
-        activityPhotos: updatedPhotos
-      });
-
-      res.json({
-        photos: updatedSession.activityPhotos,
-        message: "Photo deleted successfully"
-      });
-    } catch (error) {
-      console.error("Error deleting photo from LOTO:", error);
-      res.status(500).json({ error: "Failed to delete photo" });
-    }
-  });
-
   // ============================================
   // SIDAK DIGITAL ROUTES
   // ============================================
 
-  // Create new session
   app.post("/api/sidak-digital", async (req, res) => {
     try {
       const validatedData = insertSidakDigitalSessionSchema.parse(req.body);
       const sessionUser = (req.session as any).user;
       const createdBy = sessionUser?.nik || null;
-
       const session = await storage.createSidakDigitalSession({ ...validatedData, createdBy });
       res.json(session);
     } catch (error: any) {
-      console.error("Error creating Sidak Digital session:", error);
-      if (error.name === 'ZodError') {
-        return res.status(400).json({ message: "Data tidak valid", errors: error.errors });
-      }
+      if (error.name === 'ZodError') return res.status(400).json({ message: "Data tidak valid", errors: error.errors });
       res.status(500).json({ message: "Gagal membuat sesi" });
     }
   });
 
-  // Get all sessions
   app.get("/api/sidak-digital", async (req, res) => {
     try {
       const sessions = await storage.getAllSidakDigitalSessions();
       res.json(sessions);
     } catch (error) {
-      console.error("Error fetching Sidak Digital sessions:", error);
       res.status(500).json({ message: "Gagal mengambil data" });
     }
   });
@@ -5991,90 +5876,56 @@ Format sebagai bullet points singkat per insight.`;
       const sessions = await storage.getAllSidakDigitalSessions();
       res.json(sessions);
     } catch (error) {
-      console.error("Error fetching Sidak Digital sessions:", error);
       res.status(500).json({ message: "Gagal mengambil data" });
     }
   });
 
-  // Get single session
   app.get("/api/sidak-digital/:id", async (req, res) => {
     try {
       const session = await storage.getSidakDigitalSession(req.params.id);
       if (!session) return res.status(404).json({ message: "Sesi tidak ditemukan" });
-
       const records = await storage.getSidakDigitalRecords(req.params.id);
       const observers = await storage.getSidakDigitalObservers(req.params.id);
-
       res.json({ session, records, observers });
     } catch (error) {
-      console.error("Error fetching session details:", error);
       res.status(500).json({ message: "Gagal mengambil detail" });
     }
   });
 
-  // Add record
   app.post("/api/sidak-digital/:id/records", async (req, res) => {
     try {
-      const { id } = req.params;
-      console.log(`[SidakDigital] Adding record to session ${id}:`, req.body);
-
-      // Get existing records to calculate ordinal
-      const existingRecords = await storage.getSidakDigitalRecords(id);
-      const ordinal = existingRecords.length + 1;
-
-      const payload = { ...req.body, sessionId: id, ordinal };
-      console.log(`[SidakDigital] Validating payload for ordinal ${ordinal}:`, payload);
-
-      const validatedData = insertSidakDigitalRecordSchema.parse(payload);
-
+      const validatedData = insertSidakDigitalRecordSchema.parse({ ...req.body, sessionId: req.params.id });
       const record = await storage.createSidakDigitalRecord(validatedData);
-
       res.json(record);
     } catch (error: any) {
-      console.error("Error adding Digital record:", error);
-      if (error.name === 'ZodError') {
-        return res.status(400).json({ message: "Data tidak valid", errors: error.errors });
-      }
+      if (error.name === 'ZodError') return res.status(400).json({ message: "Data tidak valid", errors: error.errors });
       res.status(500).json({ message: "Gagal menambahkan data" });
     }
   });
 
-  // Add observer
   app.post("/api/sidak-digital/:id/observers", async (req, res) => {
     try {
-      const { id } = req.params;
-      const validatedData = insertSidakDigitalObserverSchema.parse({ ...req.body, sessionId: id });
-
+      const validatedData = insertSidakDigitalObserverSchema.parse({ ...req.body, sessionId: req.params.id });
       const observer = await storage.createSidakDigitalObserver(validatedData);
       res.json(observer);
     } catch (error: any) {
-      console.error("Error adding observer:", error);
-      if (error.name === 'ZodError') {
-        return res.status(400).json({ message: "Data tidak valid", errors: error.errors });
-      }
+      if (error.name === 'ZodError') return res.status(400).json({ message: "Data tidak valid", errors: error.errors });
       res.status(500).json({ message: "Gagal menambahkan observer" });
     }
   });
 
-  // PDF Generation
   app.get("/api/sidak-digital/:id/pdf", async (req, res) => {
     try {
-      // NOTE: PDF generation handled on client side
-      res.status(501).json({ message: "PDF generation handled on client side" });
+      const session = await storage.getSidakDigitalSession(req.params.id);
+      if (!session) return res.status(404).json({ message: "Sesi tidak ditemukan" });
+      const records = await storage.getSidakDigitalRecords(req.params.id);
+      const observers = await storage.getSidakDigitalObservers(req.params.id);
+      const pdfBuffer = await storage.generateSidakDigitalPDF({ session, records, observers });
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename=Sidak_Digital_${session.id}.pdf`);
+      res.send(pdfBuffer);
     } catch (error) {
-      console.error("Error generating PDF:", error);
       res.status(500).json({ message: "Gagal membuat PDF" });
-    }
-  });
-
-  // JPG Generation
-  app.get("/api/sidak-digital/:id/jpg", async (req, res) => {
-    try {
-      // NOTE: JPG generation handled on client side
-      res.status(501).json({ message: "JPG generation handled on client side" });
-    } catch (error) {
-      console.error("Error generating JPG:", error);
-      res.status(500).json({ message: "Gagal generate JPG" });
     }
   });
 
@@ -6555,6 +6406,15 @@ Format sebagai bullet points singkat per insight.`;
   });
 
   // Get all Sidak Seatbelt sessions
+  app.get("/api/sidak-seatbelt", async (req, res) => {
+    try {
+      const sessions = await storage.getAllSidakSeatbeltSessions();
+      res.json(sessions);
+    } catch (error) {
+      console.error("Error fetching Sidak Seatbelt sessions:", error);
+      res.status(500).json({ message: "Gagal mengambil riwayat Sidak Seatbelt" });
+    }
+  });
 
   // Get single Sidak Seatbelt session
   app.get("/api/sidak-seatbelt/:id", async (req, res) => {
@@ -6628,6 +6488,39 @@ Format sebagai bullet points singkat per insight.`;
   // ============================================
 
   // 1. Request Upload URL (returns a local PUT endpoint)
+  app.post("/api/sidak-seatbelt/:id/request-upload-url", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { name } = req.body; // filename
+
+      const session = await storage.getSidakSeatbeltSession(id);
+      if (!session) {
+        return res.status(404).json({ error: "SIDAK Seatbelt session not found" });
+      }
+
+      // Generate a unique ID for this upload
+      const uniqueId = `${Date.now()}-${Math.round(Math.random() * 1E9)}`;
+      const filename = `${uniqueId}-${name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+
+      // We return a URL that points to our own server's PUT endpoint
+      // Using /api/sidak-seatbelt/temp-upload/
+      const protocol = req.protocol;
+      const host = req.get('host');
+      const uploadURL = `${protocol}://${host}/api/sidak-seatbelt/temp-upload/${filename}`;
+
+      // The objectPath we return is just the filename relative to uploads
+      const objectPath = `/uploads/sidak-seatbelt-photos/${filename}`;
+
+      res.json({
+        uploadURL,
+        objectPath, // This will be sent back in confirm-upload
+        metadata: { name }
+      });
+    } catch (error) {
+      console.error("Error generating upload URL:", error);
+      res.status(500).json({ error: "Failed to generate upload URL" });
+    }
+  });
 
   // 2. Local PUT Handler (receives the raw file stream)
   app.put("/api/sidak-seatbelt/temp-upload/:filename", (req, res) => {
@@ -6885,11 +6778,7 @@ Format sebagai bullet points singkat per insight.`;
 
   app.post("/api/sidak-jarak/:id/records", async (req, res) => {
     try {
-      const sessionId = req.params.id;
-      const existingRecords = await storage.getSidakJarakRecords(sessionId);
-      const ordinal = existingRecords.length + 1;
-
-      const validatedData = insertSidakJarakRecordSchema.parse({ ...req.body, sessionId, ordinal });
+      const validatedData = insertSidakJarakRecordSchema.parse({ ...req.body, sessionId: req.params.id });
       const record = await storage.createSidakJarakRecord(validatedData);
       res.status(201).json(record);
     } catch (error: any) {
@@ -6929,10 +6818,62 @@ Format sebagai bullet points singkat per insight.`;
   // SIDAK KECEPATAN ROUTES
   // ============================================
 
+  app.get("/api/sidak-kecepatan", async (req, res) => {
+    try {
+      const sessions = await storage.getAllSidakKecepatanSessions();
+      res.json(sessions);
+    } catch (error) {
+      console.error("Error fetching Sidak Kecepatan sessions:", error);
+      res.status(500).json({ message: "Gagal mengambil riwayat" });
+    }
+  });
 
+  app.get("/api/sidak-kecepatan/:id", async (req, res) => {
+    try {
+      const session = await storage.getSidakKecepatanSession(req.params.id);
+      if (!session) return res.status(404).json({ message: "Sesi tidak ditemukan" });
+      const records = await storage.getSidakKecepatanRecords(req.params.id);
+      const observers = await storage.getSidakKecepatanObservers(req.params.id);
+      res.json({ session, records, observers });
+    } catch (error) {
+      res.status(500).json({ message: "Gagal mengambil detail" });
+    }
+  });
 
+  app.post("/api/sidak-kecepatan", async (req, res) => {
+    try {
+      const validatedData = insertSidakKecepatanSessionSchema.parse(req.body);
+      const sessionUser = (req.session as any).user;
+      const createdBy = sessionUser?.nik || null;
+      const session = await storage.createSidakKecepatanSession({ ...validatedData, createdBy });
+      res.status(201).json(session);
+    } catch (error: any) {
+      if (error.name === 'ZodError') return res.status(400).json({ message: "Data tidak valid", errors: error.errors });
+      res.status(500).json({ message: "Gagal membuat sesi" });
+    }
+  });
 
+  app.post("/api/sidak-kecepatan/:id/records", async (req, res) => {
+    try {
+      const validatedData = insertSidakKecepatanRecordSchema.parse({ ...req.body, sessionId: req.params.id });
+      const record = await storage.createSidakKecepatanRecord(validatedData);
+      res.status(201).json(record);
+    } catch (error: any) {
+      if (error.name === 'ZodError') return res.status(400).json({ message: "Data tidak valid", errors: error.errors });
+      res.status(500).json({ message: "Gagal menambahkan record" });
+    }
+  });
 
+  app.post("/api/sidak-kecepatan/:id/observers", async (req, res) => {
+    try {
+      const validatedData = insertSidakKecepatanObserverSchema.parse({ ...req.body, sessionId: req.params.id });
+      const observer = await storage.createSidakKecepatanObserver(validatedData);
+      res.status(201).json(observer);
+    } catch (error: any) {
+      if (error.name === 'ZodError') return res.status(400).json({ message: "Data tidak valid", errors: error.errors });
+      res.status(500).json({ message: "Gagal menambahkan observer" });
+    }
+  });
 
   // Sidak Fatigue Observers
   app.post("/api/sidak-fatigue/:id/observers", async (req, res) => {
@@ -7725,10 +7666,43 @@ Format sebagai bullet points singkat per insight.`;
   // ============================================
 
   // Create new session
+  app.post("/api/sidak-kecepatan", async (req, res) => {
+    try {
+      const validatedData = insertSidakKecepatanSessionSchema.parse(req.body);
+      const sessionUser = (req.session as any).user;
+      const createdBy = sessionUser?.nik || null;
+      const session = await storage.createSidakKecepatanSession({ ...validatedData, createdBy });
+      res.json(session);
+    } catch (error: any) {
+      console.error("Error creating Sidak Kecepatan session:", error);
+      if (error.name === 'ZodError') return res.status(400).json({ message: "Data tidak valid", errors: error.errors });
+      res.status(500).json({ message: "Gagal membuat sesi Sidak Kecepatan" });
+    }
+  });
 
   // Get all sessions
+  app.get("/api/sidak-kecepatan", async (req, res) => {
+    try {
+      const sessions = await storage.getAllSidakKecepatanSessions();
+      res.json(sessions);
+    } catch (error) {
+      res.status(500).json({ message: "Gagal mengambil data sesi" });
+    }
+  });
 
   // Get session details
+  app.get("/api/sidak-kecepatan/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const session = await storage.getSidakKecepatanSession(id);
+      if (!session) return res.status(404).json({ message: "Sesi tidak ditemukan" });
+      const records = await storage.getSidakKecepatanRecords(id);
+      const observers = await storage.getSidakKecepatanObservers(id);
+      res.json({ session, records, observers });
+    } catch (error) {
+      res.status(500).json({ message: "Gagal mengambil detail sesi" });
+    }
+  });
 
   // Add record
   app.post("/api/sidak-kecepatan/:sessionId/records", async (req, res) => {
@@ -7779,6 +7753,24 @@ Format sebagai bullet points singkat per insight.`;
   });
 
   // Generate PDF
+  app.get("/api/sidak-kecepatan/:id/pdf", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const session = await storage.getSidakKecepatanSession(id);
+      if (!session) return res.status(404).json({ message: "Session not found" });
+      const records = await storage.getSidakKecepatanRecords(id);
+      const observers = await storage.getSidakKecepatanObservers(id);
+
+      const buffer = await storage.generateSidakKecepatanPDF({ session, records, observers });
+
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename=sidak-kecepatan-${session.tanggal}.pdf`);
+      res.send(buffer);
+    } catch (error) {
+      console.error("Error generating PDF:", error);
+      res.status(500).json({ message: "Gagal generate PDF" });
+    }
+  });
 
   // Request Upload URL for Activity Photos
   app.post("/api/sidak-kecepatan/:id/request-upload-url", async (req, res) => {
@@ -9083,6 +9075,32 @@ Format sebagai bullet points singkat per insight.`;
   // ============================================================================
 
   // Create new Sidak Antrian session
+  app.post("/api/sidak-antrian", async (req, res) => {
+    try {
+      const sessionData = {
+        ...req.body,
+        tanggalPelaksanaan: req.body.tanggal,
+        jamPelaksanaan: req.body.waktu,
+        createdBy: (req as any).user?.username || "SYSTEM"
+      };
+
+      console.log("[DEBUG] Raw Session Data:", JSON.stringify(sessionData));
+      let session = insertSidakAntrianSessionSchema.parse(sessionData);
+
+      // Force inject createdBy if missing (Zod might strip it if it thinks it's extra)
+      if (!(session as any).createdBy) {
+        console.log("[DEBUG] Re-injecting createdBy");
+        session = { ...session, createdBy: (sessionData as any).createdBy || "SYSTEM" } as any;
+      }
+      console.log("[DEBUG] Final Session:", JSON.stringify(session));
+
+      const result = await storage.createSidakAntrianSession(session);
+      res.status(201).json(result);
+    } catch (error: any) {
+      console.error("Error creating Sidak Antrian session:", error);
+      res.status(400).json({ message: error.message || "Gagal membuat sesi" });
+    }
+  });
 
   // DEBUG ROUTE
   app.post("/api/sidak-antrian-debug", async (req, res) => {
@@ -9115,71 +9133,537 @@ Format sebagai bullet points singkat per insight.`;
   });
 
   // Get Sidak Antrian session detail
+  app.get("/api/sidak-antrian/:id", async (req, res) => {
+    try {
+      const sessionId = req.params.id;
+      const session = await storage.getSidakAntrianSession(sessionId);
+
+      if (!session) {
+        return res.status(404).json({ message: "Session not found" });
+      }
+
+      const records = await storage.getSidakAntrianRecords(sessionId);
+      const observers = await storage.getSidakAntrianObservers(sessionId);
+
+      res.json({ session, records, observers });
+    } catch (error: any) {
+      console.error("Error fetching Sidak Antrian detail:", error);
+      res.status(500).json({ message: error.message || "Gagal mengambil detail" });
+    }
+  });
 
   // Add record to Sidak Antrian session
+  app.post("/api/sidak-antrian/:id/records", async (req, res) => {
+    try {
+      const sessionId = req.params.id;
+      const recordData = { ...req.body, sessionId };
+
+      // We map 'ordinal' in storage if missing, or schema handles it?
+      // Check schema: insertSidakAntrianRecordSchema -> omit id, createdAt.
+      // But 'ordinal' is required in table.
+      // We should calculate ordinal or let storage do it.
+      // Storage createSidakAntrianRecord does NOT calculate ordinal in my impl 
+      // (Wait, I checked storage impl in Step 1375).
+      // Let's re-check storage impl.
+
+      // In Step 1375 storage impl:
+      // return await this.db.insert(sidakAntrianRecords).values(record).returning();
+      // It does NOT calculate ordinal automatically for RECORDS (only observers).
+      // So I must calculate ordinal here or in storage.
+      // Typical pattern: calculate in route or storage.
+      // Seatbelt calculates in route (usually).
+      // Rambu (Step 1384) calculates in route: `const ordinal = existing.length + 1;`
+      // I should do same for Antrian.
+
+      const existingRecords = await storage.getSidakAntrianRecords(sessionId);
+      const ordinal = existingRecords.length + 1;
+
+      const dataToParse = { ...recordData, ordinal };
+      const parsed = insertSidakAntrianRecordSchema.parse(dataToParse);
+      const record = await storage.createSidakAntrianRecord(parsed);
+      res.status(201).json(record);
+    } catch (error: any) {
+      console.error("Error adding Sidak Antrian record:", error);
+      res.status(500).json({ message: error.message || "Gagal menambahkan record" });
+    }
+  });
 
   // Add observer to Sidak Antrian session
+  app.post("/api/sidak-antrian/:id/observers", async (req, res) => {
+    try {
+      const sessionId = req.params.id;
+      const observerData = { ...req.body, sessionId };
+
+      // Storage createSidakAntrianObserver calculates ordinal.
+      // So no need to pass it? Schema omits ordinal?
+      // insertSidakAntrianObserverSchema omits id, createdAt.
+      // If schema requires ordinal, I must pass it.
+      // Let's check schema again (Step 1294 line 1072).
+      // `createInsertSchema(sidakAntrianObservers).omit({ id: true, createdAt: true });`
+      // Does it omit ordinal? No.
+      // So schema REQUIRES ordinal.
+      // But implementation in storage (Step 1375) calculates it:
+      // `const nextOrdinal = existingObservers.length + 1;`
+      // `values({ ...observer, ordinal: nextOrdinal } as InsertSidakAntrianObserver)`
+      // So I can pass observer WITHOUT ordinal to storage method, BUT validate?
+      // `insertSidakAntrianObserverSchema.parse(observerData)` will FAIL if ordinal is missing.
+      // So I must provide dummy ordinal or handle it.
+      // Or manually parse.
+
+      // Let's follow Rambu pattern (Step 1384):
+      // Calculate ordinal in route!
+      const existing = await storage.getSidakAntrianObservers(sessionId);
+      const ordinal = existing.length + 1;
+
+      const parsed = insertSidakAntrianObserverSchema.parse({ ...observerData, ordinal });
+      const observer = await storage.createSidakAntrianObserver(parsed); // Logic in storage might be redundant but safe.
+      res.status(201).json(observer);
+    } catch (error: any) {
+      console.error("Error adding Sidak Antrian observer:", error);
+      res.status(500).json({ message: error.message || "Gagal menambahkan observer" });
+    }
+  });
 
   // ============================================================================
   // SIDAK JARAK AMAN (Safe Distance Observation) ROUTES
   // ============================================================================
 
   // Create new Sidak Jarak session
+  app.post("/api/sidak-jarak", async (req, res) => {
+    try {
+      const session = insertSidakJarakSessionSchema.parse(req.body);
+      const result = await storage.createSidakJarakSession(session);
+      res.status(201).json(result);
+    } catch (error: any) {
+      console.error("Error creating Sidak Jarak session:", error);
+      res.status(400).json({ message: error.message || "Gagal membuat sesi" });
+    }
+  });
 
   // Get all Sidak Jarak sessions
+  app.get("/api/sidak-jarak/sessions", async (req, res) => {
+    try {
+      const sessions = await storage.getAllSidakJarakSessions();
+      res.json(sessions);
+    } catch (error: any) {
+      console.error("Error fetching Sidak Jarak sessions:", error);
+      res.status(500).json({ message: error.message || "Gagal mengambil data sesi" });
+    }
+  });
 
   // Get Sidak Jarak session detail
+  app.get("/api/sidak-jarak/:id", async (req, res) => {
+    try {
+      const sessionId = req.params.id;
+      const session = await storage.getSidakJarakSession(sessionId);
+
+      if (!session) {
+        return res.status(404).json({ message: "Session not found" });
+      }
+
+      const records = await storage.getSidakJarakRecords(sessionId);
+      const observers = await storage.getSidakJarakObservers(sessionId);
+
+      res.json({ session, records, observers });
+    } catch (error: any) {
+      console.error("Error fetching Sidak Jarak detail:", error);
+      res.status(500).json({ message: error.message || "Gagal mengambil detail" });
+    }
+  });
 
   // Add record to Sidak Jarak session
+  app.post("/api/sidak-jarak/:id/records", async (req, res) => {
+    try {
+      const sessionId = req.params.id;
+
+      const existingRecords = await storage.getSidakJarakRecords(sessionId);
+      const ordinal = existingRecords.length + 1;
+
+      const recordData = {
+        ...req.body,
+        sessionId,
+        ordinal
+      };
+
+      const parsed = insertSidakJarakRecordSchema.parse(recordData);
+      const record = await storage.createSidakJarakRecord(parsed);
+      res.status(201).json(record);
+    } catch (error: any) {
+      console.error("Error adding Sidak Jarak record:", error);
+      res.status(500).json({ message: error.message || "Gagal menambahkan record" });
+    }
+  });
 
   // Add observer to Sidak Jarak session
+  app.post("/api/sidak-jarak/:id/observers", async (req, res) => {
+    try {
+      const sessionId = req.params.id;
+
+      const existingObservers = await storage.getSidakJarakObservers(sessionId);
+      const ordinal = existingObservers.length + 1;
+
+      const observerData = {
+        ...req.body,
+        sessionId,
+        ordinal
+      };
+
+      const parsed = insertSidakJarakObserverSchema.parse(observerData);
+      const observer = await storage.createSidakJarakObserver(parsed);
+      res.status(201).json(observer);
+    } catch (error: any) {
+      console.error("Error adding Sidak Jarak observer:", error);
+      res.status(500).json({ message: error.message || "Gagal menambahkan observer" });
+    }
+  });
 
   // Generate PDF for Sidak Jarak session
+  app.get("/api/sidak-jarak/:id/pdf", async (req, res) => {
+    try {
+      const sessionId = req.params.id;
+      const session = await storage.getSidakJarakSession(sessionId);
+
+      if (!session) {
+        return res.status(404).json({ message: "Session not found" });
+      }
+
+      const records = await storage.getSidakJarakRecords(sessionId);
+      const observers = await storage.getSidakJarakObservers(sessionId);
+
+      const pdfBuffer = await storage.generateSidakJarakPDF({
+        session,
+        records,
+        observers
+      });
+
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename=Sidak_Jarak_${session.tanggal}.pdf`);
+      res.send(pdfBuffer);
+    } catch (error: any) {
+      console.error("Error generating Sidak Jarak PDF:", error);
+      res.status(500).json({ message: error.message || "Gagal generate PDF" });
+    }
+  });
 
   // ============================================================================
   // SIDAK KECEPATAN (Speed Observation) ROUTES
   // ============================================================================
 
+  app.post("/api/sidak-kecepatan", async (req, res) => {
+    try {
+      const session = insertSidakKecepatanSessionSchema.parse(req.body);
+      const result = await storage.createSidakKecepatanSession(session);
+      res.status(201).json(result);
+    } catch (error: any) {
+      console.error("Error creating Sidak Kecepatan session:", error);
+      res.status(400).json({ message: error.message || "Gagal membuat sesi" });
+    }
+  });
 
+  app.get("/api/sidak-kecepatan/sessions", async (req, res) => {
+    try {
+      const sessions = await storage.getAllSidakKecepatanSessions();
+      res.json(sessions);
+    } catch (error: any) {
+      console.error("Error fetching Sidak Kecepatan sessions:", error);
+      res.status(500).json({ message: error.message || "Gagal mengambil data sesi" });
+    }
+  });
 
+  app.get("/api/sidak-kecepatan/:id", async (req, res) => {
+    try {
+      const session = await storage.getSidakKecepatanSession(req.params.id);
+      if (!session) {
+        return res.status(404).json({ message: "Session not found" });
+      }
+      const records = await storage.getSidakKecepatanRecords(req.params.id);
+      const observers = await storage.getSidakKecepatanObservers(req.params.id);
+      res.json({ session, records, observers });
+    } catch (error: any) {
+      console.error("Error fetching Sidak Kecepatan detail:", error);
+      res.status(500).json({ message: error.message || "Gagal mengambil detail" });
+    }
+  });
 
+  app.post("/api/sidak-kecepatan/:id/records", async (req, res) => {
+    try {
+      const recordData = { ...req.body, sessionId: req.params.id };
+      const parsed = insertSidakKecepatanRecordSchema.parse(recordData);
+      const record = await storage.createSidakKecepatanRecord(parsed);
+      res.status(201).json(record);
+    } catch (error: any) {
+      console.error("Error adding Sidak Kecepatan record:", error);
+      res.status(500).json({ message: error.message || "Gagal menambahkan record" });
+    }
+  });
 
+  app.post("/api/sidak-kecepatan/:id/observers", async (req, res) => {
+    try {
+      const observerData = { ...req.body, sessionId: req.params.id };
+      const parsed = insertSidakKecepatanObserverSchema.parse(observerData);
+      const observer = await storage.createSidakKecepatanObserver(parsed);
+      res.status(201).json(observer);
+    } catch (error: any) {
+      console.error("Error adding Sidak Kecepatan observer:", error);
+      res.status(500).json({ message: error.message || "Gagal menambahkan observer" });
+    }
+  });
 
   // ============================================================================
   // SIDAK PENCAHAYAAN (Lighting Inspection) ROUTES
   // ============================================================================
 
+  app.post("/api/sidak-pencahayaan", async (req, res) => {
+    try {
+      const session = insertSidakPencahayaanSessionSchema.parse(req.body);
+      const result = await storage.createSidakPencahayaanSession(session);
+      res.status(201).json(result);
+    } catch (error: any) {
+      console.error("Error creating Sidak Pencahayaan session:", error);
+      res.status(400).json({ message: error.message || "Gagal membuat sesi" });
+    }
+  });
 
+  app.get("/api/sidak-pencahayaan/sessions", async (req, res) => {
+    try {
+      const sessions = await storage.getAllSidakPencahayaanSessions();
+      res.json(sessions);
+    } catch (error: any) {
+      console.error("Error fetching Sidak Pencahayaan sessions:", error);
+      res.status(500).json({ message: error.message || "Gagal mengambil data sesi" });
+    }
+  });
 
+  app.get("/api/sidak-pencahayaan/:id", async (req, res) => {
+    try {
+      const session = await storage.getSidakPencahayaanSession(req.params.id);
+      if (!session) {
+        return res.status(404).json({ message: "Session not found" });
+      }
+      const records = await storage.getSidakPencahayaanRecords(req.params.id);
+      const observers = await storage.getSidakPencahayaanObservers(req.params.id);
+      res.json({ session, records, observers });
+    } catch (error: any) {
+      console.error("Error fetching Sidak Pencahayaan detail:", error);
+      res.status(500).json({ message: error.message || "Gagal mengambil detail" });
+    }
+  });
 
+  app.post("/api/sidak-pencahayaan/:id/records", async (req, res) => {
+    try {
+      const recordData = { ...req.body, sessionId: req.params.id };
+      const parsed = insertSidakPencahayaanRecordSchema.parse(recordData);
+      const record = await storage.createSidakPencahayaanRecord(parsed);
+      res.status(201).json(record);
+    } catch (error: any) {
+      console.error("Error adding Sidak Pencahayaan record:", error);
+      res.status(500).json({ message: error.message || "Gagal menambahkan record" });
+    }
+  });
 
+  app.post("/api/sidak-pencahayaan/:id/observers", async (req, res) => {
+    try {
+      const observerData = { ...req.body, sessionId: req.params.id };
+      const parsed = insertSidakPencahayaanObserverSchema.parse(observerData);
+      const observer = await storage.createSidakPencahayaanObserver(parsed);
+      res.status(201).json(observer);
+    } catch (error: any) {
+      console.error("Error adding Sidak Pencahayaan observer:", error);
+      res.status(500).json({ message: error.message || "Gagal menambahkan observer" });
+    }
+  });
 
   // ============================================================================
   // SIDAK LOTO (Lock Out Tag Out) ROUTES
   // ============================================================================
 
+  app.post("/api/sidak-loto", async (req, res) => {
+    try {
+      const session = insertSidakLotoSessionSchema.parse(req.body);
+      const result = await storage.createSidakLotoSession(session);
+      res.status(201).json(result);
+    } catch (error: any) {
+      console.error("Error creating Sidak LOTO session:", error);
+      res.status(400).json({ message: error.message || "Gagal membuat sesi" });
+    }
+  });
 
+  app.get("/api/sidak-loto/sessions", async (req, res) => {
+    try {
+      const sessions = await storage.getAllSidakLotoSessions();
+      res.json(sessions);
+    } catch (error: any) {
+      console.error("Error fetching Sidak LOTO sessions:", error);
+      res.status(500).json({ message: error.message || "Gagal mengambil data sesi" });
+    }
+  });
 
+  app.get("/api/sidak-loto/:id", async (req, res) => {
+    try {
+      const session = await storage.getSidakLotoSession(req.params.id);
+      if (!session) {
+        return res.status(404).json({ message: "Session not found" });
+      }
+      const records = await storage.getSidakLotoRecords(req.params.id);
+      const observers = await storage.getSidakLotoObservers(req.params.id);
+      res.json({ session, records, observers });
+    } catch (error: any) {
+      console.error("Error fetching Sidak LOTO detail:", error);
+      res.status(500).json({ message: error.message || "Gagal mengambil detail" });
+    }
+  });
 
+  app.post("/api/sidak-loto/:id/records", async (req, res) => {
+    try {
+      const recordData = { ...req.body, sessionId: req.params.id };
+      const parsed = insertSidakLotoRecordSchema.parse(recordData);
+      const record = await storage.createSidakLotoRecord(parsed);
+      res.status(201).json(record);
+    } catch (error: any) {
+      console.error("Error adding Sidak LOTO record:", error);
+      res.status(500).json({ message: error.message || "Gagal menambahkan record" });
+    }
+  });
 
+  app.post("/api/sidak-loto/:id/observers", async (req, res) => {
+    try {
+      const observerData = { ...req.body, sessionId: req.params.id };
+      const parsed = insertSidakLotoObserverSchema.parse(observerData);
+      const observer = await storage.createSidakLotoObserver(parsed);
+      res.status(201).json(observer);
+    } catch (error: any) {
+      console.error("Error adding Sidak LOTO observer:", error);
+      res.status(500).json({ message: error.message || "Gagal menambahkan observer" });
+    }
+  });
 
   // ============================================================================
   // SIDAK DIGITAL (Digital Supervisor Inspection) ROUTES
   // ============================================================================
 
+  app.post("/api/sidak-digital", async (req, res) => {
+    try {
+      const session = insertSidakDigitalSessionSchema.parse(req.body);
+      const result = await storage.createSidakDigitalSession(session);
+      res.status(201).json(result);
+    } catch (error: any) {
+      console.error("Error creating Sidak Digital session:", error);
+      res.status(400).json({ message: error.message || "Gagal membuat sesi" });
+    }
+  });
 
+  app.get("/api/sidak-digital/sessions", async (req, res) => {
+    try {
+      const sessions = await storage.getAllSidakDigitalSessions();
+      res.json(sessions);
+    } catch (error: any) {
+      console.error("Error fetching Sidak Digital sessions:", error);
+      res.status(500).json({ message: error.message || "Gagal mengambil data sesi" });
+    }
+  });
 
+  app.get("/api/sidak-digital/:id", async (req, res) => {
+    try {
+      const session = await storage.getSidakDigitalSession(req.params.id);
+      if (!session) {
+        return res.status(404).json({ message: "Session not found" });
+      }
+      const records = await storage.getSidakDigitalRecords(req.params.id);
+      const observers = await storage.getSidakDigitalObservers(req.params.id);
+      res.json({ session, records, observers });
+    } catch (error: any) {
+      console.error("Error fetching Sidak Digital detail:", error);
+      res.status(500).json({ message: error.message || "Gagal mengambil detail" });
+    }
+  });
 
+  app.post("/api/sidak-digital/:id/records", async (req, res) => {
+    try {
+      const recordData = { ...req.body, sessionId: req.params.id };
+      const parsed = insertSidakDigitalRecordSchema.parse(recordData);
+      const record = await storage.createSidakDigitalRecord(parsed);
+      res.status(201).json(record);
+    } catch (error: any) {
+      console.error("Error adding Sidak Digital record:", error);
+      res.status(500).json({ message: error.message || "Gagal menambahkan record" });
+    }
+  });
 
+  app.post("/api/sidak-digital/:id/observers", async (req, res) => {
+    try {
+      const observerData = { ...req.body, sessionId: req.params.id };
+      const parsed = insertSidakDigitalObserverSchema.parse(observerData);
+      const observer = await storage.createSidakDigitalObserver(parsed);
+      res.status(201).json(observer);
+    } catch (error: any) {
+      console.error("Error adding Sidak Digital observer:", error);
+      res.status(500).json({ message: error.message || "Gagal menambahkan observer" });
+    }
+  });
 
   // ============================================================================
   // SIDAK WORKSHOP (Workshop Equipment Checklist) ROUTES
   // ============================================================================
 
+  app.post("/api/sidak-workshop", async (req, res) => {
+    try {
+      const session = insertSidakWorkshopSessionSchema.parse(req.body);
+      const result = await storage.createSidakWorkshopSession(session);
+      res.status(201).json(result);
+    } catch (error: any) {
+      console.error("Error creating Sidak Workshop session:", error);
+      res.status(400).json({ message: error.message || "Gagal membuat sesi" });
+    }
+  });
 
+  app.get("/api/sidak-workshop/sessions", async (req, res) => {
+    try {
+      const sessions = await storage.getAllSidakWorkshopSessions();
+      res.json(sessions);
+    } catch (error: any) {
+      console.error("Error fetching Sidak Workshop sessions:", error);
+      res.status(500).json({ message: error.message || "Gagal mengambil data sesi" });
+    }
+  });
 
+  app.get("/api/sidak-workshop/:id", async (req, res) => {
+    try {
+      const session = await storage.getSidakWorkshopSession(req.params.id);
+      if (!session) {
+        return res.status(404).json({ message: "Session not found" });
+      }
+      const records = await storage.getSidakWorkshopRecords(req.params.id);
+      const observers = await storage.getSidakWorkshopObservers(req.params.id);
+      res.json({ session, records, observers });
+    } catch (error: any) {
+      console.error("Error fetching Sidak Workshop detail:", error);
+      res.status(500).json({ message: error.message || "Gagal mengambil detail" });
+    }
+  });
 
+  app.post("/api/sidak-workshop/:id/records", async (req, res) => {
+    try {
+      const recordData = { ...req.body, sessionId: req.params.id };
+      const parsed = insertSidakWorkshopRecordSchema.parse(recordData);
+      const record = await storage.createSidakWorkshopRecord(parsed);
+      res.status(201).json(record);
+    } catch (error: any) {
+      console.error("Error adding Sidak Workshop record:", error);
+      res.status(500).json({ message: error.message || "Gagal menambahkan record" });
+    }
+  });
 
+  app.post("/api/sidak-workshop/:id/observers", async (req, res) => {
+    try {
+      const observerData = { ...req.body, sessionId: req.params.id };
+      const parsed = insertSidakWorkshopObserverSchema.parse(observerData);
+      const observer = await storage.createSidakWorkshopObserver(parsed);
+      res.status(201).json(observer);
+    } catch (error: any) {
+      console.error("Error adding Sidak Workshop observer:", error);
+      res.status(500).json({ message: error.message || "Gagal menambahkan observer" });
+    }
+  });
 
   // NOTE: Sidak Roster routes are already defined earlier in the file (around line 7270-7517)
   // Duplicate routes removed to prevent conflicts
@@ -9188,24 +9672,165 @@ Format sebagai bullet points singkat per insight.`;
   // SIDAK JARAK ROUTES
   // ============================================================================
 
+  app.post("/api/sidak-jarak", async (req, res) => {
+    try {
+      const session = insertSidakJarakSessionSchema.parse(req.body);
+      const result = await storage.createSidakJarakSession(session);
+      res.status(201).json(result);
+    } catch (error: any) {
+      console.error("Error creating Sidak Jarak session:", error);
+      res.status(400).json({ message: error.message || "Gagal membuat sesi" });
+    }
+  });
 
+  app.get("/api/sidak-jarak/sessions", async (req, res) => {
+    try {
+      const sessions = await storage.getAllSidakJarakSessions();
+      res.json(sessions);
+    } catch (error: any) {
+      console.error("Error fetching Sidak Jarak sessions:", error);
+      res.status(500).json({ message: error.message || "Gagal mengambil data sesi" });
+    }
+  });
 
+  app.get("/api/sidak-jarak/:id", async (req, res) => {
+    try {
+      const sessionId = req.params.id;
+      const session = await storage.getSidakJarakSession(sessionId);
+      if (!session) {
+        return res.status(404).json({ message: "Session not found" });
+      }
+      const records = await storage.getSidakJarakRecords(sessionId);
+      const observers = await storage.getSidakJarakObservers(sessionId);
+      res.json({ session, records, observers });
+    } catch (error: any) {
+      console.error("Error fetching Sidak Jarak detail:", error);
+      res.status(500).json({ message: error.message || "Gagal mengambil detail" });
+    }
+  });
 
+  app.post("/api/sidak-jarak/:id/records", async (req, res) => {
+    try {
+      const sessionId = req.params.id;
+      const existingRecords = await storage.getSidakJarakRecords(sessionId);
+      const ordinal = existingRecords.length + 1;
+      const recordData = { sessionId, ordinal, ...req.body };
+      const record = await storage.createSidakJarakRecord(recordData);
+      res.status(201).json(record);
+    } catch (error: any) {
+      console.error("Error adding Sidak Jarak record:", error);
+      res.status(500).json({ message: error.message || "Gagal menambahkan record" });
+    }
+  });
 
+  app.post("/api/sidak-jarak/:id/observers", async (req, res) => {
+    try {
+      const sessionId = req.params.id;
+      const observerData = { sessionId, ...req.body };
+      const observer = await storage.createSidakJarakObserver(observerData);
+      res.status(201).json(observer);
+    } catch (error: any) {
+      console.error("Error adding Sidak Jarak observer:", error);
+      res.status(500).json({ message: error.message || "Gagal menambahkan observer" });
+    }
+  });
 
   // ============================================================================
   // SIDAK ANTRIAN (Queue Observation) ROUTES  
   // ============================================================================
 
   // Create new Sidak Antrian session
+  app.post("/api/sidak-antrian", async (req, res) => {
+    try {
+      const session = insertSidakAntrianSessionSchema.parse(req.body);
+      const result = await storage.createSidakAntrianSession(session);
+      res.status(201).json(result);
+    } catch (error: any) {
+      console.error("Error creating Sidak Antrian session:", error);
+      res.status(400).json({ message: error.message || "Gagal membuat sesi" });
+    }
+  });
 
   // Get all Sidak Antrian sessions
+  app.get("/api/sidak-antrian/sessions", async (req, res) => {
+    try {
+      const sessions = await storage.getAllSidakAntrianSessions();
+      res.json(sessions);
+    } catch (error: any) {
+      console.error("Error fetching Sidak Antrian sessions:", error);
+      res.status(500).json({ message: error.message || "Gagal mengambil data sesi" });
+    }
+  });
 
   // Get Sidak Antrian session detail
+  app.get("/api/sidak-antrian/:id", async (req, res) => {
+    try {
+      const sessionId = req.params.id;
+      const session = await storage.getSidakAntrianSession(sessionId);
+
+      if (!session) {
+        return res.status(404).json({ message: "Session not found" });
+      }
+
+      const records = await storage.getSidakAntrianRecords(sessionId);
+      const observers = await storage.getSidakAntrianObservers(sessionId);
+
+      res.json({ session, records, observers });
+    } catch (error: any) {
+      console.error("Error fetching Sidak Antrian detail:", error);
+      res.status(500).json({ message: error.message || "Gagal mengambil detail" });
+    }
+  });
 
   // Add record to Sidak Antrian session
+  app.post("/api/sidak-antrian/:id/records", async (req, res) => {
+    try {
+      const sessionId = req.params.id;
+
+      // Get existing records to determine ordinal
+      const existingRecords = await storage.getSidakAntrianRecords(sessionId);
+      const ordinal = existingRecords.length + 1;
+
+      const recordData = {
+        sessionId,
+        ordinal,
+        namaNik: req.body.namaNik,
+        noLambung: req.body.noLambung,
+        handbrakeAktif: req.body.handbrakeAktif,
+        jarakUnitAman: req.body.jarakUnitAman,
+        keterangan: req.body.keterangan
+      };
+
+      const record = await storage.createSidakAntrianRecord(recordData);
+      res.status(201).json(record);
+    } catch (error: any) {
+      console.error("Error adding Sidak Antrian record:", error);
+      res.status(500).json({ message: error.message || "Gagal menambahkan record" });
+    }
+  });
 
   // Add observer to Sidak Antrian session
+  app.post("/api/sidak-antrian/:id/observers", async (req, res) => {
+    try {
+      const sessionId = req.params.id;
+      const existingObservers = await storage.getSidakAntrianObservers(sessionId);
+      const ordinal = existingObservers.length + 1;
+
+      const observerData = {
+        sessionId,
+        ordinal,
+        nama: req.body.nama,
+        jabatan: req.body.jabatan,
+        tandaTangan: req.body.tandaTangan
+      };
+
+      const observer = await storage.createSidakAntrianObserver(observerData);
+      res.status(201).json(observer);
+    } catch (error: any) {
+      console.error("Error adding Sidak Antrian observer:", error);
+      res.status(500).json({ message: error.message || "Gagal menambahkan observer" });
+    }
+  });
 
   // Generate PDF for Sidak Antrian session
   app.get("/api/sidak-antrian/:id/pdf", async (req, res) => {
@@ -9378,6 +10003,22 @@ Format sebagai bullet points singkat per insight.`;
       }
     });
 
+    app.delete(`/api/sidak-${name}/:id/photos/:index`, async (req, res) => {
+      try {
+        const session = await get(req.params.id);
+        if (!session) return res.status(404).json({ message: "Not found" });
+        const photos = session.activityPhotos || [];
+        const index = parseInt(req.params.index);
+        if (index < 0 || index >= photos.length) return res.status(400).json({ message: "Invalid" });
+        const filePath = path.join(process.cwd(), photos[index].replace(/^\//, ''));
+        fs.existsSync(filePath) && fs.unlinkSync(filePath);
+        const updatedPhotos = photos.filter((_, i) => i !== index);
+        await update(req.params.id, { activityPhotos: updatedPhotos });
+        res.json({ photos: updatedPhotos });
+      } catch (error: any) {
+        res.status(500).json({ error: error.message });
+      }
+    });
   });
 
   // Configure Multer for Sidak Rambu
@@ -9734,6 +10375,18 @@ Format sebagai bullet points singkat per insight.`;
 
 
   // Delete TNA Entry
+  app.delete("/api/hse/tna/entries/:id", async (req, res) => {
+    try {
+      const success = await storage.deleteTnaEntry(req.params.id);
+      if (!success) {
+        return res.status(404).json({ error: "Not found" });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting TNA entry:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
 
   // ============================================
   // COMPETENCY MONITORING ROUTES
@@ -10180,12 +10833,42 @@ Format sebagai bullet points singkat per insight.`;
   });
 
   // Get all approvals for a document
+  app.get("/api/document-masterlist/:id/approvals", async (req, res) => {
+    try {
+      const approvals = await storage.getDocumentApprovals(req.params.id);
+      res.json(approvals);
+    } catch (error) {
+      console.error("Error fetching approvals:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
 
   // ============================================
   // DISTRIBUTION ROUTES (Phase 3)
   // ============================================
 
   // Distribute document to recipients
+  app.post("/api/document-masterlist/:id/distribute", async (req, res) => {
+    try {
+      const { recipients, deadline, isMandatory } = req.body;
+
+      if (!recipients || recipients.length === 0) {
+        return res.status(400).json({ error: "Minimal harus ada 1 penerima" });
+      }
+
+      const result = await storage.distributeDocument(req.params.id, {
+        recipients,
+        deadline,
+        isMandatory: isMandatory !== false,
+        distributedBy: req.body.distributedBy,
+      });
+
+      res.status(201).json(result);
+    } catch (error: any) {
+      console.error("Error distributing document:", error);
+      res.status(500).json({ error: error?.message || "Internal server error" });
+    }
+  });
 
   // Get documents distributed to current user
   app.get("/api/my-documents", async (req, res) => {
@@ -10543,8 +11226,26 @@ Format sebagai bullet points singkat per insight.`;
   // ============================================
 
   // Get Disposal Records
+  app.get("/api/disposal-records", async (req, res) => {
+    try {
+      const records = await storage.getDisposalRecords();
+      res.json(records);
+    } catch (error) {
+      console.error("Error fetching disposal records:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
 
   // Create Disposal Record
+  app.post("/api/disposal-records", async (req, res) => {
+    try {
+      const record = await storage.createDisposalRecord(req.body);
+      res.status(201).json(record);
+    } catch (error) {
+      console.error("Error creating disposal record:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
 
   // ============================================
   // FMS FATIGUE ALERTS
@@ -10702,6 +11403,36 @@ Format sebagai bullet points singkat per insight.`;
   });
 
   // Get Retention Candidates
+  app.get("/api/documents/retention-candidates", async (req, res) => {
+    try {
+      const allDocs = await storage.getDocumentMasterlist();
+
+      const candidates = allDocs.filter((doc: any) => {
+        if (doc.lifecycle_status !== "PUBLISHED" && doc.lifecycle_status !== "OBSOLETE") return false;
+        if (!doc.publish_date || !doc.retention_period) return false;
+
+        const publishDate = new Date(doc.publish_date);
+        const retentionDate = new Date(publishDate);
+        retentionDate.setFullYear(retentionDate.getFullYear() + doc.retention_period);
+
+        // Return if retention date is in the past OR within next 30 days
+        const limitDate = new Date();
+        limitDate.setDate(limitDate.getDate() + 30);
+
+        return retentionDate <= limitDate;
+      }).map((doc: any) => {
+        const publishDate = new Date(doc.publish_date);
+        const retentionDate = new Date(publishDate);
+        retentionDate.setFullYear(retentionDate.getFullYear() + doc.retention_period);
+        return { ...doc, retentionDate };
+      });
+
+      res.json(candidates);
+    } catch (error) {
+      console.error("Error fetching retention candidates:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
 
   // ============================================
   // SI ASEF ROUTES
@@ -11128,6 +11859,18 @@ Format sebagai bullet points singkat per insight.`;
   });
 
   // Delete Session
+  app.delete("/api/si-asef/sessions/:id", async (req, res) => {
+    try {
+      // Allow delete without strict auth check for now
+      await db.delete(siAsefChatMessages).where(eq(siAsefChatMessages.sessionId, req.params.id));
+      await db.delete(siAsefChatSessions).where(eq(siAsefChatSessions.id, req.params.id));
+
+      res.json({ message: "Session deleted" });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ message: "Internal Server Error" });
+    }
+  });
 
   // Get Chat History (List Sessions)
   app.get("/api/si-asef/sessions", async (req, res) => {
@@ -11145,6 +11888,18 @@ Format sebagai bullet points singkat per insight.`;
   });
 
   // Get Messages in Session
+  app.get("/api/si-asef/sessions/:id", async (req, res) => {
+    try {
+      if (!(req.session as any).user) return res.sendStatus(401);
+      const messages = await db.select()
+        .from(siAsefChatMessages)
+        .where(eq(siAsefChatMessages.sessionId, req.params.id))
+        .orderBy(asc(siAsefChatMessages.createdAt));
+      res.json(messages);
+    } catch (error) {
+      res.status(500).json({ message: "Error" });
+    }
+  });
 
 
   // ============================================
@@ -11618,98 +12373,6 @@ Format sebagai bullet points singkat per insight.`;
   });
 
   // ============================================
-  // SIDAK WORKSHOP ROUTES
-  // ============================================
-
-  // Get all sessions
-  app.get("/api/sidak-workshop/sessions", async (req, res) => {
-    try {
-      const sessions = await storage.getAllSidakWorkshopSessions();
-      res.json(sessions);
-    } catch (e: any) {
-      res.status(500).json({ error: e.message });
-    }
-  });
-
-  // Get single session with equipment and inspectors
-  app.get("/api/sidak-workshop/sessions/:id", async (req, res) => {
-    try {
-      const session = await storage.getSidakWorkshopSession(req.params.id);
-      if (!session) return res.status(404).json({ error: "Session not found" });
-
-      const equipment = await storage.getSidakWorkshopEquipment(req.params.id);
-      const inspectors = await storage.getSidakWorkshopInspectors(req.params.id);
-
-      res.json({ session, equipment, inspectors });
-    } catch (e: any) {
-      res.status(500).json({ error: e.message });
-    }
-  });
-
-  // Create new session
-  app.post("/api/sidak-workshop/sessions", async (req, res) => {
-    try {
-      const parsed = insertSidakWorkshopSessionSchema.safeParse(req.body);
-      if (!parsed.success) return res.status(400).json({ error: parsed.error });
-
-      const session = await storage.createSidakWorkshopSession(parsed.data);
-      res.status(201).json(session);
-    } catch (e: any) {
-      console.error("Create SIDAK Workshop Session Error:", e);
-      res.status(500).json({ error: e.message });
-    }
-  });
-
-  // Update session
-  app.put("/api/sidak-workshop/sessions/:id", async (req, res) => {
-    try {
-      const session = await storage.updateSidakWorkshopSession(req.params.id, req.body);
-      if (!session) return res.status(404).json({ error: "Session not found" });
-      res.json(session);
-    } catch (e: any) {
-      res.status(500).json({ error: e.message });
-    }
-  });
-
-  // Delete session
-  app.delete("/api/sidak-workshop/sessions/:id", async (req, res) => {
-    try {
-      await storage.deleteSidakWorkshopSession(req.params.id);
-      res.sendStatus(204);
-    } catch (e: any) {
-      res.status(500).json({ error: e.message });
-    }
-  });
-
-  // Add equipment to session
-  app.post("/api/sidak-workshop/sessions/:sessionId/equipment", async (req, res) => {
-    try {
-      const equipment = await storage.createSidakWorkshopEquipment({
-        ...req.body,
-        sessionId: req.params.sessionId
-      });
-      res.status(201).json(equipment);
-    } catch (e: any) {
-      console.error("Create SIDAK Workshop Equipment Error:", e);
-      res.status(500).json({ error: e.message });
-    }
-  });
-
-  // Add inspector to session
-  app.post("/api/sidak-workshop/sessions/:sessionId/inspectors", async (req, res) => {
-    try {
-      const inspector = await storage.createSidakWorkshopInspector({
-        ...req.body,
-        sessionId: req.params.sessionId
-      });
-      res.status(201).json(inspector);
-    } catch (e: any) {
-      console.error("Create SIDAK Workshop Inspector Error:", e);
-      res.status(500).json({ error: e.message });
-    }
-  });
-
-  // ============================================
   // MCU ENDPOINTS
   // ============================================
 
@@ -11835,102 +12498,6 @@ Format sebagai bullet points singkat per insight.`;
     } catch (error: any) {
       console.error("Error analyzing sheet:", error);
       res.status(500).json({ error: error.message || "Failed to analyze sheet" });
-    }
-  });
-
-
-  // ============================================
-  // EVALUASI DRIVER DASHBOARD
-  // ============================================
-
-  app.get("/api/evaluasi-driver", async (req, res) => {
-    try {
-      const { month, status } = req.query;
-
-      if (!month || typeof month !== 'string') {
-        return res.status(400).json({ error: "Month (YYYY-MM) is required" });
-      }
-
-      console.log(`[API] Fetching Evaluasi Driver for ${month}, status: ${status}`);
-
-      // 1. Get all active employees
-      const allEmployees = await storage.getAllEmployees();
-      const activeEmployees = allEmployees.filter(e => e.status === 'active');
-
-      // 2. Get all fatigue sessions for the month
-      const allSessions = await storage.getAllSidakFatigueSessions();
-      const monthSessions = allSessions.filter(s => s.tanggal.startsWith(month));
-      const sessionIds = monthSessions.map(s => s.id);
-
-      // 3. Get all records for these sessions
-      let records: SidakFatigueRecord[] = [];
-      if (sessionIds.length > 0) {
-        records = await storage.getSidakFatigueRecordsBySessionIds(sessionIds);
-      }
-
-      // 4. Aggregate data
-      const driverStats = new Map<string, number>();
-
-      records.forEach(record => {
-        // Prefer employeeId
-        let empKey = record.employeeId;
-
-        // Fallback to NIK matching if employeeId is missing
-        if (!empKey && record.nik) {
-          const emp = activeEmployees.find(e => e.id === record.nik);
-          if (emp) empKey = emp.id;
-        }
-
-        if (empKey) {
-          driverStats.set(empKey, (driverStats.get(empKey) || 0) + 1);
-        }
-      });
-
-      // 5. Build response list
-      // Count summaries first (based on ALL active employees)
-      const allDriverStats = activeEmployees.map(emp => {
-        const totalSidak = driverStats.get(emp.id) || 0;
-        return {
-          id: emp.id,
-          nama: emp.name,
-          nik: emp.id,
-          totalSidak,
-          status: totalSidak > 0 ? "Sudah SIDAK" : "Belum SIDAK"
-        };
-      });
-
-      const totalDrivers = activeEmployees.length;
-      const totalSudahSidak = allDriverStats.filter(d => d.totalSidak > 0).length;
-      const totalBelumSidak = totalDrivers - totalSudahSidak;
-      const totalSidakKeseluruhan = records.length;
-
-      const summary = {
-        totalDrivers,
-        sudahSidak: totalSudahSidak,
-        belumSidak: totalBelumSidak,
-        totalSidakKeseluruhan
-      };
-
-      // 6. Filter returned drivers list based on query param
-      let filteredDrivers = allDriverStats;
-      if (status === 'sudah') {
-        filteredDrivers = allDriverStats.filter(d => d.totalSidak > 0);
-      } else if (status === 'belum') {
-        filteredDrivers = allDriverStats.filter(d => d.totalSidak === 0);
-      }
-
-      // Sorting: Highest SIDAK count first
-      filteredDrivers.sort((a, b) => b.totalSidak - a.totalSidak);
-
-      res.json({
-        summary,
-        drivers: filteredDrivers,
-        month
-      });
-
-    } catch (e: any) {
-      console.error("Evaluasi Driver API Error:", e);
-      res.status(500).json({ error: e.message });
     }
   });
 

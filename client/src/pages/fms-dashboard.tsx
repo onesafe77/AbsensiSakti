@@ -149,506 +149,532 @@ export default function FmsDashboard() {
     }
 
     return (
-        <div className="p-6 bg-slate-50 min-h-screen space-y-6 font-sans">
+        <div className="min-h-screen bg-slate-50 font-sans selection:bg-blue-100 pb-12">
             {/* HEADER */}
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white p-6 rounded-xl shadow-sm border-l-4 border-blue-600">
-                <div>
-                    <h1 className="text-2xl font-bold text-slate-800 uppercase tracking-tight">FMS VIOLATION COMMAND CENTER</h1>
-                    <p className="text-slate-500 text-sm mt-1">Monitoring Pelanggaran & Validasi Keselamatan Operasional</p>
-                </div>
-                <div className="flex items-center gap-3 mt-4 md:mt-0">
-                    <div className="flex items-center gap-2 bg-slate-100 p-2 rounded-lg border">
-                        <Calendar className="w-4 h-4 text-slate-500" />
-                        <input
-                            type="datetime-local"
-                            className="bg-transparent text-sm outline-none w-40"
-                            value={dateTimeRange.start}
-                            onChange={(e) => setDateTimeRange(prev => ({ ...prev, start: e.target.value }))}
-                        />
-                        <span className="text-slate-400">-</span>
-                        <input
-                            type="datetime-local"
-                            className="bg-transparent text-sm outline-none w-40"
-                            value={dateTimeRange.end}
-                            onChange={(e) => setDateTimeRange(prev => ({ ...prev, end: e.target.value }))}
-                        />
-                    </div>
-
-                    <Dialog open={isUploadOpen} onOpenChange={setIsUploadOpen}>
-                        <DialogTrigger asChild>
-                            <Button className="bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-200">
-                                <Upload className="w-4 h-4 mr-2" />
-                                Upload Excel
-                            </Button>
-                        </DialogTrigger>
-                        <DialogContent>
-                            <DialogHeader>
-                                <DialogTitle>Upload Data FMS Harian</DialogTitle>
-                            </DialogHeader>
-                            <div className="border-2 border-dashed border-slate-300 rounded-lg p-10 text-center hover:bg-slate-50 transition-colors cursor-pointer" onClick={() => fileInputRef.current?.click()}>
-                                <FileSpreadsheet className="w-12 h-12 text-green-500 mx-auto mb-4" />
-                                <p className="text-sm text-slate-600 font-medium">Klik untuk upload file Excel (.xlsx)</p>
-                                <p className="text-xs text-slate-400 mt-2">Mendukung fitur "Smart Upsert" (Update data jika duplikat)</p>
+            <div className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-200/60 shadow-sm transition-all duration-300">
+                <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-4">
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                        <div>
+                            <div className="flex items-center gap-2">
+                                <div className="w-1.5 h-6 bg-gradient-to-b from-blue-600 to-indigo-600 rounded-full"></div>
+                                <h1 className="text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-slate-900 to-slate-700 uppercase tracking-tight">FMS Command Center</h1>
+                            </div>
+                            <p className="text-slate-500 text-xs font-medium mt-1 ml-3.5 tracking-wide">Monitoring & Validasi Keselamatan Operasional</p>
+                        </div>
+                        <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-2 bg-slate-100/50 p-1.5 rounded-full border border-slate-200 shadow-inner">
+                                <Calendar className="w-4 h-4 text-slate-400 ml-2" />
                                 <input
-                                    ref={fileInputRef}
-                                    type="file"
-                                    accept=".xlsx, .xls"
-                                    className="hidden"
-                                    onChange={handleFileUpload}
+                                    type="datetime-local"
+                                    className="bg-transparent text-xs font-bold text-slate-600 outline-none w-36 px-1"
+                                    value={dateTimeRange.start}
+                                    onChange={(e) => setDateTimeRange(prev => ({ ...prev, start: e.target.value }))}
+                                />
+                                <span className="text-slate-300 text-xs mx-1">to</span>
+                                <input
+                                    type="datetime-local"
+                                    className="bg-transparent text-xs font-bold text-slate-600 outline-none w-36 px-1"
+                                    value={dateTimeRange.end}
+                                    onChange={(e) => setDateTimeRange(prev => ({ ...prev, end: e.target.value }))}
                                 />
                             </div>
-                            {uploadMutation.isPending && (
-                                <div className="text-center text-sm text-blue-600 animate-pulse mt-4">
-                                    Sedang memproses data, mohon tunggu...
+
+                            <Dialog open={isUploadOpen} onOpenChange={setIsUploadOpen}>
+                                <DialogTrigger asChild>
+                                    <Button className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg shadow-blue-500/30 rounded-full px-6 transition-all hover:scale-105 active:scale-95">
+                                        <Upload className="w-3.5 h-3.5 mr-2" />
+                                        Upload Data
+                                    </Button>
+                                </DialogTrigger>
+                                <DialogContent className="sm:max-w-md bg-white/95 backdrop-blur-xl border-white/20 shadow-2xl">
+                                    <DialogHeader>
+                                        <DialogTitle className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600">Upload Data FMS</DialogTitle>
+                                    </DialogHeader>
+                                    <div
+                                        className="mt-4 border-2 border-dashed border-indigo-100 rounded-2xl p-10 text-center hover:bg-slate-50/50 hover:border-indigo-300 transition-all cursor-pointer group"
+                                        onClick={() => fileInputRef.current?.click()}
+                                    >
+                                        <div className="w-16 h-16 bg-indigo-50 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform">
+                                            <FileSpreadsheet className="w-8 h-8 text-indigo-500" />
+                                        </div>
+                                        <p className="text-sm text-slate-700 font-semibold">Klik untuk upload file Excel</p>
+                                        <p className="text-xs text-slate-400 mt-2">Format .xlsx atau .xls (Smart Upsert enabled)</p>
+                                        <input
+                                            ref={fileInputRef}
+                                            type="file"
+                                            accept=".xlsx, .xls"
+                                            className="hidden"
+                                            onChange={handleFileUpload}
+                                        />
+                                    </div>
+                                    {uploadMutation.isPending && (
+                                        <div className="flex items-center justify-center gap-2 mt-4 text-sm font-medium text-indigo-600 animate-pulse">
+                                            <Loader2 className="w-4 h-4 animate-spin" />
+                                            Memproses data...
+                                        </div>
+                                    )}
+                                </DialogContent>
+                            </Dialog>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 mt-8 space-y-8">
+
+                {/* FILTER CARD */}
+                <div className="relative z-40 bg-white/60 backdrop-blur-md rounded-2xl p-2 shadow-sm border border-white/40 flex flex-wrap items-center gap-2">
+                    <div className="px-4 py-2 flex items-center gap-2 text-slate-400 border-r border-slate-200/60 mr-2">
+                        <Filter className="w-4 h-4" />
+                        <span className="text-xs font-bold uppercase tracking-wider">Filters</span>
+                    </div>
+                    {/* Filter Dropdowns - Using standard styles but clean */}
+                    {/* Violation Type Multi-Select */}
+                    <div className="relative">
+                        <details className="group">
+                            <summary className="flex items-center gap-2 px-4 py-2.5 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl cursor-pointer text-sm font-medium text-slate-600 transition-colors min-w-[160px] shadow-sm">
+                                <span className="truncate">
+                                    {filters.violationTypes.length === 0
+                                        ? "Semua Jenis"
+                                        : `${filters.violationTypes.length} Jenis Dipilih`}
+                                </span>
+                                <span className="ml-auto opacity-50 text-[10px]">▼</span>
+                            </summary>
+                            <div className="absolute z-20 mt-2 w-72 bg-white/90 backdrop-blur-xl border border-white/20 rounded-2xl shadow-2xl p-3 max-h-80 overflow-y-auto ring-1 ring-black/5">
+                                {(analytics?.availableViolationTypes || analytics?.byViolation)?.map((v: any) => (
+                                    <label key={v.type} className="flex items-center gap-3 px-3 py-2 hover:bg-slate-100/80 rounded-lg cursor-pointer transition-colors">
+                                        <div className="relative flex items-center">
+                                            <input
+                                                type="checkbox"
+                                                checked={filters.violationTypes.includes(v.type)}
+                                                onChange={(e) => {
+                                                    if (e.target.checked) setFilters(prev => ({ ...prev, violationTypes: [...prev.violationTypes, v.type] }));
+                                                    else setFilters(prev => ({ ...prev, violationTypes: prev.violationTypes.filter(t => t !== v.type) }));
+                                                }}
+                                                className="peer h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                                            />
+                                        </div>
+                                        <span className="text-sm text-slate-700">{v.type}</span>
+                                    </label>
+                                ))}
+                            </div>
+                        </details>
+                    </div>
+
+                    {/* Shift Multi-Select */}
+                    <div className="relative">
+                        <details className="group">
+                            <summary className="flex items-center gap-2 px-4 py-2.5 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl cursor-pointer text-sm font-medium text-slate-600 transition-colors min-w-[140px] shadow-sm">
+                                <span className="truncate">
+                                    {filters.shifts.length === 0 ? "Semua Shift" : filters.shifts.join(", ")}
+                                </span>
+                                <span className="ml-auto opacity-50 text-[10px]">▼</span>
+                            </summary>
+                            <div className="absolute z-20 mt-2 w-48 bg-white/90 backdrop-blur-xl border border-white/20 rounded-2xl shadow-2xl p-3 ring-1 ring-black/5">
+                                {["Shift 1", "Shift 2"].map((shift) => (
+                                    <label key={shift} className="flex items-center gap-3 px-3 py-2 hover:bg-slate-100/80 rounded-lg cursor-pointer transition-colors">
+                                        <input
+                                            type="checkbox"
+                                            checked={filters.shifts.includes(shift)}
+                                            onChange={(e) => {
+                                                if (e.target.checked) setFilters(prev => ({ ...prev, shifts: [...prev.shifts, shift] }));
+                                                else setFilters(prev => ({ ...prev, shifts: prev.shifts.filter(s => s !== shift) }));
+                                            }}
+                                            className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                                        />
+                                        <span className="text-sm text-slate-700">{shift}</span>
+                                    </label>
+                                ))}
+                            </div>
+                        </details>
+                    </div>
+
+                    {/* Validation Status Multi-Select */}
+                    <div className="relative">
+                        <details className="group">
+                            <summary className="flex items-center gap-2 px-4 py-2.5 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl cursor-pointer text-sm font-medium text-slate-600 transition-colors min-w-[150px] shadow-sm">
+                                <span className="truncate">
+                                    {filters.validationStatuses.length === 0 ? "Semua Status" : filters.validationStatuses.join(", ")}
+                                </span>
+                                <span className="ml-auto opacity-50 text-[10px]">▼</span>
+                            </summary>
+                            <div className="absolute z-20 mt-2 w-52 bg-white/90 backdrop-blur-xl border border-white/20 rounded-2xl shadow-2xl p-3 ring-1 ring-black/5">
+                                {["Valid", "Tidak Valid"].map((status) => (
+                                    <label key={status} className="flex items-center gap-3 px-3 py-2 hover:bg-slate-100/80 rounded-lg cursor-pointer transition-colors">
+                                        <input
+                                            type="checkbox"
+                                            checked={filters.validationStatuses.includes(status)}
+                                            onChange={(e) => {
+                                                if (e.target.checked) setFilters(prev => ({ ...prev, validationStatuses: [...prev.validationStatuses, status] }));
+                                                else setFilters(prev => ({ ...prev, validationStatuses: prev.validationStatuses.filter(s => s !== status) }));
+                                            }}
+                                            className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                                        />
+                                        <span className="text-sm text-slate-700">{status}</span>
+                                    </label>
+                                ))}
+                            </div>
+                        </details>
+                    </div>
+
+                    {/* Week Multi-Select */}
+                    <div className="relative">
+                        <details className="group">
+                            <summary className="flex items-center gap-2 px-4 py-2.5 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl cursor-pointer text-sm font-medium text-slate-600 transition-colors min-w-[140px] shadow-sm">
+                                <span className="truncate">
+                                    {filters.weeks.length === 0 ? "Semua Week" : `Week ${filters.weeks.sort((a, b) => a - b).join(", ")}`}
+                                </span>
+                                <span className="ml-auto opacity-50 text-[10px]">▼</span>
+                            </summary>
+                            <div className="absolute z-20 mt-2 w-48 bg-white/90 backdrop-blur-xl border border-white/20 rounded-2xl shadow-2xl p-3 ring-1 ring-black/5">
+                                {[1, 2, 3, 4, 5].map((week) => (
+                                    <label key={week} className="flex items-center gap-3 px-3 py-2 hover:bg-slate-100/80 rounded-lg cursor-pointer transition-colors">
+                                        <input
+                                            type="checkbox"
+                                            checked={filters.weeks.includes(week)}
+                                            onChange={(e) => {
+                                                if (e.target.checked) setFilters(prev => ({ ...prev, weeks: [...prev.weeks, week] }));
+                                                else setFilters(prev => ({ ...prev, weeks: prev.weeks.filter(w => w !== week) }));
+                                            }}
+                                            className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                                        />
+                                        <span className="text-sm text-slate-700">Week {week}</span>
+                                    </label>
+                                ))}
+                            </div>
+                        </details>
+                    </div>
+
+                    <div className="ml-auto">
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-slate-400 hover:text-red-500 hover:bg-red-50"
+                            onClick={() => setFilters({ violationTypes: [], shifts: [], validationStatuses: [], weeks: [] })}
+                        >
+                            Reset Filter
+                        </Button>
+                    </div>
+                </div>
+
+                {/* KPI CARDS */}
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+                    <KPICard
+                        title="Total Violation"
+                        value={analytics?.summary?.totalViolations || 0}
+                        icon={<AlertTriangle className="w-8 h-8 text-rose-500" />}
+                        trend="vs Last Month"
+                        color="bg-rose-500 text-rose-700"
+                    />
+                    <KPICard
+                        title="Valid Data"
+                        value={analytics?.summary?.validCount || 0}
+                        icon={<CheckCircle className="w-8 h-8 text-emerald-500" />}
+                        subValue={`${((analytics?.summary?.validCount / (analytics?.summary?.totalViolations || 1)) * 100).toFixed(1)}%`}
+                        color="bg-emerald-500 text-emerald-700"
+                    />
+                    <KPICard
+                        title="Invalid Data"
+                        value={analytics?.summary?.invalidCount || 0}
+                        icon={<XCircle className="w-8 h-8 text-slate-500" />}
+                        subValue={`${((analytics?.summary?.invalidCount / (analytics?.summary?.totalViolations || 1)) * 100).toFixed(1)}%`}
+                        color="bg-slate-500 text-slate-700"
+                    />
+                    <KPICard
+                        title="Unit Terlibat"
+                        value={analytics?.summary?.totalUnits || 0}
+                        icon={<FileSpreadsheet className="w-8 h-8 text-indigo-500" />}
+                        color="bg-indigo-500 text-indigo-700"
+                    />
+                </div>
+
+                <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+                    {/* LEFT COLUMN: Main Charts */}
+                    <div className="xl:col-span-2 space-y-8">
+                        {/* PARETO CHART */}
+                        <Card className="bg-white/80 backdrop-blur-md shadow-lg shadow-slate-200/50 border-none rounded-3xl overflow-hidden">
+                            <CardHeader className="bg-white/50 border-b border-white/20 pb-4">
+                                <CardTitle className="text-lg font-bold text-slate-800">Pareto Jenis Pelanggaran</CardTitle>
+                                <CardDescription>Analisa frekuensi berdasarkan tipe pelanggaran</CardDescription>
+                            </CardHeader>
+                            <CardContent className="h-[350px] p-6">
+                                <Bar
+                                    data={{
+                                        labels: analytics?.byViolation?.map((v: any) => v.type),
+                                        datasets: [{
+                                            label: 'Jumlah Pelanggaran',
+                                            data: analytics?.byViolation?.map((v: any) => v.count),
+                                            backgroundColor: (context) => {
+                                                const ctx = context.chart.ctx;
+                                                const gradient = ctx.createLinearGradient(0, 0, 0, 300);
+                                                gradient.addColorStop(0, '#3b82f6');
+                                                gradient.addColorStop(1, '#60a5fa');
+                                                return gradient;
+                                            },
+                                            borderRadius: 8,
+                                            borderSkipped: false,
+                                            barThickness: 40
+                                        }]
+                                    }}
+                                    options={{
+                                        ...chartOptions,
+                                        scales: {
+                                            y: { beginAtZero: true, grid: { color: '#f1f5f9' }, border: { display: false } },
+                                            x: { grid: { display: false }, border: { display: false } }
+                                        }
+                                    }}
+                                />
+                            </CardContent>
+                        </Card>
+
+                        {/* SHIFT ANALYSIS CHART */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <Card className="bg-white/80 backdrop-blur-md shadow-lg shadow-slate-200/50 border-none rounded-3xl overflow-hidden">
+                                <CardHeader className="bg-white/50 border-b border-white/20 pb-4">
+                                    <CardTitle className="text-lg font-bold text-slate-800">Distribusi per Shift</CardTitle>
+                                </CardHeader>
+                                <CardContent className="h-[250px] p-6">
+                                    <Bar
+                                        data={{
+                                            labels: analytics?.byShift?.map((v: any) => v.shift || "Unknown"),
+                                            datasets: [{
+                                                label: 'Jumlah',
+                                                data: analytics?.byShift?.map((v: any) => v.count),
+                                                backgroundColor: ['#8b5cf6', '#ec4899', '#f59e0b'],
+                                                borderRadius: 20
+                                            }]
+                                        }}
+                                        options={{
+                                            responsive: true,
+                                            maintainAspectRatio: false,
+                                            plugins: { legend: { display: false } },
+                                            scales: {
+                                                y: { display: false },
+                                                x: { grid: { display: false }, border: { display: false } }
+                                            }
+                                        }}
+                                    />
+                                </CardContent>
+                            </Card>
+
+                            <Card className="bg-white/80 backdrop-blur-md shadow-lg shadow-slate-200/50 border-none rounded-3xl overflow-hidden">
+                                <CardHeader className="bg-white/50 border-b border-white/20 pb-4">
+                                    <CardTitle className="text-lg font-bold text-slate-800">Validasi Rate</CardTitle>
+                                </CardHeader>
+                                <CardContent className="h-[250px] flex items-center justify-center p-6 bg-slate-50/50">
+                                    <Doughnut
+                                        data={{
+                                            labels: ['Valid', 'Invalid'],
+                                            datasets: [{
+                                                data: [analytics?.summary?.validCount || 0, analytics?.summary?.invalidCount || 0],
+                                                backgroundColor: ['#10b981', '#cbd5e1'],
+                                                borderWidth: 0,
+                                                hoverOffset: 10
+                                            }]
+                                        }}
+                                        options={{
+                                            cutout: '75%',
+                                            plugins: { legend: { position: 'bottom', labels: { usePointStyle: true, boxWidth: 8 } } }
+                                        }}
+                                    />
+                                    <div className="absolute text-center pointer-events-none">
+                                        <p className="text-3xl font-bold text-slate-800">{((analytics?.summary?.validCount / (analytics?.summary?.totalViolations || 1)) * 100).toFixed(0)}%</p>
+                                        <p className="text-xs text-slate-400 font-medium uppercase tracking-wide">Valid Rate</p>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        </div>
+
+                        {/* TABLE MATRIX */}
+                        <Card className="bg-white border-none shadow-xl shadow-slate-200/50 rounded-3xl overflow-hidden">
+                            <CardHeader className="bg-gradient-to-r from-amber-50 to-orange-50 border-b border-orange-100/50">
+                                <div className="flex items-center gap-3">
+                                    <div className="p-2 bg-orange-100 rounded-lg">
+                                        <FileSpreadsheet className="w-5 h-5 text-orange-600" />
+                                    </div>
+                                    <div>
+                                        <CardTitle className="text-amber-900 font-bold">Alert FMS Summary Matrix</CardTitle>
+                                        <CardDescription className="text-amber-700/60">Rekapitulasi detail validasi pelanggaran</CardDescription>
+                                    </div>
                                 </div>
-                            )}
-                        </DialogContent>
-                    </Dialog>
-                </div>
-            </div>
+                            </CardHeader>
+                            <CardContent className="p-0">
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-sm text-left">
+                                        <thead className="bg-amber-50/50 text-amber-900 font-bold text-xs uppercase tracking-wider">
+                                            <tr>
+                                                <th className="p-4 border-b border-orange-100 pl-6">Alert FMS Type</th>
+                                                <th className="p-4 border-b border-orange-100 text-center">Total</th>
+                                                <th className="p-4 border-b border-orange-100 text-center text-emerald-600">Valid</th>
+                                                <th className="p-4 border-b border-orange-100 text-center text-rose-600">Invalid</th>
+                                                <th className="p-4 border-b border-orange-100 text-center">Valid %</th>
+                                                <th className="p-4 border-b border-orange-100 text-center">Invalid %</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-slate-50">
+                                            {analytics?.validationStats?.map((row: any, i: number) => {
+                                                const validPct = row.total > 0 ? (row.valid / row.total * 100).toFixed(0) + '%' : '0%';
+                                                const invalidPct = row.total > 0 ? (row.invalid / row.total * 100).toFixed(0) + '%' : '0%';
+                                                return (
+                                                    <tr key={i} className="hover:bg-slate-50 transition-colors group">
+                                                        <td className="p-4 pl-6 font-medium text-slate-700 group-hover:text-indigo-600 transition-colors">{row.violationType}</td>
+                                                        <td className="p-4 text-center font-bold text-slate-600 bg-slate-50/30">{row.total}</td>
+                                                        <td className="p-4 text-center font-bold text-emerald-600 bg-emerald-50/10">{row.valid}</td>
+                                                        <td className="p-4 text-center font-bold text-rose-600 bg-rose-50/10">{row.invalid}</td>
+                                                        <td className="p-4 text-center font-medium">{validPct}</td>
+                                                        <td className="p-4 text-center font-medium text-slate-400">{invalidPct}</td>
+                                                    </tr>
+                                                );
+                                            })}
+                                        </tbody>
+                                        <tfoot className="bg-slate-900 text-white font-bold text-sm">
+                                            <tr>
+                                                <td className="p-4 pl-6">Grand Total</td>
+                                                <td className="p-4 text-center bg-white/10">{analytics?.summary?.totalViolations}</td>
+                                                <td className="p-4 text-center text-emerald-400 bg-white/5">{analytics?.summary?.validCount}</td>
+                                                <td className="p-4 text-center text-rose-400 bg-white/5">{analytics?.summary?.invalidCount}</td>
+                                                <td className="p-4 text-center">
+                                                    {analytics?.summary?.totalViolations ? (analytics.summary.validCount / analytics.summary.totalViolations * 100).toFixed(0) : 0}%
+                                                </td>
+                                                <td className="p-4 text-center text-slate-400">
+                                                    {analytics?.summary?.totalViolations ? (analytics.summary.invalidCount / analytics.summary.totalViolations * 100).toFixed(0) : 0}%
+                                                </td>
+                                            </tr>
+                                        </tfoot>
+                                    </table>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </div>
 
-            {/* FILTER SECTION - Multi-Select Checkboxes */}
-            <div className="bg-white p-4 rounded-xl shadow-sm flex flex-wrap items-center gap-4 border">
-                <div className="flex items-center gap-2">
-                    <Filter className="w-4 h-4 text-slate-500" />
-                    <span className="text-sm font-medium text-slate-600">Filter:</span>
-                </div>
+                    {/* RIGHT COLUMN */}
+                    <div className="space-y-8">
+                        {/* MYSTIC AI CARD */}
+                        <MysticAnalysisCard data={analytics} />
 
-                {/* Violation Type Multi-Select */}
-                <div className="relative">
-                    <details className="group">
-                        <summary className="flex items-center gap-2 px-3 py-2 border rounded-lg cursor-pointer text-sm bg-white hover:bg-slate-50 min-w-[180px]">
-                            <span className="truncate">
-                                {filters.violationTypes.length === 0
-                                    ? "Semua Jenis"
-                                    : `${filters.violationTypes.length} Jenis`}
-                            </span>
-                            <span className="ml-auto">▼</span>
-                        </summary>
-                        <div className="absolute z-10 mt-1 w-64 bg-white border rounded-lg shadow-lg p-2 max-h-60 overflow-y-auto">
-                            {(analytics?.availableViolationTypes || analytics?.byViolation)?.map((v: any) => (
-                                <label key={v.type} className="flex items-center gap-2 px-2 py-1 hover:bg-slate-100 rounded cursor-pointer text-sm">
-                                    <input
-                                        type="checkbox"
-                                        checked={filters.violationTypes.includes(v.type)}
-                                        onChange={(e) => {
-                                            if (e.target.checked) {
-                                                setFilters(prev => ({ ...prev, violationTypes: [...prev.violationTypes, v.type] }));
-                                            } else {
-                                                setFilters(prev => ({ ...prev, violationTypes: prev.violationTypes.filter(t => t !== v.type) }));
-                                            }
-                                        }}
-                                        className="rounded"
-                                    />
-                                    {v.type}
-                                </label>
-                            ))}
-                        </div>
-                    </details>
-                </div>
+                        {/* HOURLY DISTRIBUTION */}
+                        <Card className="bg-white border-none shadow-lg shadow-slate-200/50 rounded-3xl overflow-hidden">
+                            <CardHeader className="bg-white/50 pb-4 border-b border-slate-100">
+                                <CardTitle className="text-base font-bold text-slate-800">Pola Jam Pelanggaran</CardTitle>
+                            </CardHeader>
+                            <CardContent className="p-6">
+                                <div className="grid grid-cols-4 gap-2">
+                                    {Array.from({ length: 24 }).map((_, hour) => {
+                                        const hourData = analytics?.byHour?.find((h: any) => h.hour === hour);
+                                        const count = hourData?.count || 0;
+                                        const maxCount = Math.max(...(analytics?.byHour?.map((h: any) => h.count) || [1]));
+                                        const intensity = count / maxCount;
 
-                {/* Shift Multi-Select */}
-                <div className="relative">
-                    <details className="group">
-                        <summary className="flex items-center gap-2 px-3 py-2 border rounded-lg cursor-pointer text-sm bg-white hover:bg-slate-50 min-w-[120px]">
-                            <span className="truncate">
-                                {filters.shifts.length === 0
-                                    ? "Semua Shift"
-                                    : filters.shifts.join(", ")}
-                            </span>
-                            <span className="ml-auto">▼</span>
-                        </summary>
-                        <div className="absolute z-10 mt-1 w-40 bg-white border rounded-lg shadow-lg p-2">
-                            {["Shift 1", "Shift 2"].map((shift) => (
-                                <label key={shift} className="flex items-center gap-2 px-2 py-1 hover:bg-slate-100 rounded cursor-pointer text-sm">
-                                    <input
-                                        type="checkbox"
-                                        checked={filters.shifts.includes(shift)}
-                                        onChange={(e) => {
-                                            if (e.target.checked) {
-                                                setFilters(prev => ({ ...prev, shifts: [...prev.shifts, shift] }));
-                                            } else {
-                                                setFilters(prev => ({ ...prev, shifts: prev.shifts.filter(s => s !== shift) }));
-                                            }
-                                        }}
-                                        className="rounded"
-                                    />
-                                    {shift}
-                                </label>
-                            ))}
-                        </div>
-                    </details>
-                </div>
+                                        let bgClass = "bg-slate-50 text-slate-400";
+                                        if (count > 0) bgClass = "bg-rose-100 text-rose-600";
+                                        if (intensity > 0.3) bgClass = "bg-rose-300 text-rose-800";
+                                        if (intensity > 0.6) bgClass = "bg-rose-400 text-white";
+                                        if (intensity > 0.8) bgClass = "bg-rose-500 text-white shadow-lg shadow-rose-500/30 ring-2 ring-rose-300";
 
-                {/* Validation Status Multi-Select */}
-                <div className="relative">
-                    <details className="group">
-                        <summary className="flex items-center gap-2 px-3 py-2 border rounded-lg cursor-pointer text-sm bg-white hover:bg-slate-50 min-w-[140px]">
-                            <span className="truncate">
-                                {filters.validationStatuses.length === 0
-                                    ? "Semua Status"
-                                    : filters.validationStatuses.join(", ")}
-                            </span>
-                            <span className="ml-auto">▼</span>
-                        </summary>
-                        <div className="absolute z-10 mt-1 w-44 bg-white border rounded-lg shadow-lg p-2">
-                            {["Valid", "Tidak Valid"].map((status) => (
-                                <label key={status} className="flex items-center gap-2 px-2 py-1 hover:bg-slate-100 rounded cursor-pointer text-sm">
-                                    <input
-                                        type="checkbox"
-                                        checked={filters.validationStatuses.includes(status)}
-                                        onChange={(e) => {
-                                            if (e.target.checked) {
-                                                setFilters(prev => ({ ...prev, validationStatuses: [...prev.validationStatuses, status] }));
-                                            } else {
-                                                setFilters(prev => ({ ...prev, validationStatuses: prev.validationStatuses.filter(s => s !== status) }));
-                                            }
-                                        }}
-                                        className="rounded"
-                                    />
-                                    {status}
-                                </label>
-                            ))}
-                        </div>
-                    </details>
-                </div>
+                                        return (
+                                            <div key={hour} className={`aspect-square rounded-xl flex flex-col items-center justify-center text-xs font-bold ${bgClass} transition-all duration-300 hover:scale-110 cursor-help`} title={`${count} violations at ${hour}:00`}>
+                                                <span>{String(hour).padStart(2, '0')}</span>
+                                                {count > 0 && <span className="text-[10px] opacity-80 scale-75">{count}</span>}
+                                            </div>
+                                        )
+                                    })}
+                                </div>
+                            </CardContent>
+                        </Card>
 
-                {/* Week Multi-Select */}
-                <div className="relative">
-                    <details className="group">
-                        <summary className="flex items-center gap-2 px-3 py-2 border rounded-lg cursor-pointer text-sm bg-white hover:bg-slate-50 min-w-[120px]">
-                            <span className="truncate">
-                                {filters.weeks.length === 0
-                                    ? "Semua Week"
-                                    : `Week ${filters.weeks.sort((a, b) => a - b).join(", ")}`}
-                            </span>
-                            <span className="ml-auto">▼</span>
-                        </summary>
-                        <div className="absolute z-10 mt-1 w-36 bg-white border rounded-lg shadow-lg p-2">
-                            {[1, 2, 3, 4, 5].map((week) => (
-                                <label key={week} className="flex items-center gap-2 px-2 py-1 hover:bg-slate-100 rounded cursor-pointer text-sm">
-                                    <input
-                                        type="checkbox"
-                                        checked={filters.weeks.includes(week)}
-                                        onChange={(e) => {
-                                            if (e.target.checked) {
-                                                setFilters(prev => ({ ...prev, weeks: [...prev.weeks, week] }));
-                                            } else {
-                                                setFilters(prev => ({ ...prev, weeks: prev.weeks.filter(w => w !== week) }));
-                                            }
-                                        }}
-                                        className="rounded"
-                                    />
-                                    Week {week}
-                                </label>
-                            ))}
-                        </div>
-                    </details>
-                </div>
-
-                {/* Reset Button */}
-                <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                        setFilters({ violationTypes: [], shifts: [], validationStatuses: [], weeks: [] });
-                    }}
-                >
-                    Reset
-                </Button>
-            </div>
-
-            {/* KPI CARDS */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <KPICard
-                    title="Total Violation"
-                    value={analytics?.summary?.totalViolations || 0}
-                    icon={<AlertTriangle className="w-5 h-5 text-red-500" />}
-                    trend="vs Last Month"
-                    color="bg-red-50 text-red-700"
-                />
-                <KPICard
-                    title="Valid Data"
-                    value={analytics?.summary?.validCount || 0}
-                    icon={<CheckCircle className="w-5 h-5 text-green-500" />}
-                    subValue={`${((analytics?.summary?.validCount / (analytics?.summary?.totalViolations || 1)) * 100).toFixed(1)}%`}
-                    color="bg-green-50 text-green-700"
-                />
-                <KPICard
-                    title="Invalid Data"
-                    value={analytics?.summary?.invalidCount || 0}
-                    icon={<XCircle className="w-5 h-5 text-slate-500" />}
-                    subValue={`${((analytics?.summary?.invalidCount / (analytics?.summary?.totalViolations || 1)) * 100).toFixed(1)}%`}
-                    color="bg-slate-50 text-slate-700"
-                />
-                <KPICard
-                    title="Unit Terlibat"
-                    value={analytics?.summary?.totalUnits || 0}
-                    icon={<FileSpreadsheet className="w-5 h-5 text-blue-500" />}
-                    color="bg-blue-50 text-blue-700"
-                />
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* LEFT COLUMN: Main Charts */}
-                <div className="lg:col-span-2 space-y-6">
-                    {/* PARETO CHART */}
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Pareto Jenis Pelanggaran</CardTitle>
-                        </CardHeader>
-                        <CardContent className="h-[300px]">
-                            <Bar
-                                data={{
-                                    labels: analytics?.byViolation?.map((v: any) => v.type),
-                                    datasets: [{
-                                        label: 'Jumlah Pelanggaran',
-                                        data: analytics?.byViolation?.map((v: any) => v.count),
-                                        backgroundColor: '#3b82f6',
-                                        borderRadius: 4
-                                    }]
-                                }}
-                                options={chartOptions}
-                            />
-                        </CardContent>
-                    </Card>
-
-                    {/* SHIFT ANALYSIS CHART */}
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Distribusi Pelanggaran per Shift</CardTitle>
-                        </CardHeader>
-                        <CardContent className="h-[300px]">
-                            <Bar
-                                data={{
-                                    labels: analytics?.byShift?.map((v: any) => v.shift || "Unknown"),
-                                    datasets: [{
-                                        label: 'Jumlah',
-                                        data: analytics?.byShift?.map((v: any) => v.count),
-                                        backgroundColor: ['#8b5cf6', '#ec4899', '#f59e0b'],
-                                    }]
-                                }}
-                                options={chartOptions}
-                            />
-                        </CardContent>
-                    </Card>
-
-                    {/* TABLE MATRIX (REQUESTED BY USER) */}
-                    <Card className="border-t-4 border-t-yellow-400 shadow-md">
-                        <CardHeader className="dir-header bg-yellow-50">
-                            <CardTitle className="text-yellow-800 flex items-center gap-2">
-                                <FileSpreadsheet className="w-5 h-5" />
-                                Alert FMS Summary Matrix
-                            </CardTitle>
-                            <CardDescription>Rekapitulasi Validasi Pelanggaran</CardDescription>
-                        </CardHeader>
-                        <CardContent className="p-0">
-                            <div className="overflow-x-auto">
+                        {/* WEEKLY STATS TABLE */}
+                        <Card className="bg-white border-none shadow-lg shadow-slate-200/50 rounded-3xl overflow-hidden">
+                            <CardHeader className="bg-white/50 pb-4 border-b border-slate-100">
+                                <CardTitle className="text-base font-bold flex items-center gap-2">
+                                    <span>📅</span> Statistik Mingguan
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent className="p-0">
                                 <table className="w-full text-sm">
-                                    <thead className="bg-yellow-100 text-yellow-900 border-b border-yellow-200">
+                                    <thead className="bg-slate-50 text-slate-500 font-semibold text-xs uppercase">
                                         <tr>
-                                            <th className="p-3 text-left font-bold border-r border-yellow-200">Alert FMS Type</th>
-                                            <th className="p-3 text-center font-bold border-r border-yellow-200">Total Monitoring</th>
-                                            <th className="p-3 text-center font-bold border-r border-yellow-200">Valid</th>
-                                            <th className="p-3 text-center font-bold border-r border-yellow-200">Tidak Valid</th>
-                                            <th className="p-3 text-center font-bold border-r border-yellow-200">Valid %</th>
-                                            <th className="p-3 text-center font-bold">Tidak Valid %</th>
+                                            <th className="p-3 text-left pl-6">Minggu</th>
+                                            <th className="p-3 text-center">Total</th>
+                                            <th className="p-3 text-center">Valid %</th>
                                         </tr>
                                     </thead>
-                                    <tbody>
-                                        {analytics?.validationStats?.map((row: any, i: number) => {
-                                            const validPct = row.total > 0 ? (row.valid / row.total * 100).toFixed(0) + '%' : '0%';
-                                            const invalidPct = row.total > 0 ? (row.invalid / row.total * 100).toFixed(0) + '%' : '0%';
-                                            return (
-                                                <tr key={i} className={`border-b border-slate-100 hover:bg-slate-50 ${i % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'}`}>
-                                                    <td className="p-3 font-medium text-slate-700 border-r">{row.violationType}</td>
-                                                    <td className="p-3 text-center font-bold border-r">{row.total}</td>
-                                                    <td className="p-3 text-center text-green-600 font-bold border-r bg-green-50/30">{row.valid}</td>
-                                                    <td className="p-3 text-center text-red-600 font-bold border-r bg-red-50/30">{row.invalid}</td>
-                                                    <td className="p-3 text-center font-bold text-green-700 border-r">{validPct}</td>
-                                                    <td className="p-3 text-center font-bold text-red-700">{invalidPct}</td>
-                                                </tr>
-                                            );
-                                        })}
+                                    <tbody className="divide-y divide-slate-50">
+                                        {analytics?.byWeek?.length > 0 ? analytics.byWeek.map((w: any, idx: number) => (
+                                            <tr key={idx} className="hover:bg-slate-50 transition-colors">
+                                                <td className="p-3 pl-6 font-medium text-slate-600">Week {w.week || "N/A"}</td>
+                                                <td className="p-3 text-center text-slate-800 font-bold">{w.total}</td>
+                                                <td className="p-3 text-center">
+                                                    <span className={`px-2 py-1 rounded-full text-xs font-bold ${w.valid / (w.total || 1) > 0.5 ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>
+                                                        {((w.valid / (w.total || 1)) * 100).toFixed(0)}%
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        )) : (
+                                            <tr><td colSpan={3} className="text-center py-6 text-slate-400 italic">No trend data</td></tr>
+                                        )}
                                     </tbody>
-                                    <tfoot className="bg-[#84cc16] text-white font-bold">
-                                        <tr>
-                                            <td className="p-3">Total Monitoring</td>
-                                            <td className="p-3 text-center">{analytics?.summary?.totalViolations}</td>
-                                            <td className="p-3 text-center">{analytics?.summary?.validCount}</td>
-                                            <td className="p-3 text-center">{analytics?.summary?.invalidCount}</td>
-                                            <td className="p-3 text-center">
-                                                {analytics?.summary?.totalViolations ? (analytics.summary.validCount / analytics.summary.totalViolations * 100).toFixed(0) : 0}%
-                                            </td>
-                                            <td className="p-3 text-center">
-                                                {analytics?.summary?.totalViolations ? (analytics.summary.invalidCount / analytics.summary.totalViolations * 100).toFixed(0) : 0}%
-                                            </td>
-                                        </tr>
-                                    </tfoot>
                                 </table>
-                            </div>
-                        </CardContent>
-                    </Card>
-                </div>
+                            </CardContent>
+                        </Card>
 
-                {/* RIGHT COLUMN: Mystic AI & Heatmap */}
-                <div className="space-y-6">
-                    {/* MYSTIC AI CARD */}
-                    <MysticAnalysisCard data={analytics} />
-
-                    {/* HEATMAP / HOURLY DISTRIBUTION */}
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="text-sm">Hourly Distribution (Heatmap)</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="grid grid-cols-4 gap-2">
-                                {Array.from({ length: 24 }).map((_, hour) => {
-                                    const hourData = analytics?.byHour?.find((h: any) => h.hour === hour);
-                                    const count = hourData?.count || 0;
-                                    // Calculate intensity (0-100 based on max)
-                                    const maxCount = Math.max(...(analytics?.byHour?.map((h: any) => h.count) || [1]));
-                                    const intensity = count / maxCount;
-
-                                    let bgClass = "bg-slate-100";
-                                    if (count > 0) bgClass = "bg-red-200";
-                                    if (intensity > 0.3) bgClass = "bg-red-300";
-                                    if (intensity > 0.6) bgClass = "bg-red-400";
-                                    if (intensity > 0.8) bgClass = "bg-red-500 text-white";
-
-                                    return (
-                                        <div key={hour} className={`p-2 rounded text-center text-xs font-bold ${bgClass} transition-all hover:scale-105 cursor-help`} title={`${count} violations at ${hour}:00`}>
-                                            {String(hour).padStart(2, '0')}:00
-                                            <div className="text-[10px] opacity-80">{count}</div>
-                                        </div>
-                                    )
-                                })}
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    {/* TOP 5 COMPANIES */}
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="text-sm">Trend Harian</CardTitle>
-                        </CardHeader>
-                        <CardContent className="h-[200px]">
-                            <Line
-                                data={{
-                                    labels: analytics?.byDate?.map((v: any) => format(new Date(v.date), 'dd MMM')),
-                                    datasets: [{
-                                        label: 'Total',
-                                        data: analytics?.byDate?.map((v: any) => v.count),
-                                        borderColor: '#10b981',
-                                        tension: 0.4,
-                                        pointRadius: 2
-                                    }]
-                                }}
-                                options={{ ...chartOptions, plugins: { legend: { display: false } } }}
-                            />
-                        </CardContent>
-                    </Card>
+                        {/* DRIVER LEADERBOARD */}
+                        <Card className="bg-white border-none shadow-lg shadow-slate-200/50 rounded-3xl overflow-hidden">
+                            <CardHeader className="bg-gradient-to-r from-amber-50 to-orange-50 pb-4 border-b border-orange-100">
+                                <CardTitle className="text-base font-bold text-amber-900 flex items-center gap-2">
+                                    <span>🏆</span> Top 10 Violators
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent className="p-0">
+                                {analytics?.topDrivers?.length > 0 ? (
+                                    <div className="divide-y divide-slate-50">
+                                        {analytics.topDrivers.map((d: any, i: number) => (
+                                            <div key={d.rank} className="p-4 flex items-center gap-4 hover:bg-amber-50/30 transition-colors">
+                                                <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${i === 0 ? 'bg-yellow-100 text-yellow-700' :
+                                                    i === 1 ? 'bg-slate-200 text-slate-700' :
+                                                        i === 2 ? 'bg-orange-100 text-orange-800' : 'bg-slate-50 text-slate-400'
+                                                    }`}>
+                                                    {d.rank}
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="text-sm font-bold text-slate-800 truncate">{d.driverName}</p>
+                                                    <p className="text-xs text-slate-500 font-mono">{d.vehicleNo} • {d.driverNik}</p>
+                                                </div>
+                                                <div className="text-right">
+                                                    <span className="bg-rose-100 text-rose-600 px-2 py-1 rounded-lg text-xs font-bold">
+                                                        {d.validCount} Valid
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div className="text-center py-6 text-slate-400 italic">No violator data</div>
+                                )}
+                            </CardContent>
+                        </Card>
+                    </div>
                 </div>
             </div>
-
-            {/* WEEKLY STATS TABLE */}
-            <Card className="shadow-sm">
-                <CardHeader>
-                    <CardTitle className="text-base flex items-center gap-2">
-                        📅 Statistik Mingguan
-                    </CardTitle>
-                    <CardDescription>Breakdown pelanggaran per minggu</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-sm">
-                            <thead>
-                                <tr className="bg-slate-100 text-slate-700">
-                                    <th className="px-4 py-2 text-left font-semibold">Minggu</th>
-                                    <th className="px-4 py-2 text-center font-semibold">Total</th>
-                                    <th className="px-4 py-2 text-center font-semibold">Valid</th>
-                                    <th className="px-4 py-2 text-center font-semibold">Invalid</th>
-                                    <th className="px-4 py-2 text-center font-semibold">% Valid</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {analytics?.byWeek?.length > 0 ? analytics.byWeek.map((w: any, idx: number) => (
-                                    <tr key={idx} className="border-b hover:bg-slate-50">
-                                        <td className="px-4 py-2">Week {w.week || "N/A"}</td>
-                                        <td className="px-4 py-2 text-center font-medium">{w.total}</td>
-                                        <td className="px-4 py-2 text-center text-green-600 font-medium">{w.valid}</td>
-                                        <td className="px-4 py-2 text-center text-red-600 font-medium">{w.invalid}</td>
-                                        <td className="px-4 py-2 text-center">
-                                            <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${w.valid / (w.total || 1) > 0.5 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                                                {((w.valid / (w.total || 1)) * 100).toFixed(1)}%
-                                            </span>
-                                        </td>
-                                    </tr>
-                                )) : (
-                                    <tr><td colSpan={5} className="text-center py-4 text-slate-400">Tidak ada data</td></tr>
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
-                </CardContent>
-            </Card>
-
-            {/* TOP 10 DRIVER LEADERBOARD */}
-            <Card className="shadow-sm border-l-4 border-amber-500">
-                <CardHeader>
-                    <CardTitle className="text-base flex items-center gap-2">
-                        🏆 Top 10 Driver Pelanggaran Valid Terbanyak
-                    </CardTitle>
-                    <CardDescription>Leaderboard driver dengan pelanggaran yang sudah divalidasi</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-sm">
-                            <thead>
-                                <tr className="bg-amber-50 text-amber-900">
-                                    <th className="px-4 py-2 text-left font-semibold">#</th>
-                                    <th className="px-4 py-2 text-left font-semibold">Nama Driver</th>
-                                    <th className="px-4 py-2 text-left font-semibold">NIK</th>
-                                    <th className="px-4 py-2 text-left font-semibold">No. Lambung</th>
-                                    <th className="px-4 py-2 text-center font-semibold">Pelanggaran Valid</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {analytics?.topDrivers?.length > 0 ? analytics.topDrivers.map((d: any) => (
-                                    <tr key={d.rank} className="border-b hover:bg-amber-50/50">
-                                        <td className="px-4 py-2 font-bold text-lg">
-                                            {d.rank === 1 ? "🥇" : d.rank === 2 ? "🥈" : d.rank === 3 ? "🥉" : d.rank}
-                                        </td>
-                                        <td className="px-4 py-2 font-medium">{d.driverName}</td>
-                                        <td className="px-4 py-2 text-slate-500 font-mono text-xs">{d.driverNik}</td>
-                                        <td className="px-4 py-2">{d.vehicleNo}</td>
-                                        <td className="px-4 py-2 text-center">
-                                            <span className="bg-red-100 text-red-700 px-3 py-1 rounded-full font-bold">{d.validCount}</span>
-                                        </td>
-                                    </tr>
-                                )) : (
-                                    <tr><td colSpan={5} className="text-center py-4 text-slate-400">Tidak ada data driver</td></tr>
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
-                </CardContent>
-            </Card>
         </div>
     );
 }
 
 function KPICard({ title, value, icon, subValue, trend, color }: any) {
     return (
-        <Card className="shadow-sm border-slate-200">
+        <Card className="shadow-sm hover:shadow-lg transition-all duration-300 border-none bg-white/60 backdrop-blur-sm ring-1 ring-slate-100 group">
             <CardContent className="p-6">
                 <div className="flex justify-between items-start">
-                    <div>
-                        <p className="text-xs font-medium text-slate-500 uppercase">{title}</p>
-                        <h3 className="text-2xl font-bold mt-1 text-slate-800">{value}</h3>
-                        {subValue && <span className={`text-xs font-bold px-2 py-0.5 rounded-full mt-2 inline-block ${color}`}>{subValue}</span>}
+                    <div className="space-y-2">
+                        <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">{title}</p>
+                        <h3 className="text-3xl font-black text-slate-800 tracking-tight">{value}</h3>
+                        {subValue && (
+                            <div className={`text-xs font-bold px-2.5 py-1 rounded-full w-fit flex items-center gap-1 ${color} bg-opacity-10 backdrop-blur-md`}>
+                                {subValue}
+                                <span className="opacity-60 font-normal">rate</span>
+                            </div>
+                        )}
                     </div>
-                    <div className={`p-3 rounded-xl ${color} bg-opacity-20`}>
+                    <div className={`p-4 rounded-2xl ${color} bg-opacity-10 group-hover:scale-110 transition-transform duration-300`}>
                         {icon}
                     </div>
                 </div>
@@ -691,31 +717,50 @@ function MysticAnalysisCard({ data }: any) {
     }
 
     return (
-        <Card className="bg-gradient-to-br from-slate-900 to-slate-800 text-white border-none shadow-xl">
-            <CardHeader className="pb-2">
-                <div className="flex items-center gap-2">
-                    <Sparkles className="w-5 h-5 text-yellow-400 animate-pulse" />
-                    <CardTitle className="text-lg">Mystic AI Insights</CardTitle>
+        <Card className="relative overflow-hidden border-none shadow-2xl group">
+            {/* Gradient Background */}
+            <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-slate-800 to-black z-0"></div>
+
+            {/* Animated Glow Effects */}
+            <div className="absolute -top-24 -right-24 w-48 h-48 bg-purple-500/20 rounded-full blur-3xl animate-pulse"></div>
+            <div className="absolute -bottom-24 -left-24 w-48 h-48 bg-blue-500/20 rounded-full blur-3xl animate-pulse delay-700"></div>
+
+            <CardHeader className="relative z-10 pb-2 border-b border-white/5">
+                <div className="flex items-center gap-3">
+                    <div className="p-2 bg-yellow-500/10 rounded-lg ring-1 ring-yellow-500/30">
+                        <Sparkles className="w-5 h-5 text-yellow-400 animate-pulse" />
+                    </div>
+                    <div>
+                        <CardTitle className="text-lg font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-200 to-amber-400">
+                            Mystic AI Insights
+                        </CardTitle>
+                        <CardDescription className="text-slate-400 text-xs font-medium">
+                            Analisa otomatis berbasis pola data
+                        </CardDescription>
+                    </div>
                 </div>
-                <CardDescription className="text-slate-300 text-xs">Analisa otomatis berbasis pola data</CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="relative z-10 pt-4">
                 {insights.length > 0 ? (
-                    <ul className="space-y-3">
+                    <ul className="space-y-4">
                         {insights.map((insight, i) => (
-                            <li key={i} className="text-sm leading-relaxed flex gap-2">
-                                <span className="text-yellow-400 mt-1">•</span>
-                                <span className="opacity-90">{insight}</span>
+                            <li key={i} className="text-sm leading-relaxed flex gap-3 text-slate-200">
+                                <span className="text-yellow-400 mt-0.5 text-lg">•</span>
+                                <span className="opacity-90 font-light tracking-wide">{insight}</span>
                             </li>
                         ))}
                     </ul>
                 ) : (
-                    <div className="text-center py-4 text-slate-500 text-sm">Belum cukup data untuk analisa.</div>
+                    <div className="text-center py-8 text-slate-500 text-sm italic">
+                        Belum cukup data untuk analisa mendalam.
+                    </div>
                 )}
 
-                <div className="mt-4 pt-4 border-t border-white/10 flex justify-between items-center">
-                    <span className="text-xs text-slate-400">Powered by Mystic Engine v2.1</span>
-                    <Button size="sm" variant="secondary" className="h-7 text-xs bg-white/10 hover:bg-white/20 text-white border-0">
+                <div className="mt-6 pt-4 border-t border-white/10 flex justify-between items-center group-hover:translate-y-0 transition-transform">
+                    <span className="text-[10px] uppercase tracking-widest text-slate-500 font-semibold">
+                        Mystic Engine v2.1
+                    </span>
+                    <Button size="sm" variant="secondary" className="h-8 text-xs bg-white/5 hover:bg-white/10 text-white border border-white/10 hover:border-white/20 transition-all font-medium backdrop-blur-sm">
                         Generate Report
                     </Button>
                 </div>

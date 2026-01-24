@@ -295,8 +295,8 @@ export async function downloadSidakJarakAsJpg(data: SidakJarakData, filename: st
     }
 
     try {
-        const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf');
-        const workerSrc = await import('pdfjs-dist/legacy/build/pdf.worker.min.mjs?url');
+        const pdfjsLib = await import('pdfjs-dist');
+        const workerSrc = await import('pdfjs-dist/build/pdf.worker.min.mjs?url');
 
         pdfjsLib.GlobalWorkerOptions.workerSrc = workerSrc.default;
 
@@ -324,11 +324,12 @@ export async function downloadSidakJarakAsJpg(data: SidakJarakData, filename: st
         context.fillRect(0, 0, canvas.width, canvas.height);
 
         const renderContext = {
+            canvas,
             canvasContext: context,
             viewport: viewport,
         };
 
-        await page.render(renderContext).promise;
+        await page.render(renderContext as any).promise;
 
         return new Promise((resolve, reject) => {
             canvas.toBlob(

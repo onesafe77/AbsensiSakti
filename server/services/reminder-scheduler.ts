@@ -49,7 +49,7 @@ export function startReminderScheduler() {
                         const message = `*Reminder Kegiatan*\nHalo ${name || 'Rekan'},\n\nJangan lupa kegiatan: *${event.title}*\nJam: ${timeString}\n\n${event.description || ''}`;
 
                         try {
-                            await sendWhatsAppMessage(phone, message);
+                            await sendWhatsAppMessage({ phone, message });
                             console.log(`✅ Sent reminder to creator ${phone} for ${event.title}`);
                         } catch (err) {
                             console.error(`❌ Failed to send WA to creator ${phone}:`, err);
@@ -75,7 +75,7 @@ export function startReminderScheduler() {
                                     const timeString = format(new Date(event.startTime), "HH:mm");
                                     const msg = `*Undangan Kegiatan*\nHalo ${pEmpName},\n\nAnda diundang ke kegiatan: *${event.title}*\nOleh: ${name || 'Penyelenggara'}\nJam: ${timeString}\n\n${event.description || ''}`;
 
-                                    await sendWhatsAppMessage(pPhone, msg);
+                                    await sendWhatsAppMessage({ phone: pPhone, message: msg });
                                     console.log(`✅ Sent reminder to participant ${pEmpName} (${pPhone})`);
                                 } else {
                                     console.log(`⚠️ Participant not found or no phone: ${pName}`);

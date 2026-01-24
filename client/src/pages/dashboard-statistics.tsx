@@ -174,11 +174,42 @@ export default function DashboardStatistics() {
     const commonOptions: any = {
         responsive: true,
         maintainAspectRatio: false,
+        layout: {
+            padding: { top: 20, right: 20, left: 10, bottom: 0 }
+        },
         plugins: {
-            legend: { position: 'top', labels: { usePointStyle: true, font: { weight: 'bold' } } },
+            legend: {
+                position: 'top',
+                align: 'end',
+                labels: {
+                    usePointStyle: true,
+                    boxWidth: 8,
+                    useBorderRadius: true,
+                    borderRadius: 4,
+                    padding: 20,
+                    font: {
+                        family: "'Inter', sans-serif",
+                        size: 11,
+                        weight: 600
+                    },
+                    color: '#64748b'
+                }
+            },
+            tooltip: {
+                backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                titleColor: '#1e293b',
+                bodyColor: '#475569',
+                borderColor: '#e2e8f0',
+                borderWidth: 1,
+                padding: 12,
+                cornerRadius: 12,
+                displayColors: true,
+                boxPadding: 4,
+                titleFont: { weight: 'bold' }
+            },
             datalabels: {
                 anchor: 'end', align: 'end', offset: -4,
-                color: (ctx: any) => ctx.dataset.type === 'line' ? 'black' : 'white',
+                color: (ctx: any) => ctx.dataset.type === 'line' ? '#1e293b' : '#ffffff',
                 font: { weight: 'bold', size: 10 },
                 formatter: (value: number, ctx: any) => {
                     if (ctx.dataset.type === 'line') return value.toFixed(2).replace('.', ',');
@@ -187,67 +218,102 @@ export default function DashboardStatistics() {
             }
         },
         scales: {
-            y: { beginAtZero: true, grid: { display: false }, title: { display: false } },
-            y1: { beginAtZero: true, position: 'right', grid: { display: false } }
+            y: {
+                beginAtZero: true,
+                grid: { display: true, color: '#f1f5f9', drawBorder: false },
+                ticks: { font: { size: 10 }, color: '#94a3b8', padding: 10 }
+            },
+            x: {
+                grid: { display: false },
+                ticks: { font: { size: 10 }, color: '#64748b' }
+            },
+            y1: {
+                beginAtZero: true,
+                position: 'right',
+                grid: { display: false },
+                ticks: { font: { size: 10 }, color: '#94a3b8' }
+            }
         }
     };
 
     return (
-        <div ref={dashboardRef} className="p-6 bg-slate-50 min-h-screen font-sans space-y-6">
-            <div className="flex justify-between items-center bg-white p-4 rounded-xl shadow-sm border-t-4 border-red-500">
-                <h1 className="text-2xl font-bold text-red-600 uppercase tracking-wide">STATISTIK KESELAMATAN PT GECL 2026</h1>
+        <div ref={dashboardRef} className="min-h-screen bg-gray-50/50 p-4 md:p-8 space-y-8 font-sans relative overflow-hidden text-slate-800">
+            {/* Ambient Background */}
+            <div className="absolute top-0 left-0 w-full h-[600px] bg-gradient-to-br from-emerald-500/10 via-teal-500/5 to-transparent pointer-events-none -z-10 blur-3xl" />
+
+            {/* Header */}
+            <div className="flex flex-col md:flex-row justify-between items-center gap-6 bg-white/70 backdrop-blur-xl p-6 rounded-3xl shadow-sm border border-white/60 sticky top-4 z-40">
                 <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-500 to-green-600 flex items-center justify-center shadow-lg shadow-emerald-200">
+                        <Sparkles className="w-6 h-6 text-white" />
+                    </div>
+                    <div>
+                        <h1 className="text-2xl font-black text-gray-900 tracking-tight leading-none bg-gradient-to-r from-emerald-700 to-teal-600 bg-clip-text text-transparent uppercase">
+                            Safety Statistics
+                        </h1>
+                        <p className="text-sm font-medium text-slate-500 mt-1">
+                            Annual Safety Performance Report 2026
+                        </p>
+                    </div>
+                </div>
+
+                <div className="flex items-center gap-3">
                     <Button
                         variant="outline"
-                        size="sm"
                         onClick={exportToJPG}
                         disabled={isExporting}
-                        className="text-blue-600 border-blue-200 hover:bg-blue-50"
+                        className="rounded-xl border-slate-200 hover:bg-slate-50 text-slate-600 font-semibold"
                     >
                         {isExporting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Download className="w-4 h-4 mr-2" />}
-                        {isExporting ? 'Exporting...' : 'Export JPG'}
+                        {isExporting ? 'Exporting...' : 'Download JPG'}
                     </Button>
-                    <div className="text-right">
-                        <div className="text-xs text-gray-500">POWERED BY</div>
-                        <div className="font-bold text-gray-800">ONETALENT</div>
-                    </div>
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-                <div className="lg:col-span-3 space-y-8">
-                    {/* MH Panel (Global Input) */}
-                    <Card className="border-slate-200">
-                        <CardHeader className="py-3 cursor-pointer hover:bg-slate-50" onClick={() => setMhOpen(!mhOpen)}>
-                            <div className="flex justify-between items-center">
-                                <CardTitle className="text-sm font-bold text-gray-700 flex items-center gap-2">
-                                    <Edit className="w-4 h-4 text-blue-500" />
-                                    INPUT GLOBAL & MANHOURS (MH)
-                                </CardTitle>
-                                {mhOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            <div className="grid grid-cols-1 xl:grid-cols-4 gap-8 items-start">
+
+                {/* Main Content (Charts) */}
+                <div className="xl:col-span-3 space-y-8">
+
+                    {/* MH Input Section (Collapsible) */}
+                    <Card className="border-none shadow-lg bg-white/80 backdrop-blur-sm rounded-3xl overflow-hidden group">
+                        <CardHeader
+                            className="bg-white/50 border-b border-gray-100 p-6 flex flex-row items-center justify-between cursor-pointer hover:bg-white/80 transition-colors"
+                            onClick={() => setMhOpen(!mhOpen)}
+                        >
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 bg-blue-50 rounded-lg text-blue-600">
+                                    <Edit className="w-5 h-5" />
+                                </div>
+                                <div>
+                                    <CardTitle className="text-base font-bold text-gray-800">Global Settings & Manhours</CardTitle>
+                                    <p className="text-xs text-slate-400 font-medium mt-0.5">Configure monthly manpower and working days</p>
+                                </div>
                             </div>
+                            {mhOpen ? <ChevronUp className="w-5 h-5 text-gray-400" /> : <ChevronDown className="w-5 h-5 text-gray-400" />}
                         </CardHeader>
+
                         {mhOpen && (
-                            <CardContent className="bg-slate-50 p-4 border-t">
+                            <CardContent className="p-6 bg-slate-50/50 animate-in slide-in-from-top-2 duration-200">
                                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                                     <div className="space-y-1">
-                                        <Label>Bulan</Label>
+                                        <Label className="text-xs font-semibold text-slate-500 uppercase">Bulan</Label>
                                         <Select value={selectedMonth.mh.toString()} onValueChange={(v) => setSelectedMonth({ ...selectedMonth, mh: parseInt(v) })}>
-                                            <SelectTrigger><SelectValue /></SelectTrigger>
+                                            <SelectTrigger className="bg-white rounded-xl border-slate-200"><SelectValue /></SelectTrigger>
                                             <SelectContent>{MONTHS.map((m, i) => <SelectItem key={i} value={i.toString()}>{m}</SelectItem>)}</SelectContent>
                                         </Select>
                                     </div>
                                     <div className="space-y-1">
-                                        <Label>Manpower</Label>
-                                        <Input type="number" value={data.manpower[selectedMonth.mh]} onChange={(e) => {
+                                        <Label className="text-xs font-semibold text-slate-500 uppercase">Manpower</Label>
+                                        <Input className="bg-white rounded-xl border-slate-200" type="number" value={data.manpower[selectedMonth.mh]} onChange={(e) => {
                                             const newManpower = [...data.manpower];
                                             newManpower[selectedMonth.mh] = parseInt(e.target.value) || 0;
                                             setData({ ...data, manpower: newManpower });
                                         }} />
                                     </div>
                                     <div className="space-y-1">
-                                        <Label>Hari Kerja</Label>
-                                        <Input type="number" value={data.days_in_month[selectedMonth.mh]} onChange={(e) => {
+                                        <Label className="text-xs font-semibold text-slate-500 uppercase">Hari Kerja</Label>
+                                        <Input className="bg-white rounded-xl border-slate-200" type="number" value={data.days_in_month[selectedMonth.mh]} onChange={(e) => {
                                             const newDays = [...data.days_in_month];
                                             newDays[selectedMonth.mh] = parseInt(e.target.value) || 0;
                                             setData({ ...data, days_in_month: newDays });
@@ -255,29 +321,29 @@ export default function DashboardStatistics() {
                                     </div>
                                     <div className="flex items-center space-x-2 pt-6">
                                         <Checkbox id="leap" checked={data.leap_year} onCheckedChange={(c) => setData({ ...data, leap_year: !!c })} />
-                                        <Label htmlFor="leap">Kabisat (Feb 29)</Label>
+                                        <Label htmlFor="leap" className="text-sm">Kabisat (Feb 29)</Label>
                                     </div>
                                     <div className="space-y-1">
-                                        <Label>Jam/Hari</Label>
-                                        <Input type="number" value={data.hours_per_day} onChange={(e) => setData({ ...data, hours_per_day: parseFloat(e.target.value) || 0 })} />
+                                        <Label className="text-xs font-semibold text-slate-500 uppercase">Jam/Hari</Label>
+                                        <Input className="bg-white rounded-xl border-slate-200" type="number" value={data.hours_per_day} onChange={(e) => setData({ ...data, hours_per_day: parseFloat(e.target.value) || 0 })} />
                                     </div>
                                     <div className="space-y-1">
-                                        <Label>Faktor MH (0.85)</Label>
+                                        <Label className="text-xs font-semibold text-slate-500 uppercase">Faktor MH (0.85)</Label>
                                         <Input
+                                            className="bg-white rounded-xl border-slate-200"
                                             type="text"
                                             defaultValue={data.factor_mh}
                                             onBlur={(e) => {
-                                                // Handle comma as decimal separator
                                                 const val = e.target.value.replace(',', '.');
                                                 const floatVal = parseFloat(val);
                                                 setData({ ...data, factor_mh: isNaN(floatVal) ? 0.85 : floatVal });
                                             }}
-                                            placeholder="Ex: 0.85 or 0,85"
+                                            placeholder="Ex: 0.85"
                                         />
                                     </div>
                                     <div className="space-y-1">
-                                        <Label className="text-gray-500">MH Bulan Ini (Hasil)</Label>
-                                        <Input readOnly disabled className="bg-slate-100 font-bold text-gray-700" value={(() => {
+                                        <Label className="text-xs font-semibold text-slate-500 uppercase">MH Bulan Ini</Label>
+                                        <Input readOnly disabled className="bg-slate-100 rounded-xl border-slate-200 font-bold text-gray-700" value={(() => {
                                             const idx = selectedMonth.mh;
                                             const daysInMonth = [...data.days_in_month];
                                             daysInMonth[1] = data.leap_year ? 29 : 28;
@@ -286,8 +352,8 @@ export default function DashboardStatistics() {
                                         })()} />
                                     </div>
                                     <div className="space-y-1">
-                                        <Label className="text-gray-500">MH YTD (Hasil)</Label>
-                                        <Input readOnly disabled className="bg-slate-100 font-bold text-gray-700" value={(() => {
+                                        <Label className="text-xs font-semibold text-slate-500 uppercase">MH YTD</Label>
+                                        <Input readOnly disabled className="bg-slate-100 rounded-xl border-slate-200 font-bold text-gray-700" value={(() => {
                                             const idx = selectedMonth.mh;
                                             const daysInMonth = [...data.days_in_month];
                                             daysInMonth[1] = data.leap_year ? 29 : 28;
@@ -302,196 +368,198 @@ export default function DashboardStatistics() {
                                         <Button size="sm" onClick={() => {
                                             saveData(data);
                                             alert("Data Manhours (MH) Berhasil Disimpan! 💾");
-                                        }}>Simpan Perubahan MH</Button>
+                                        }} className="rounded-xl bg-blue-600 hover:bg-blue-700">Simpan Perubahan MH</Button>
                                     </div>
                                 </div>
                             </CardContent>
                         )}
                     </Card>
 
-                    {/* TIFR Chart with Visible Input Panel */}
-                    <Card className="relative">
-                        <div className="bg-red-50 p-4 border-b border-red-100 mb-4 rounded-t-lg">
-                            <h3 className="font-bold text-red-700 mb-2 text-sm">INPUT TIFR (INSIDEN)</h3>
-                            <div className="grid grid-cols-1 md:grid-cols-5 gap-3 items-end">
-                                <div className="space-y-1">
-                                    <Label className="text-xs">Bulan</Label>
-                                    <Select value={selectedMonth.tifr.toString()} onValueChange={(v) => setSelectedMonth({ ...selectedMonth, tifr: parseInt(v) })}>
-                                        <SelectTrigger className="bg-white"><SelectValue /></SelectTrigger>
-                                        <SelectContent>{MONTHS.map((m, i) => <SelectItem key={i} value={i.toString()}>{m}</SelectItem>)}</SelectContent>
-                                    </Select>
+                    {/* Chart 1: TIFR */}
+                    <Card className="border-none shadow-xl bg-white rounded-3xl overflow-hidden ring-1 ring-slate-100">
+                        <div className="p-1">
+                            <div className="bg-gradient-to-r from-red-50 to-white p-4 rounded-t-3xl border-b border-red-50 flex flex-col xl:flex-row gap-4 justify-between items-center">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-xl bg-red-100 flex items-center justify-center text-red-600 font-black text-lg shadow-sm">1</div>
+                                    <div>
+                                        <h2 className="font-bold text-gray-900 text-lg">TIFR</h2>
+                                        <p className="text-xs text-red-500 font-bold uppercase tracking-wider">Total Injury Frequency Rate</p>
+                                    </div>
                                 </div>
-                                <div className="space-y-1">
-                                    <Label className="text-xs">Total Insiden</Label>
-                                    <Input className="bg-white" type="number" placeholder="0" value={data.ti_incidents[selectedMonth.tifr]} onChange={(e) => {
+                                <div className="flex flex-wrap items-center gap-2 bg-white/80 p-2 rounded-xl shadow-sm border border-red-100/50">
+                                    <div className="w-[100px]">
+                                        <Select value={selectedMonth.tifr.toString()} onValueChange={(v) => setSelectedMonth({ ...selectedMonth, tifr: parseInt(v) })}>
+                                            <SelectTrigger className="h-8 text-xs bg-white border-none shadow-none"><SelectValue /></SelectTrigger>
+                                            <SelectContent>{MONTHS.map((m, i) => <SelectItem key={i} value={i.toString()}>{m}</SelectItem>)}</SelectContent>
+                                        </Select>
+                                    </div>
+                                    <Input className="h-8 w-[80px] text-xs bg-white border-slate-200" type="number" placeholder="Insiden" value={data.ti_incidents[selectedMonth.tifr]} onChange={(e) => {
                                         const newIncidents = [...data.ti_incidents];
                                         newIncidents[selectedMonth.tifr] = parseInt(e.target.value) || 0;
                                         setData({ ...data, ti_incidents: newIncidents });
                                     }} />
+                                    <Input className="h-8 w-[80px] text-xs bg-white border-slate-200" type="number" step="0.01" placeholder="TR" value={data.tr_value} onChange={(e) => setData({ ...data, tr_value: parseFloat(e.target.value) || 0 })} />
+                                    <div className="flex items-center space-x-2 px-2">
+                                        <Checkbox id="ytd_tifr" checked={data.mode_ytd_tifr} onCheckedChange={(c) => setData({ ...data, mode_ytd_tifr: !!c })} />
+                                        <Label htmlFor="ytd_tifr" className="text-xs font-semibold">YTD</Label>
+                                    </div>
+                                    <Button size="sm" onClick={() => saveData(data)} className="h-8 text-xs rounded-lg bg-red-600 hover:bg-red-700">Save</Button>
                                 </div>
-                                <div className="space-y-1">
-                                    <Label className="text-xs">Nilai TR (Global)</Label>
-                                    <Input className="bg-white" type="number" step="0.01" value={data.tr_value} onChange={(e) => setData({ ...data, tr_value: parseFloat(e.target.value) || 0 })} />
-                                </div>
-                                <div className="flex items-center space-x-2 pb-2">
-                                    <Checkbox id="ytd_tifr" checked={data.mode_ytd_tifr} onCheckedChange={(c) => setData({ ...data, mode_ytd_tifr: !!c })} />
-                                    <Label htmlFor="ytd_tifr" className="text-xs font-semibold">Mode YTD</Label>
-                                </div>
-                                <Button size="sm" onClick={() => saveData(data)}>Simpan TIFR</Button>
                             </div>
                         </div>
-
-                        <div className="p-4 h-[350px]">
-                            <div className="flex items-center mb-4">
-                                <div className="w-8 h-8 rounded-full bg-green-100 text-green-600 flex items-center justify-center font-bold mr-3 border border-green-200">1</div>
-                                <h2 className="font-bold text-gray-800">TIFR (Total Injury Frequency Rate)</h2>
-                            </div>
+                        <div className="p-6 h-[400px]">
                             <Chart type='bar' data={{
                                 labels: MONTHS,
                                 datasets: [
-                                    { type: 'bar' as const, label: 'Insiden', data: data.ti_incidents, backgroundColor: '#dc2626', order: 2, yAxisID: 'y' },
-                                    { type: 'line' as const, label: 'TIFR', data: chartsData.tifr, borderColor: '#166534', backgroundColor: '#166534', borderWidth: 2, pointRadius: 4, order: 1, yAxisID: 'y1' },
+                                    { type: 'bar' as const, label: 'Insiden', data: data.ti_incidents, backgroundColor: '#dc2626', borderRadius: 4, order: 2, yAxisID: 'y' },
+                                    { type: 'line' as const, label: 'TIFR', data: chartsData.tifr, borderColor: '#166534', backgroundColor: '#166534', borderWidth: 2, pointRadius: 4, tension: 0.3, order: 1, yAxisID: 'y1' },
                                     { type: 'line' as const, label: 'TR', data: Array(12).fill(data.tr_value), borderColor: '#ef4444', borderDash: [5, 5], pointRadius: 0, borderWidth: 2, order: 0, yAxisID: 'y1' }
                                 ]
                             }} options={commonOptions} />
                         </div>
                     </Card>
 
-                    {/* Fatigue Chart with Visible Input Panel */}
-                    <Card className="relative">
-                        <div className="bg-orange-50 p-4 border-b border-orange-100 mb-4 rounded-t-lg">
-                            <h3 className="font-bold text-orange-700 mb-2 text-sm">INPUT FATIGUE (INSIDEN)</h3>
-                            <div className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
-                                <div className="space-y-1">
-                                    <Label className="text-xs">Bulan</Label>
-                                    <Select value={selectedMonth.fatigue.toString()} onValueChange={(v) => setSelectedMonth({ ...selectedMonth, fatigue: parseInt(v) })}>
-                                        <SelectTrigger className="bg-white"><SelectValue /></SelectTrigger>
-                                        <SelectContent>{MONTHS.map((m, i) => <SelectItem key={i} value={i.toString()}>{m}</SelectItem>)}</SelectContent>
-                                    </Select>
+                    {/* Chart 2: Fatigue */}
+                    <Card className="border-none shadow-xl bg-white rounded-3xl overflow-hidden ring-1 ring-slate-100">
+                        <div className="p-1">
+                            <div className="bg-gradient-to-r from-orange-50 to-white p-4 rounded-t-3xl border-b border-orange-50 flex flex-col xl:flex-row gap-4 justify-between items-center">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-xl bg-orange-100 flex items-center justify-center text-orange-600 font-black text-lg shadow-sm">2</div>
+                                    <div>
+                                        <h2 className="font-bold text-gray-900 text-lg">FATIGUE FR</h2>
+                                        <p className="text-xs text-orange-500 font-bold uppercase tracking-wider">Fatigue Frequency Rate</p>
+                                    </div>
                                 </div>
-                                <div className="space-y-1">
-                                    <Label className="text-xs">Insiden Fatigue</Label>
-                                    <Input className="bg-white" type="number" placeholder="0" value={data.fatigue_incidents[selectedMonth.fatigue]} onChange={(e) => {
+                                <div className="flex flex-wrap items-center gap-2 bg-white/80 p-2 rounded-xl shadow-sm border border-orange-100/50">
+                                    <div className="w-[100px]">
+                                        <Select value={selectedMonth.fatigue.toString()} onValueChange={(v) => setSelectedMonth({ ...selectedMonth, fatigue: parseInt(v) })}>
+                                            <SelectTrigger className="h-8 text-xs bg-white border-none shadow-none"><SelectValue /></SelectTrigger>
+                                            <SelectContent>{MONTHS.map((m, i) => <SelectItem key={i} value={i.toString()}>{m}</SelectItem>)}</SelectContent>
+                                        </Select>
+                                    </div>
+                                    <Input className="h-8 w-[100px] text-xs bg-white border-slate-200" type="number" placeholder="Insiden" value={data.fatigue_incidents[selectedMonth.fatigue]} onChange={(e) => {
                                         const newFatigue = [...data.fatigue_incidents];
                                         newFatigue[selectedMonth.fatigue] = parseInt(e.target.value) || 0;
                                         setData({ ...data, fatigue_incidents: newFatigue });
                                     }} />
+                                    <div className="flex items-center space-x-2 px-2">
+                                        <Checkbox id="ytd_fat" checked={data.mode_ytd_fatigue} onCheckedChange={(c) => setData({ ...data, mode_ytd_fatigue: !!c })} />
+                                        <Label htmlFor="ytd_fat" className="text-xs font-semibold">YTD</Label>
+                                    </div>
+                                    <Button size="sm" onClick={() => saveData(data)} className="h-8 text-xs rounded-lg bg-orange-500 hover:bg-orange-600">Save</Button>
                                 </div>
-                                <div className="flex items-center space-x-2 pb-2">
-                                    <Checkbox id="ytd_fat" checked={data.mode_ytd_fatigue} onCheckedChange={(c) => setData({ ...data, mode_ytd_fatigue: !!c })} />
-                                    <Label htmlFor="ytd_fat" className="text-xs font-semibold">Mode YTD</Label>
-                                </div>
-                                <Button size="sm" onClick={() => saveData(data)} className="bg-orange-500 hover:bg-orange-600">Simpan Fatigue</Button>
                             </div>
                         </div>
-
-                        <div className="p-4 h-[350px]">
-                            <div className="flex items-center mb-4">
-                                <div className="w-8 h-8 rounded-full bg-green-100 text-green-600 flex items-center justify-center font-bold mr-3 border border-green-200">2</div>
-                                <h2 className="font-bold text-gray-800">Fatigue FR</h2>
-                            </div>
+                        <div className="p-6 h-[400px]">
                             <Chart type='bar' data={{
                                 labels: MONTHS,
                                 datasets: [
-                                    { type: 'bar' as const, label: 'Insiden Fatigue', data: data.fatigue_incidents, backgroundColor: '#ea580c', order: 2, yAxisID: 'y' },
-                                    { type: 'line' as const, label: 'Fatigue FR', data: chartsData.fatigue, borderColor: '#166534', backgroundColor: '#166534', borderWidth: 2, order: 1, yAxisID: 'y1' }
+                                    { type: 'bar' as const, label: 'Insiden Fatigue', data: data.fatigue_incidents, backgroundColor: '#ea580c', borderRadius: 4, order: 2, yAxisID: 'y' },
+                                    { type: 'line' as const, label: 'Fatigue FR', data: chartsData.fatigue, borderColor: '#166534', backgroundColor: '#166534', borderWidth: 2, tension: 0.3, pointRadius: 4, order: 1, yAxisID: 'y1' }
                                 ]
                             }} options={commonOptions} />
                         </div>
                     </Card>
 
-                    {/* CIFR Chart with Visible Input Panel */}
-                    <Card className="relative">
-                        <div className="bg-green-50 p-4 border-b border-green-100 mb-4 rounded-t-lg">
-                            <h3 className="font-bold text-green-700 mb-2 text-sm">INPUT CIFR (INSIDEN)</h3>
-                            <div className="grid grid-cols-1 md:grid-cols-5 gap-3 items-end">
-                                <div className="space-y-1">
-                                    <Label className="text-xs">Bulan</Label>
-                                    <Select value={selectedMonth.cifr.toString()} onValueChange={(v) => setSelectedMonth({ ...selectedMonth, cifr: parseInt(v) })}>
-                                        <SelectTrigger className="bg-white"><SelectValue /></SelectTrigger>
-                                        <SelectContent>{MONTHS.map((m, i) => <SelectItem key={i} value={i.toString()}>{m}</SelectItem>)}</SelectContent>
-                                    </Select>
+                    {/* Chart 3: CIFR */}
+                    <Card className="border-none shadow-xl bg-white rounded-3xl overflow-hidden ring-1 ring-slate-100">
+                        <div className="p-1">
+                            <div className="bg-gradient-to-r from-emerald-50 to-white p-4 rounded-t-3xl border-b border-emerald-50 flex flex-col xl:flex-row gap-4 justify-between items-center">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center text-emerald-600 font-black text-lg shadow-sm">3</div>
+                                    <div>
+                                        <h2 className="font-bold text-gray-900 text-lg">CIFR</h2>
+                                        <p className="text-xs text-emerald-500 font-bold uppercase tracking-wider">Combined Injury Frequency Rate</p>
+                                    </div>
                                 </div>
-                                <div className="space-y-1">
-                                    <Label className="text-xs">Menabrak</Label>
-                                    <Input className="bg-white" type="number" placeholder="0" value={data.menabrak[selectedMonth.cifr]} onChange={(e) => {
+                                <div className="flex flex-wrap items-center gap-2 bg-white/80 p-2 rounded-xl shadow-sm border border-emerald-100/50">
+                                    <div className="w-[80px] shrink-0">
+                                        <Select value={selectedMonth.cifr.toString()} onValueChange={(v) => setSelectedMonth({ ...selectedMonth, cifr: parseInt(v) })}>
+                                            <SelectTrigger className="h-8 text-xs bg-white border-none shadow-none"><SelectValue /></SelectTrigger>
+                                            <SelectContent>{MONTHS.map((m, i) => <SelectItem key={i} value={i.toString()}>{m}</SelectItem>)}</SelectContent>
+                                        </Select>
+                                    </div>
+                                    <Input className="h-8 w-[80px] text-xs bg-white border-slate-200" type="number" placeholder="Nabrak" value={data.menabrak[selectedMonth.cifr]} onChange={(e) => {
                                         const newMenabrak = [...data.menabrak];
                                         newMenabrak[selectedMonth.cifr] = parseInt(e.target.value) || 0;
                                         setData({ ...data, menabrak: newMenabrak });
                                     }} />
-                                </div>
-                                <div className="space-y-1">
-                                    <Label className="text-xs">Rebah</Label>
-                                    <Input className="bg-white" type="number" placeholder="0" value={data.rebah[selectedMonth.cifr]} onChange={(e) => {
+                                    <Input className="h-8 w-[80px] text-xs bg-white border-slate-200" type="number" placeholder="Rebah" value={data.rebah[selectedMonth.cifr]} onChange={(e) => {
                                         const newRebah = [...data.rebah];
                                         newRebah[selectedMonth.cifr] = parseInt(e.target.value) || 0;
                                         setData({ ...data, rebah: newRebah });
                                     }} />
+                                    <div className="flex items-center space-x-2 px-2">
+                                        <Checkbox id="ytd_cifr" checked={data.mode_ytd_cifr} onCheckedChange={(c) => setData({ ...data, mode_ytd_cifr: !!c })} />
+                                        <Label htmlFor="ytd_cifr" className="text-xs font-semibold">YTD</Label>
+                                    </div>
+                                    <Button size="sm" onClick={() => saveData(data)} className="h-8 text-xs rounded-lg bg-emerald-600 hover:bg-emerald-700">Save</Button>
                                 </div>
-                                <div className="flex items-center space-x-2 pb-2">
-                                    <Checkbox id="ytd_cifr" checked={data.mode_ytd_cifr} onCheckedChange={(c) => setData({ ...data, mode_ytd_cifr: !!c })} />
-                                    <Label htmlFor="ytd_cifr" className="text-xs font-semibold">Mode YTD</Label>
-                                </div>
-                                <Button size="sm" onClick={() => saveData(data)} className="bg-green-600 hover:bg-green-700">Simpan CIFR</Button>
                             </div>
                         </div>
-
-                        <div className="p-4 h-[350px]">
-                            <div className="flex items-center mb-4">
-                                <div className="w-8 h-8 rounded-full bg-green-100 text-green-600 flex items-center justify-center font-bold mr-3 border border-green-200">3</div>
-                                <h2 className="font-bold text-gray-800">CIFR (Combined Injury Frequency Rate)</h2>
-                            </div>
+                        <div className="p-6 h-[400px]">
                             <Chart type='bar' data={{
                                 labels: MONTHS,
                                 datasets: [
-                                    { type: 'bar' as const, label: 'Menabrak', data: data.menabrak, backgroundColor: '#dc2626', stack: 'stack1', order: 3, yAxisID: 'y' },
-                                    { type: 'bar' as const, label: 'Rebah', data: data.rebah, backgroundColor: '#64748b', stack: 'stack1', order: 2, yAxisID: 'y' },
-                                    { type: 'line' as const, label: 'CIFR', data: chartsData.cifr, borderColor: '#166534', backgroundColor: '#166534', borderWidth: 2, order: 1, yAxisID: 'y1' }
+                                    { type: 'bar' as const, label: 'Menabrak', data: data.menabrak, backgroundColor: '#dc2626', stack: 'stack1', borderRadius: 4, order: 3, yAxisID: 'y' },
+                                    { type: 'bar' as const, label: 'Rebah', data: data.rebah, backgroundColor: '#64748b', stack: 'stack1', borderRadius: 4, order: 2, yAxisID: 'y' },
+                                    { type: 'line' as const, label: 'CIFR', data: chartsData.cifr, borderColor: '#166534', backgroundColor: '#166534', borderWidth: 2, tension: 0.3, pointRadius: 4, order: 1, yAxisID: 'y1' }
                                 ]
                             }} options={commonOptions} />
                         </div>
                     </Card>
 
-                    <div className="text-center pt-8">
-                        <Button variant="outline" className="text-xs text-red-500 border-red-200 hover:bg-red-50" onClick={() => {
+                    <div className="flex justify-center pt-4">
+                        <Button variant="ghost" className="text-xs text-red-400 hover:text-red-500 hover:bg-red-50" onClick={() => {
                             if (confirm("Yakin ingin menghapus semua data 2026 dan kembali ke default 0?")) {
                                 localStorage.removeItem(STORAGE_KEY);
                                 setData(DEFAULT_DATA);
                             }
-                        }}>Clear Data 2026</Button>
+                        }}>Reset All Data</Button>
                     </div>
+
                 </div>
 
-                <div className="lg:col-span-1">
-                    <div className="bg-[#dcfce7] rounded-3xl p-6 sticky top-6 shadow-md border-2 border-white">
-                        <div className="flex justify-between items-center mb-4 border-b border-green-300 pb-2">
-                            <h3 className="font-bold text-gray-800">Keterangan 2026:</h3>
-                            <Button
-                                size="sm"
-                                className="bg-green-600 hover:bg-green-700 text-white text-xs"
-                                onClick={analyzeWithAI}
-                                disabled={isAnalyzing}
-                            >
-                                {isAnalyzing ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <Sparkles className="w-3 h-3 mr-1" />}
-                                {isAnalyzing ? "Menganalisa..." : "Tanya Mystic AI"}
-                            </Button>
+                {/* Sidebar: AI Analysis */}
+                <div className="xl:col-span-1 space-y-6">
+                    <Card className="border-none shadow-2xl bg-gradient-to-b from-emerald-900 to-slate-900 text-white rounded-3xl overflow-hidden sticky top-32">
+                        <div className="absolute top-0 right-0 p-8 opacity-10">
+                            <Sparkles className="w-40 h-40 text-white" />
                         </div>
-                        {data.aiInsights && data.aiInsights.length > 0 ? (
-                            <ul className="space-y-4 text-sm text-gray-700 leading-relaxed font-medium">
-                                {data.aiInsights.map((insight, idx) => (
-                                    <li key={idx} className="flex gap-2">
-                                        <span className="text-green-600 text-lg">•</span>
-                                        <span>{insight}</span>
-                                    </li>
-                                ))}
-                            </ul>
-                        ) : (
-                            <div className="text-center py-8 text-gray-400 text-xs italic">
-                                Belum ada analisa AI. Klik "Tanya AI" untuk generate insight.
+                        <CardHeader className="relative z-10">
+                            <div className="flex items-center justify-between border-b border-white/10 pb-4">
+                                <h3 className="font-bold text-lg bg-gradient-to-r from-white to-emerald-200 bg-clip-text text-transparent">Mystic AI Insights</h3>
+                                <Button
+                                    size="sm"
+                                    className="bg-white/10 hover:bg-white/20 text-white text-xs border border-white/20 rounded-full"
+                                    onClick={analyzeWithAI}
+                                    disabled={isAnalyzing}
+                                >
+                                    {isAnalyzing ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <Sparkles className="w-3 h-3 mr-1" />}
+                                    {isAnalyzing ? "Analyzing..." : "Generate Insights"}
+                                </Button>
                             </div>
-                        )}
-                    </div>
+                        </CardHeader>
+                        <CardContent className="space-y-4 relative z-10 min-h-[300px]">
+                            {data.aiInsights && data.aiInsights.length > 0 ? (
+                                <ul className="space-y-4 text-sm text-emerald-50 leading-relaxed font-medium">
+                                    {data.aiInsights.map((insight, idx) => (
+                                        <li key={idx} className="flex gap-3 bg-white/5 p-3 rounded-xl border border-white/5 backdrop-blur-sm">
+                                            <span className="text-emerald-400 text-lg mt-0.5">•</span>
+                                            <span>{insight}</span>
+                                        </li>
+                                    ))}
+                                </ul>
+                            ) : (
+                                <div className="text-center py-12 text-emerald-200/40 text-xs italic flex flex-col items-center">
+                                    <Sparkles className="w-8 h-8 mb-2 opacity-50" />
+                                    No AI insights generated yet. <br />Click the button to analyze safety trends.
+                                </div>
+                            )}
+                        </CardContent>
+                    </Card>
                 </div>
+
             </div>
         </div>
     );
