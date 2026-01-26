@@ -9,6 +9,8 @@ import {
     Title,
     Tooltip,
     Legend,
+    LineController,
+    BarController,
 } from "chart.js";
 import { Chart } from "react-chartjs-2";
 import ChartDataLabels from "chartjs-plugin-datalabels";
@@ -30,7 +32,9 @@ ChartJS.register(
     Title,
     Tooltip,
     Legend,
-    ChartDataLabels
+    ChartDataLabels,
+    LineController,
+    BarController
 );
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Ags', 'Sep', 'Oct', 'Nov', 'Des'];
