@@ -11,3 +11,7 @@ vite.config.ts.*
 .replit
 replit.nix
 uploads/
+
+temp/
+nul
+.claude/
